@@ -1,0 +1,53 @@
+[project]
+name = "rysknode-logicmodel-scrapper"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.136.1",
+    "inject>=5.3.0",
+    "pydantic>=2.13.4",
+    "pydantic-settings>=2.14.1",
+    "uvicorn>=0.46.0",
+    "sqlalchemy>=1.4.50",
+    "databases>=0.7.0",
+    "psycopg2-binary>=2.9.6",
+    "python-multipart>=0.0.6",
+    "python-dotenv>=1.0.0",
+    "python-jose[cryptography]>=3.3.0",
+    "passlib[bcrypt]>=1.7.4",
+    "redis>=4.6.0",
+    "asgiref>=3.7.2",
+    "aiohttp>=3.9.1",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3",
+    "ruff>=0.15.12",
+    "ty>=0.0.34",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+# E/W = Flake8/Black, F = Pyflakes, I = Isort,
+select = ["E", "F", "W", "I"]
+ignore = [
+    "E231", # Missing whitespace after ','
+    "E241", # Multiple spaces after ','
+    "F403", # 'from module import *' used; unable to detect undefined names
+]
+
+
+[tool.ruff.lint.isort]
+known-third-party = ["fastapi", "pydantic"]
+combine-as-imports = true
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
