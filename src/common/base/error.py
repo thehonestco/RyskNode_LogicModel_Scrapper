@@ -25,16 +25,6 @@ class EntityNotFoundErrorResponse(BaseApplicationResponse):
     response_type: ResponseTypeEnum = ResponseTypeEnum.error
 
 
-class UserNotAuthenticatedResponse(BaseApplicationResponse):
-    response_code: int = 401
-    response_type: ResponseTypeEnum = ResponseTypeEnum.error
-
-
-class UserNotAuthorisedResponse(BaseApplicationResponse):
-    response_code: int = 403
-    response_type: ResponseTypeEnum = ResponseTypeEnum.error
-
-
 class BaseError(Exception):
 
     include_trace: bool = False
@@ -94,24 +84,3 @@ class InternalServerError(BaseError):
 
     def __init__(self, response_code=constants.HTTP_500_INTERNAL_SERVER_ERROR, message="", headers=None):
         super(InternalServerError, self).__init__(message=message, response_code=response_code, headers=headers)
-
-
-class JWTTokenError(BaseError):
-    """JWT Token Signature invalid."""
-
-    def __init__(self, response_code=constants.JWT_TOKEN_SIGNATURE_INVALID, message="", headers=None):
-        super(JWTTokenError, self).__init__(message=message, response_code=response_code, headers=headers)
-
-
-class JWTTokenExpiredError(BaseError):
-    """JWT Token Expired."""
-
-    def __init__(self, response_code=constants.JWT_TOKEN_SIGNATURE_EXPIRED, message="", headers=None):
-        super(JWTTokenExpiredError, self).__init__(message=message, response_code=response_code, headers=headers)
-
-
-class JWTTokenMissingError(BaseError):
-    """JWT Token Not present."""
-
-    def __init__(self, response_code=constants.JWT_TOKEN_MISSING, message="", headers=None):
-        super(JWTTokenMissingError, self).__init__(message=message, response_code=response_code, headers=headers)

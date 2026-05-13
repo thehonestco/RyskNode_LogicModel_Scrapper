@@ -3,7 +3,7 @@ import re
 from functools import lru_cache
 from uuid import uuid4
 
-from sqlalchemy import TIMESTAMP, Boolean, Column, DateTime, String, func
+from sqlalchemy import TIMESTAMP, Boolean, Column, DateTime, func
 from sqlalchemy.orm import as_declarative, declared_attr
 
 from common.model.types.uuid import UUID
@@ -14,8 +14,6 @@ class CoreModel:
     created_at: datetime.datetime = Column(DateTime, server_default=func.now())
     modified_at: datetime.datetime = Column(TIMESTAMP, server_default=func.now(), onupdate=func.current_timestamp())
     is_deleted = Column(Boolean(), default=False)
-    created_by: str = Column(String(36))
-    modified_by: str = Column(String(36))
 
     @classmethod
     @lru_cache(maxsize=1)

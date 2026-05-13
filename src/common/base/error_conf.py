@@ -40,7 +40,7 @@ ErrorConfig.extend(
             "response_code": constants.HTTP_401_UNAUTHORIZED,  # type: ignore [attr-defined]
             "http_code": constants.HTTP_401_UNAUTHORIZED,  # type: ignore [attr-defined]
             "response_type": ResponseTypeEnum.error,
-            "message": "User token expired",
+            "message": "Unauthorized",
         },
         constants.HTTP_403_FORBIDDEN: {  # type: ignore [attr-defined]
             "response_code": constants.HTTP_403_FORBIDDEN,  # type: ignore [attr-defined]
@@ -83,24 +83,6 @@ ErrorConfig.extend(
             "http_code": constants.HTTP_409_CONFLICT,  # type: ignore [attr-defined]
             "response_type": ResponseTypeEnum.error,
             "message": "Entity already exists",
-        },
-        constants.JWT_TOKEN_SIGNATURE_EXPIRED: {  # type: ignore [attr-defined]
-            "response_code": constants.HTTP_403_FORBIDDEN,  # type: ignore [attr-defined]
-            "http_code": constants.HTTP_403_FORBIDDEN,  # type: ignore [attr-defined]
-            "response_type": ResponseTypeEnum.error,
-            "message": "Token is Expired.",
-        },
-        constants.JWT_TOKEN_SIGNATURE_INVALID: {  # type: ignore [attr-defined]
-            "response_code": constants.HTTP_401_UNAUTHORIZED,  # type: ignore [attr-defined]
-            "http_code": constants.HTTP_401_UNAUTHORIZED,  # type: ignore [attr-defined]
-            "response_type": ResponseTypeEnum.error,
-            "message": "Token is not valid.",
-        },
-        constants.JWT_TOKEN_MISSING: {  # type: ignore [attr-defined]
-            "response_code": constants.HTTP_401_UNAUTHORIZED,  # type: ignore [attr-defined]
-            "http_code": constants.HTTP_401_UNAUTHORIZED,  # type: ignore [attr-defined]
-            "response_type": ResponseTypeEnum.error,
-            "message": "No Authentication token provided",
         },
     }
 )

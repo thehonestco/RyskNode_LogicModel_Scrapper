@@ -4,9 +4,9 @@ from pydantic import field_validator
 from pydantic_core.core_schema import FieldValidationInfo
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-SQLITE_DEV = "sqlite:///data_dev.db"
-SQLITE_TEST = "sqlite:///data_test.db"
-SQLITE_STAGE = "sqlite:///data_stage.db"
+SQLITE_DEV = "sqlite+aiosqlite:///data_dev.db"
+SQLITE_TEST = "sqlite+aiosqlite:///data_test.db"
+SQLITE_STAGE = "sqlite+aiosqlite:///data_stage.db"
 
 
 class CoreSettings(BaseSettings):
@@ -18,7 +18,7 @@ class CoreSettings(BaseSettings):
     app_description: str
 
     app_env: str = "DEV"
-    app_port: int = 8001
+    app_port: int = 8002
     app_host: str = "127.0.0.1"
     app_base_url: str | None = None
     base_url: str | None = None
@@ -26,11 +26,6 @@ class CoreSettings(BaseSettings):
     openapi_url: str = "/openapi.json"
     log_file: str = "app.log"
     current_env: str = "LOCAL"
-    algorithm: str = "HS256"
-    access_token_expire_minutes: int = 30
-    token_url: str = "token"
-    shared_secret_key: str | None = None
-    app_secret_key: str | None = None
 
     force_https: bool = False
     cors_origins: typing.Set[str] = {"http://127.0.0.1:8888", "http://127.0.0.1:3000"}
@@ -44,21 +39,7 @@ class CoreSettings(BaseSettings):
     sqlalchemy_uri: str | None = None
     db_connection_pool_class: str | None = None
 
-    redis_host: str = "localhost"
-    redis_port: int = 6379
-    redis_user: str | None = None
-    redis_pass: str | None = None
-
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
-
-    @property
-    def redis_dsn(self):
-        user_pass = [self.redis_user or "", self.redis_pass]
-        user_pass = ":".join(user_pass)
-        if user_pass:
-            return f"redis://{user_pass}@{self.redis_host}:{self.redis_port}"
-        else:
-            return f"redis://{self.redis_host}:{self.redis_port}"
 
     @field_validator("sqlalchemy_uri")
     def assemble_db_connection(cls, v: typing.Optional[str], info: FieldValidationInfo) -> typing.Any:

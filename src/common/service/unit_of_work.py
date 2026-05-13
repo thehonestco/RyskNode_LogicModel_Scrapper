@@ -2,58 +2,58 @@ import abc
 import logging
 
 import inject
-from sqlalchemy.orm.session import Session
-
-from common.repository import TokenRedisRepository
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
 
-def default_session_factory() -> Session:
+def default_session_factory() -> AsyncSession:
     """
-    Default DB Session Factory
+    Default DB Async Session Factory
     :return:
     """
-    logger.info("Creating database Session")
-    return inject.instance(Session)
+    logger.info("Creating database Async Session")
+    return inject.instance(AsyncSession)
 
 
 class AbstractUnitOfWork(abc.ABC):
     # Database session
-    session: Session = None
-    tokens: TokenRedisRepository = None
+    session: AsyncSession = None
 
     def __init__(self):
-        self.tokens = TokenRedisRepository()
+        pass
 
     async def __aenter__(self) -> "AbstractUnitOfWork":
         return self
 
-    async def __aexit__(self, *args):
-        self.rollback()
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        if exc_type:
+            await self.rollback()
+        else:
+            await self.commit()
 
-    def commit(self):
-        self._commit()
+    async def commit(self):
+        await self._commit()
 
     @abc.abstractmethod
-    def _commit(self):
+    async def _commit(self):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def rollback(self):
+    async def rollback(self):
         raise NotImplementedError
 
 
-class SqlAlchemyUnitOfWork(AbstractUnitOfWork):
+class FastCRUDUnitOfWork(AbstractUnitOfWork):
     """
-    SQLAlchemy Unit of Work
+    FastCRUD / SQLAlchemy Unit of Work with Transactional Support
     """
 
-    def __init__(self, session: Session = None, session_factory=default_session_factory):
+    def __init__(self, session: AsyncSession = None, session_factory=default_session_factory):
         self.session = session
         self.session_factory = session_factory
         self.close_on_exit = False
-        super(SqlAlchemyUnitOfWork, self).__init__()
+        super(FastCRUDUnitOfWork, self).__init__()
 
     async def __aenter__(self):
         await super().__aenter__()
@@ -62,14 +62,14 @@ class SqlAlchemyUnitOfWork(AbstractUnitOfWork):
             self.close_on_exit = True
         return self
 
-    async def __aexit__(self, *args):
-        await super().__aexit__(*args)
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await super().__aexit__(exc_type, exc_val, exc_tb)
         if self.close_on_exit:
-            logger.info("Closing SQLAlchemy Session created")
-            self.session.close()
+            logger.info("Closing SQLAlchemy Async Session created")
+            await self.session.close()
 
-    def _commit(self):
-        self.session.commit()
+    async def _commit(self):
+        await self.session.commit()
 
-    def rollback(self):
-        self.session.rollback()
+    async def rollback(self):
+        await self.session.rollback()

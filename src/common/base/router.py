@@ -15,7 +15,7 @@ from starlette.routing import (
     BaseRoute,
 )
 
-from common.base.error import EntityNotFoundErrorResponse, InternalApplicationErrorResponse, UserNotAuthorisedResponse
+from common.base.error import EntityNotFoundErrorResponse, InternalApplicationErrorResponse
 
 
 class APIRouter(_APIRouter):
@@ -28,7 +28,6 @@ class APIRouter(_APIRouter):
 
     resp_model_dict: dict[int, BaseModel] = {
         500: InternalApplicationErrorResponse,
-        403: UserNotAuthorisedResponse,
         404: EntityNotFoundErrorResponse,
     }
 
@@ -77,7 +76,7 @@ class APIRouter(_APIRouter):
         generate_unique_id_function: Callable[[APIRoute], str] = Default(generate_unique_id),
     ) -> Callable[[DecoratedCallable], DecoratedCallable]:
         responses = responses or {}
-        for resp in response_list or [500, 403, 404]:
+        for resp in response_list or [500, 404]:
             resp_model = self.resp_model_dict.get(resp)
             if not responses.get(resp) and resp_model:
                 responses[resp] = {"model": resp_model}
