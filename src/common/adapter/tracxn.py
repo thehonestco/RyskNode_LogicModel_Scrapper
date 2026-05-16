@@ -78,57 +78,71 @@ class TracxnScraper(BaseScraper):
     def _parse_snippet(self, text: str) -> Dict[str, Any]:
         data = {}
 
-        # Specifically target the format: "Latest Revenue\n42Cr INR as on Mar 31, 2023"
-        # Adjusted for potential HTML tags like <a> inside the text
-        patterns = [
-            # Pattern for the specific HTML format: <div>Latest Revenue</div><div><a>42Cr INR</a> as on Mar 31, 2023</div>
-            # We use [^>]*> to skip over HTML tags
-            r"(?:Latest\s+)?(?:Operating\s+)?(?:Revenue|Turnover|Finances)(?:[^>]*>){1,10}\s*([₹]?\s*[\d\.,]+\s*(?:Cr|M|Lakh|L|K|Million|Billion|B))\s*(?:INR|USD)?(?:\s*</a>)?\s*(?:as\s+on|on)?\s*([A-Z][a-z]+\s+\d{1,2},?\s+\d{4})",
-            # Pattern for the specific multiline text format provided by user
+        # 1. Prioritize EXACT values (non-ranges) to avoid falling back to ranges
+        # These are prioritized
+        exact_patterns = [
+            # Specific HTML format provided by user
+            r"(?:Latest\s+)?(?:Operating\s+)?(?:Revenue|Turnover|Finances)(?:[^>]*>){1,20}\s*([₹]?\s*[\d\.,]+\s*(?:Cr|M|Lakh|L|K|Million|Billion|B))\s*(?:INR|USD)?(?:\s*</a>)?\s*(?:as\s+on|on)?\s*([A-Z][a-z]+\s+\d{1,2},?\s+\d{4})",
+            # Simple value in text
             r"(?:Latest\s+)?(?:Operating\s+)?(?:Revenue|Turnover|Finances).*?([₹]?\s*[\d\.,]+\s*(?:Cr|M|Lakh|L|K|Million|Billion|B))\s*(?:INR|USD)?\s*(?:as\s+on|on)?\s*([A-Z][a-z]+\s+\d{1,2},?\s+\d{4})",
-            # Pattern for Tofler/Mirror range: "operating revenue range is INR 1 cr - 100 cr"
-            r"(?:Revenue|Turnover|Finances).*?([\d\.,]+\s*(?:Cr|M|Lakh|L|K))\s*-\s*([\d\.,]+\s*(?:Cr|M|Lakh|L|K))",
-            # Pattern for simple value: "Latest Revenue: ₹ 42.0 Cr"
+            # Simple value without date
             r"(?:Latest\s+)?(?:Operating\s+)?(?:Revenue|Turnover|Finances).*?([₹]?\s*[\d\.,]+\s*(?:Cr|M|Lakh|L|K|Million|Billion|B))",
         ]
 
-        for pattern in patterns:
+        for pattern in exact_patterns:
             match = re.search(pattern, text, re.I | re.S)
             if match:
-                # Store original raw string (strip HTML if present)
                 raw_match = match.group(0).strip()
                 data["revenue_text"] = self._strip_html(raw_match)
-
-                # Special case for patterns that capture the date in group 2
-                if match.lastindex >= 2 and any(x in pattern for x in ["as\\s+on", "on"]):
-                    data["latest_revenue"] = self._parse_revenue(match.group(1))
+                data["latest_revenue"] = self._parse_revenue(match.group(1))
+                
+                # Extract date if captured
+                if match.lastindex >= 2:
                     data["latest_revenue_date"] = self._parse_date_flexible(match.group(2))
-                # Handle range match (groups 1 and 2)
-                elif "-" in pattern and match.lastindex >= 2:
+                break
+
+        # 2. If no exact value found, try to find a range
+        if not data.get("latest_revenue"):
+            range_patterns = [
+                # Pattern for Tofler/Mirror range: "operating revenue range is INR 1 cr - 100 cr"
+                r"(?:Revenue|Turnover|Finances).*?([\d\.,]+\s*(?:Cr|M|Lakh|L|K))\s*-\s*([\d\.,]+\s*(?:Cr|M|Lakh|L|K))",
+            ]
+            for pattern in range_patterns:
+                match = re.search(pattern, text, re.I | re.S)
+                if match:
+                    raw_match = match.group(0).strip()
+                    data["revenue_text"] = self._strip_html(raw_match)
                     val1 = self._parse_revenue(match.group(1))
                     val2 = self._parse_revenue(match.group(2))
-                    data["latest_revenue"] = val2 or val1
-                else:
-                    data["latest_revenue"] = self._parse_revenue(match.group(1))
+                    data["latest_revenue"] = val2 or val1 # Prefer upper bound for range
+                    break
 
-                # Extract date if not already found
-                if not data.get("latest_revenue_date"):
-                    start = max(0, match.start()-250)
-                    end = min(len(text), match.end()+250)
-                    context = text[start:end]
+        # 3. Broad scan fallback: find any number followed by Cr/M near Revenue keyword
+        if not data.get("latest_revenue"):
+             # Search for Revenue keyword and look ahead/behind
+             rev_pos = text.lower().find("revenue")
+             if rev_pos == -1: rev_pos = text.lower().find("turnover")
+             
+             if rev_pos != -1:
+                 # Look in a window around the keyword
+                 start_win = max(0, rev_pos - 50)
+                 end_win = min(len(text), rev_pos + 400)
+                 snippet = text[start_win:end_win]
+                 # Look for something like "42Cr" or "₹ 42.0 Cr"
+                 match = re.search(r"([₹]?\s*[\d\.,]+\s*(?:Cr|M|Lakh|L|K))", snippet, re.I)
+                 if match:
+                     data["revenue_text"] = f"Broad Extract: {self._strip_html(match.group(0))}"
+                     data["latest_revenue"] = self._parse_revenue(match.group(1))
 
-                    # Look for specific date formats
-                    date_match = re.search(r"(?:\d{1,2}\s+)?(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s*(?:\d{1,2})?,?\s*(20\d{2})", context, re.I)
-                    if date_match:
-                        data["latest_revenue_date"] = self._parse_date_flexible(date_match.group(0))
-                    else:
-                        # Fallback to FY/Year
-                        year_match = re.search(r"(?:FY|Year|ending\s+on)\s*(?:20)?(\d{2,4})", context, re.I)
-                        if year_match:
-                            year = year_match.group(1)
-                            if len(year) == 2: year = "20" + year
-                            data["latest_revenue_date"] = datetime.date(int(year), 3, 31)
-                break
+        # 4. Final Date Fallback
+        if not data.get("latest_revenue_date") and (data.get("latest_revenue") or data.get("revenue_text")):
+            start = max(0, text.lower().find("revenue") - 100)
+            end = min(len(text), start + 800)
+            context = text[start:end]
+
+            date_match = re.search(r"(?:\d{1,2}\s+)?(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s*(?:\d{1,2})?,?\s*(20\d{2})", context, re.I)
+            if date_match:
+                data["latest_revenue_date"] = self._parse_date_flexible(date_match.group(0))
 
         return data
 
