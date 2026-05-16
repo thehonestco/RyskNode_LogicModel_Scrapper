@@ -28,6 +28,7 @@ class ResponseSchema(BaseModel):
     description: typing.Optional[str] = Field(
         default=None, title="Description", description="Debug information for developer"
     )
+    data: typing.Optional[typing.Any] = Field(default=None, title="Response Data")
     public_id: typing.Optional[UUID4] = Field(
         default=None,
         title="Entity Public ID",

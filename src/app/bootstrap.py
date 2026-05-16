@@ -15,6 +15,7 @@ if not inject.is_configured():
 def init_app():
     # Loading apps
     from common.base.bootstrap import create_app
+    import api  # noqa
 
     api_ = create_app(typing.cast(Settings, inject.instance(CoreSettings)))
     return api_

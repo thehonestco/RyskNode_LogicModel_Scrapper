@@ -7,7 +7,7 @@ from uuid import uuid4
 
 from fastcrud import FastCRUD
 from pydantic import BaseModel
-from sqlalchemy import Column, update
+from sqlalchemy import Column, update, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.domains import BaseDomain
@@ -16,7 +16,7 @@ from common.model.types.uuid import UUID
 
 CREATED_AT_FORMAT = "%Y-%m-%d %H:%M:%S"
 
-ModelType = TypeVar("ModelType", bound=CoreModel)
+ModelType = TypeVar("ModelType", bound=Any)
 CreateSchemaType = TypeVar("CreateSchemaType", bound=BaseModel)
 UpdateSchemaType = TypeVar("UpdateSchemaType", bound=BaseModel)
 DeleteSchemaType = TypeVar("DeleteSchemaType", bound=BaseModel)
@@ -43,60 +43,57 @@ class FastCRUDRepository(AbstractRepository, Generic[ModelType, CreateSchemaType
     def __init__(self, session: AsyncSession):
         super().__init__()
         self.session = session
-        self.crud = FastCRUD[ModelType, CreateSchemaType, UpdateSchemaType, DeleteSchemaType](self.model)
+        self.crud = FastCRUD(self.model, updated_at_column="")
 
-    async def add(self, model: CoreModel | Dict[str, Any] | BaseDomain) -> ModelType:
-        if isinstance(model, BaseDomain):
+    async def add(self, model: Any | Dict[str, Any] | BaseDomain) -> ModelType:
+        if hasattr(model, "model_dump") and callable(model.model_dump):
             model_data = model.model_dump(exclude_related=True, exclude_unset=True)
         elif isinstance(model, dict):
-            model_data = model
+            model_data = model.copy()
         else:
-            model_data = {c: getattr(model, c) for c in self.model.get_columns() if hasattr(model, c)}
+            # Fallback for SQLAlchemy models or other objects
+            columns = [c.key for c in self.model.__table__.columns]
+            model_data = {c: getattr(model, c) for c in columns if hasattr(model, c)}
 
+        # Only generate UUID if the model expects it and it's missing
         if "id" not in model_data or not model_data["id"]:
-            model_data["id"] = str(uuid4())
+            id_col = self.model.__table__.primary_key.columns[0]
+            if isinstance(id_col.type, UUID):
+                 model_data["id"] = str(uuid4())
+            else:
+                 # Remove None/Empty id for autoincrement
+                 if "id" in model_data:
+                     del model_data["id"]
 
-        return await self.crud.create(self.session, model_data)
+        db_object = self.model(**model_data)
+        self.session.add(db_object)
+        await self.session.flush()
+        await self.session.refresh(db_object)
+        return db_object
 
-    async def get(self, id_: UUID | str, is_deleted: bool = False) -> Optional[ModelType]:
+    async def get(self, id_: Any, is_deleted: bool = False) -> Optional[ModelType]:
         return await self.crud.get(self.session, id=id_, is_deleted=is_deleted)
 
     async def update(self, values: Dict[str, Any] | BaseDomain, where: typing.Tuple):
-        """
-        FastCRUD does not natively support arbitrary tuple-based where clauses in its `.update()`
-        without building the query. We will fall back to core SQLAlchemy update for tuple where clauses.
-        """
         if not values:
-            values = {}
-        model_data = {}
-        if isinstance(values, BaseDomain):
-            inp_model = values.model_dump(exclude_related=True, exclude_computed=True, exclude_unset=True)
-            for column in self.model.get_columns():
-                if column in inp_model:
-                    model_data[column] = inp_model[column]
-        elif isinstance(values, dict):
-            for column in self.model.get_columns():
-                if column in values:
-                    model_data[column] = values[column]
+            return
+        
+        if hasattr(values, "model_dump"):
+            model_data = values.model_dump(exclude_related=True, exclude_computed=True, exclude_unset=True)
+        else:
+            model_data = values
 
         stmt = update(self.model).where(*where).values(**model_data)
         await self.session.execute(stmt)
 
     async def update_by(self, values: Dict[str, Any] | BaseDomain, where: Dict[str, Any]):
         if not values:
-            values = {}
-        model_data = {}
-        if isinstance(values, BaseDomain):
-            inp_model = values.model_dump(exclude_related=True, exclude_computed=True, exclude_unset=True)
-            for column in self.model.get_columns():
-                if column == "id":
-                    continue
-                if column in inp_model:
-                    model_data[column] = inp_model[column]
-        elif isinstance(values, dict):
-            for column in self.model.get_columns():
-                if column in values:
-                    model_data[column] = values[column]
+            return
+            
+        if hasattr(values, "model_dump"):
+            model_data = values.model_dump(exclude_related=True, exclude_computed=True, exclude_unset=True)
+        else:
+            model_data = values
 
         await self.crud.update(self.session, model_data, **where)
 
@@ -105,6 +102,9 @@ class FastCRUDRepository(AbstractRepository, Generic[ModelType, CreateSchemaType
         await self.session.execute(stmt)
 
     async def get_single(self, **kwargs) -> Optional[ModelType]:
+        kwargs = {k: v for k, v in kwargs.items() if v is not None}
+        if not kwargs:
+            return None
         return await self.crud.get(self.session, **kwargs)
 
     async def filter(self, order_by: str = None, order: str = None, **kwargs) -> list[ModelType]:
@@ -124,8 +124,8 @@ class FastCRUDRepository(AbstractRepository, Generic[ModelType, CreateSchemaType
     async def refresh(self, instance_):
         await self.session.refresh(instance_)
 
-    async def delete(self, record: typing.Union[CoreModel, str, int]):
-        if isinstance(record, CoreModel):
+    async def delete(self, record: typing.Union[Any, str, int]):
+        if hasattr(record, "id"):
             await self.crud.update(self.session, {"is_deleted": True}, id=record.id)
         else:
             await self.crud.update(self.session, {"is_deleted": True}, id=record)
@@ -149,16 +149,12 @@ class FastCRUDRepository(AbstractRepository, Generic[ModelType, CreateSchemaType
         elif "is_deleted" not in kwargs:
             kwargs["is_deleted"] = False
 
-        # Range filters conversion if needed
         kwargs = self._process_range_filters(**kwargs)
 
         offset_value = (page - 1) * page_size
         sort_columns = [order_by] if order_by else None
         sort_orders = [order.lower()] if order else None
 
-        # Implement simple search logic if FastCRUD supports it, or rely on kwargs
-        # Note: Advanced multi-column OR searches are tricky natively in get_multi kwargs,
-        # so for exact match with FastCRUD, we handle single column or map them down.
         if search and self.search_fields and len(self.search_fields) == 1:
             search_col_name = self.search_fields[0].name
             kwargs[f"{search_col_name}__ilike"] = f"%{search}%"
@@ -195,7 +191,6 @@ class FastCRUDRepository(AbstractRepository, Generic[ModelType, CreateSchemaType
         return await self.crud.count(self.session, **kwargs)
 
     def _process_range_filters(self, **kwargs) -> Dict[str, Any]:
-        """Convert gc/backend range filters to FastCRUD kwarg filters."""
         if (
             (kwargs.get("range_from") or kwargs.get("range_to"))
             and kwargs.get("range_field")
@@ -230,7 +225,7 @@ class FastCRUDRepository(AbstractRepository, Generic[ModelType, CreateSchemaType
             elif r_from is None and r_to is not None:
                 kwargs[f"{field}__lte"] = r_to
             else:
-                if op == "BETWEEN":  # SearchFieldOperatorEnum.between
+                if op == "BETWEEN":
                     kwargs[f"{field}__gte"] = r_from
                     kwargs[f"{field}__lte"] = r_to
                 elif op == ">":

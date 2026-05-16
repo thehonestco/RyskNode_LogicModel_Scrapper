@@ -1,0 +1,157 @@
+import aiohttp
+import logging
+import re
+import datetime
+import inject
+from typing import Dict, Any, Optional
+from .scraper_base import BaseScraper
+from common.base.utils import respond
+
+logger = logging.getLogger(__name__)
+
+class TracxnScraper(BaseScraper):
+    """
+    Tracxn Scraper using search list parsing and enhanced regex for high reliability.
+    """
+    
+    async def scrape(self, query: str) -> Dict[str, Any]:
+        logger.info(f"Scraping Tracxn for CIN: {query}")
+        
+        data = {}
+        
+        # 1. NIC Code from CIN (Highly reliable)
+        if len(query) == 21:
+            data["main_activity_group_code"] = query[1:6]
+
+        # 2. Try Tracxn search snippets via aiohttp
+        tracxn_data = await self._fetch_from_tracxn(query)
+        data.update(tracxn_data)
+        
+        # 3. If revenue still missing, try TheCompanyCheck search snippet
+        if not data.get("latest_revenue"):
+            mirror_data = await self._fetch_from_mirror(query)
+            data.update(mirror_data)
+                
+        return data
+
+    async def _fetch_from_tracxn(self, query: str) -> Dict[str, Any]:
+        try:
+            url = f"https://tracxn.com/search/legal-entities?q={query}"
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.9",
+                "Referer": "https://tracxn.com/",
+                "Connection": "keep-alive"
+            }
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, headers=headers, timeout=15) as resp:
+                    if resp.status == 200:
+                        content = await resp.text()
+                        return self._parse_snippet(content)
+        except Exception as e:
+            logger.error(f"Error fetching from Tracxn: {e}")
+        return {}
+
+    async def _fetch_from_mirror(self, query: str) -> Dict[str, Any]:
+        try:
+            # Try TheCompanyCheck (Mirror 1)
+            url = f"https://www.thecompanycheck.com/search/search-results?q={query}"
+            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, headers=headers, timeout=10) as resp:
+                    if resp.status == 200:
+                        content = await resp.text()
+                        data = self._parse_snippet(content)
+                        if data.get("latest_revenue"): return data
+
+            # Try Tofler (Mirror 2)
+            url = f"https://www.tofler.in/search?q={query}"
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, headers=headers, timeout=10) as resp:
+                    if resp.status == 200:
+                        content = await resp.text()
+                        return self._parse_snippet(content)
+        except Exception as e:
+            logger.error(f"Error fetching from mirror: {e}")
+        return {}
+
+    def _parse_snippet(self, text: str) -> Dict[str, Any]:
+        data = {}
+        
+        # Enhanced flexible Revenue patterns
+        patterns = [
+            # Pattern 1: Range (e.g., "Operating Revenue: 1 Cr - 100 Cr")
+            r"(?:Revenue|Turnover|Finances).*?([\d\.,]+\s*(?:Cr|M|Lakh|L|K|Million|Billion))\s*-\s*([\d\.,]+\s*(?:Cr|M|Lakh|L|K|Million|Billion))",
+            # Pattern 2: Revenue followed by value (e.g., "Revenue: ₹ 42.0 Cr")
+            r"(?:Revenue|Turnover|Finances).*?([\d\.,]+\s*(?:Cr|M|Lakh|L|K|Million|Billion|B)?)",
+            # Pattern 3: Value followed by Revenue (e.g., "100 Cr Revenue")
+            r"([\d\.,]+\s*(?:Cr|M|Lakh|L|K|Million|Billion)).*?(?:Revenue|Turnover|Finances)"
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, text, re.I | re.S)
+            if match:
+                # Handle range match (groups 1 and 2)
+                if "-" in pattern:
+                    val1 = self._parse_revenue(match.group(1))
+                    val2 = self._parse_revenue(match.group(2))
+                    data["latest_revenue"] = val2 or val1
+                else:
+                    data["latest_revenue"] = self._parse_revenue(match.group(1))
+                
+                if data.get("latest_revenue"):
+                    # Extract date from surrounding context
+                    start = max(0, match.start()-150)
+                    end = min(len(text), match.end()+150)
+                    context = text[start:end]
+                    
+                    # Look for specific date like "31 March 2023" or "March 31, 2023"
+                    date_match = re.search(r"(?:\d{1,2}\s+)?(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s*(?:\d{1,2})?,?\s*(20\d{2})", context, re.I)
+                    if date_match:
+                        year = date_match.group(1)
+                        data["latest_revenue_date"] = datetime.date(int(year), 3, 31)
+                    else:
+                        # Fallback to FY/Year
+                        year_match = re.search(r"(?:FY|Year|ending\s+on)\s*(?:20)?(\d{2,4})", context, re.I)
+                        if year_match:
+                            year = year_match.group(1)
+                            if len(year) == 2: year = "20" + year
+                            data["latest_revenue_date"] = datetime.date(int(year), 3, 31)
+                    break
+        
+        return data
+
+    def _parse_revenue(self, rev_str: str) -> Optional[int]:
+        if not rev_str: return None
+        try:
+            # Clean up formatting
+            rev_str = rev_str.replace(",", "").replace(" ", "").upper()
+            
+            # Filter out years mistakenly caught as numbers
+            if rev_str in ["2026", "2025", "2024", "2023", "2022"]: return None
+            
+            # Split number and unit
+            match = re.search(r"([\d\.]+)\s*(CR|M|LAKH|L|K|BILLION|MILLION|B)?", rev_str)
+            if not match: return None
+            
+            num_str = match.group(1)
+            unit = match.group(2)
+            
+            try:
+                num = float(num_str)
+            except ValueError:
+                return None
+
+            if not unit:
+                # Assume absolute value (INR)
+                return int(num)
+                
+            if unit == "CR": num *= 10_000_000
+            elif unit in ["MILLION", "M"]: num *= 1_000_000
+            elif unit in ["LAKH", "L"]: num *= 100_000
+            elif unit == "K": num *= 1_000
+            elif unit in ["BILLION", "B"]: num *= 1_000_000_000
+            
+            return int(num)
+        except: return None

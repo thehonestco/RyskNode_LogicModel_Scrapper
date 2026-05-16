@@ -23,6 +23,8 @@ dependencies = [
     "redis>=4.6.0",
     "asgiref>=3.7.2",
     "aiohttp>=3.9.1",
+    "lxml>=6.1.0",
+    "aiofiles>=25.1.0",
 ]
 
 [dependency-groups]

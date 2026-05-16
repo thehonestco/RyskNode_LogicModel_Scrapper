@@ -18,7 +18,7 @@ class CoreSettings(BaseSettings):
     app_description: str
 
     app_env: str = "DEV"
-    app_port: int = 8002
+    app_port: int = 8080
     app_host: str = "127.0.0.1"
     app_base_url: str | None = None
     base_url: str | None = None
@@ -48,8 +48,8 @@ class CoreSettings(BaseSettings):
             return v
         if info.data.get("db_server"):
             return (
-                f'postgresql://{info.data.get("db_user")}:{info.data.get("db_pass")}@{info.data.get("db_server")}:'
-                f'{info.data.get("db_port")}/{info.data.get("db_name") or ""}'
+                f"postgresql://{info.data.get('db_user')}:{info.data.get('db_pass')}@{info.data.get('db_server')}:"
+                f"{info.data.get('db_port')}/{info.data.get('db_name') or ''}"
             )
 
         return SQLITE_DEV
