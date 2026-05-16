@@ -7,11 +7,10 @@ from uuid import uuid4
 
 from fastcrud import FastCRUD
 from pydantic import BaseModel
-from sqlalchemy import Column, update, select
+from sqlalchemy import Column, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.domains import BaseDomain
-from common.model.base import CoreModel
 from common.model.types.uuid import UUID
 
 CREATED_AT_FORMAT = "%Y-%m-%d %H:%M:%S"
@@ -59,11 +58,11 @@ class FastCRUDRepository(AbstractRepository, Generic[ModelType, CreateSchemaType
         if "id" not in model_data or not model_data["id"]:
             id_col = self.model.__table__.primary_key.columns[0]
             if isinstance(id_col.type, UUID):
-                 model_data["id"] = str(uuid4())
+                model_data["id"] = str(uuid4())
             else:
-                 # Remove None/Empty id for autoincrement
-                 if "id" in model_data:
-                     del model_data["id"]
+                # Remove None/Empty id for autoincrement
+                if "id" in model_data:
+                    del model_data["id"]
 
         db_object = self.model(**model_data)
         self.session.add(db_object)
@@ -77,7 +76,7 @@ class FastCRUDRepository(AbstractRepository, Generic[ModelType, CreateSchemaType
     async def update(self, values: Dict[str, Any] | BaseDomain, where: typing.Tuple):
         if not values:
             return
-        
+
         if hasattr(values, "model_dump"):
             model_data = values.model_dump(exclude_related=True, exclude_computed=True, exclude_unset=True)
         else:
@@ -89,7 +88,7 @@ class FastCRUDRepository(AbstractRepository, Generic[ModelType, CreateSchemaType
     async def update_by(self, values: Dict[str, Any] | BaseDomain, where: Dict[str, Any]):
         if not values:
             return
-            
+
         if hasattr(values, "model_dump"):
             model_data = values.model_dump(exclude_related=True, exclude_computed=True, exclude_unset=True)
         else:

@@ -1,11 +1,11 @@
-import aiohttp
+import datetime
 import logging
 import re
-import datetime
-import inject
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
+
+import aiohttp
+
 from .scraper_base import BaseScraper
-from common.base.utils import respond
 
 logger = logging.getLogger(__name__)
 
@@ -13,12 +13,12 @@ class TracxnScraper(BaseScraper):
     """
     Tracxn Scraper using search list parsing and enhanced regex for high reliability.
     """
-    
+
     async def scrape(self, query: str) -> Dict[str, Any]:
         logger.info(f"Scraping Tracxn for: {query}")
-        
+
         data = {}
-        
+
         # 1. NIC Code from CIN (Highly reliable)
         if len(query) == 21:
             data["main_activity_group_code"] = query[1:6]
@@ -26,7 +26,7 @@ class TracxnScraper(BaseScraper):
         # 2. Try Tracxn search snippets via aiohttp
         tracxn_data = await self._fetch_from_tracxn(query)
         data.update(tracxn_data)
-                
+
         return data
 
     async def _fetch_from_tracxn(self, query: str) -> Dict[str, Any]:
@@ -51,7 +51,7 @@ class TracxnScraper(BaseScraper):
 
     def _parse_snippet(self, text: str) -> Dict[str, Any]:
         data = {}
-        
+
         # Enhanced flexible Revenue patterns including "Latest Revenue" and "Operating Revenue"
         patterns = [
             # Pattern 1: Range (e.g., "Operating Revenue: 1 Cr - 100 Cr")
@@ -61,7 +61,7 @@ class TracxnScraper(BaseScraper):
             # Pattern 3: Value followed by Revenue (e.g., "100 Cr Revenue")
             r"([\d\.,]+\s*(?:Cr|M|Lakh|L|K|Million|Billion|B)).*?(?:Latest\s+)?(?:Operating\s+)?(?:Revenue|Turnover|Finances)"
         ]
-        
+
         for pattern in patterns:
             match = re.search(pattern, text, re.I | re.S)
             if match:
@@ -72,13 +72,13 @@ class TracxnScraper(BaseScraper):
                     data["latest_revenue"] = val2 or val1
                 else:
                     data["latest_revenue"] = self._parse_revenue(match.group(1))
-                
+
                 if data.get("latest_revenue"):
                     # Extract date from surrounding context
                     start = max(0, match.start()-150)
                     end = min(len(text), match.end()+150)
                     context = text[start:end]
-                    
+
                     # Look for specific date like "31 March 2023" or "March 31, 2023"
                     date_match = re.search(r"(?:\d{1,2}\s+)?(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s*(?:\d{1,2})?,?\s*(20\d{2})", context, re.I)
                     if date_match:
@@ -92,7 +92,7 @@ class TracxnScraper(BaseScraper):
                             if len(year) == 2: year = "20" + year
                             data["latest_revenue_date"] = datetime.date(int(year), 3, 31)
                     break
-        
+
         return data
 
     def _parse_revenue(self, rev_str: str) -> Optional[int]:
@@ -100,17 +100,17 @@ class TracxnScraper(BaseScraper):
         try:
             # Clean up formatting
             rev_str = rev_str.replace(",", "").replace(" ", "").upper()
-            
+
             # Filter out years mistakenly caught as numbers
             if rev_str in ["2026", "2025", "2024", "2023", "2022"]: return None
-            
+
             # Split number and unit
             match = re.search(r"([\d\.]+)\s*(CR|M|LAKH|L|K|BILLION|MILLION|B)?", rev_str)
             if not match: return None
-            
+
             num_str = match.group(1)
             unit = match.group(2)
-            
+
             try:
                 num = float(num_str)
             except ValueError:
@@ -118,12 +118,12 @@ class TracxnScraper(BaseScraper):
 
             if not unit:
                 return int(num)
-                
+
             if unit == "CR": num *= 10_000_000
             elif unit in ["MILLION", "M"]: num *= 1_000_000
             elif unit in ["LAKH", "L"]: num *= 100_000
             elif unit == "K": num *= 1_000
             elif unit in ["BILLION", "B"]: num *= 1_000_000_000
-            
+
             return int(num)
         except: return None

@@ -1,11 +1,13 @@
-import aiohttp
-import logging
 import datetime
-import re
 import json
-from typing import Dict, Any, Optional, List
-from .scraper_base import BaseScraper
+import logging
+import re
+from typing import Any, Dict, Optional
+
+import aiohttp
 from lxml import html
+
+from .scraper_base import BaseScraper
 
 logger = logging.getLogger(__name__)
 
@@ -14,8 +16,8 @@ class FalconBizScraper(BaseScraper):
 
     async def scrape(self, query: str) -> Dict[str, Any]:
         logger.info(f"Scraping Falcon Biz for: {query}")
-        url = f"{self.BASE_URL}/{query}" 
-        
+        url = f"{self.BASE_URL}/{query}"
+
         try:
             headers = {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -25,12 +27,12 @@ class FalconBizScraper(BaseScraper):
                     if response.status != 200:
                         logger.error(f"Falcon Biz returned status {response.status} for {query}")
                         return {}
-                    
+
                     content = await response.text()
                     tree = html.fromstring(content)
-                    
+
                     data = {}
-                    
+
                     # 1. Try to get high-quality data from JSON-LD
                     try:
                         json_ld_script = tree.xpath("//script[@type='application/ld+json']/text()")
@@ -38,7 +40,7 @@ class FalconBizScraper(BaseScraper):
                             ld_data = json.loads(json_ld_script[0])
                             graph = ld_data.get("@graph", [])
                             org = next((item for item in graph if item.get("@type") == "Organization"), {})
-                            
+
                             if org:
                                 data["company_name"] = org.get("legalName") or org.get("name")
                                 data["cin"] = org.get("identifier", {}).get("value")
@@ -76,7 +78,7 @@ class FalconBizScraper(BaseScraper):
                     data["company_age"] = info_map.get("Company Age")
                     data["last_agm_date"] = self._parse_date(info_map.get("Date of Last Annual General Meeting"))
                     data["latest_balance_sheet_date"] = self._parse_date(info_map.get("Date of Latest Balance Sheet"))
-                    
+
                     if not data.get("description_of_main_activity"):
                         data["description_of_main_activity"] = info_map.get("Activity")
 
@@ -90,7 +92,7 @@ class FalconBizScraper(BaseScraper):
                         if name: d_names.append(name)
                         if din: d_dins.append(din)
                         if app_date: d_dates.append(app_date)
-                    
+
                     if d_names:
                         data["director_names"] = ", ".join(d_names)
                         data["director_din"] = ", ".join(d_dins)

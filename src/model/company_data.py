@@ -1,6 +1,8 @@
-from sqlalchemy import Column, BigInteger, String, Text, Date, DateTime, Boolean, func
+from sqlalchemy import BigInteger, Boolean, Column, Date, DateTime, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
+
 from common.model.base import Base
+
 
 class CompanyData(Base):
     __tablename__ = "company_data"

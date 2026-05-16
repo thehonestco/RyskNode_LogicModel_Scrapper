@@ -1,6 +1,8 @@
 from datetime import date, datetime
 from typing import Optional, Union
+
 from common.domains import BaseDomain
+
 
 class CompanyDomain(BaseDomain):
     id: Optional[Union[int, str]] = None

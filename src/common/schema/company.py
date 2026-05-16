@@ -1,6 +1,8 @@
-from typing import Optional
 from datetime import date, datetime
+from typing import Optional
+
 from pydantic import BaseModel, ConfigDict
+
 
 class CompanyDataBase(BaseModel):
     company_name: str
@@ -42,5 +44,5 @@ class CompanyDataResponse(CompanyDataBase):
     id: int
     created_at: datetime
     updated_at: datetime
-    
+
     model_config = ConfigDict(from_attributes=True)

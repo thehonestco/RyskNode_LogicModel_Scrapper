@@ -2,19 +2,18 @@ import asyncio
 import datetime
 import logging
 import os
-import re
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
 
 import inject
 
-from common.base.error import ApplicationError
-from common.base import constants
-from common.service.base import BaseService
-from common.service.unit_of_work import AbstractUnitOfWork
-from repository.company_repository import CompanyRepository
 from common.adapter.falcon_biz import FalconBizScraper
 from common.adapter.tracxn import TracxnScraper
+from common.base import constants
+from common.base.error import ApplicationError
+from common.service.base import BaseService
+from common.service.unit_of_work import AbstractUnitOfWork
 from domain.company import CompanyDomain
+from repository.company_repository import CompanyRepository
 
 logger = logging.getLogger(__name__)
 
@@ -30,12 +29,12 @@ class ScrapeService(BaseService):
         Scrape a single CIN and return a CompanyDomain object.
         """
         data = await self._perform_scrape(cin)
-        
+
         if not data or not data.get("company_name"):
              raise ApplicationError(response_code=constants.HTTP_404_NOT_FOUND, message=f"Company with CIN {cin} not found.")
 
         effective_uow = uow or inject.instance(AbstractUnitOfWork)
-        
+
         if uow:
             return await self._save_data(data, uow)
         else:
@@ -45,12 +44,12 @@ class ScrapeService(BaseService):
     async def _save_data(self, data: Dict[str, Any], uow: AbstractUnitOfWork) -> CompanyDomain:
         repo = CompanyRepository(uow.session)
         existing = await repo.get_single(cin=data["cin"])
-        
+
         # Filter out None/Empty values to avoid wiping out existing data in DB
         update_data = {k: v for k, v in data.items() if v is not None and v != ""}
-        
+
         logger.info(f"Saving data for CIN {data['cin']}. Payload fields: {list(update_data.keys())}")
-        
+
         if existing:
             logger.info(f"Updating existing record for CIN {data['cin']}")
             await repo.update_by(update_data, {"cin": data["cin"]})
@@ -61,7 +60,7 @@ class ScrapeService(BaseService):
         else:
             logger.info(f"Creating new record for CIN {data['cin']}")
             result = await repo.add(update_data)
-        
+
         if isinstance(result, dict):
             return CompanyDomain(**result)
         else:
@@ -72,33 +71,33 @@ class ScrapeService(BaseService):
         # Concurrency for maximum speed
         falcon_task = asyncio.create_task(self.falcon_scraper.scrape(cin))
         tracxn_task = asyncio.create_task(self.tracxn_scraper.scrape(cin))
-        
+
         falcon_data, tracxn_data = await asyncio.gather(falcon_task, tracxn_task)
-        
+
         if not falcon_data and not tracxn_data:
             return {}
-            
+
         merged_data = self._merge_data(falcon_data, tracxn_data)
         if "cin" not in merged_data or not merged_data["cin"]:
             merged_data["cin"] = cin
-            
+
         merged_data["scraped_at"] = datetime.datetime.now()
-        
+
         raw_falcon = self._json_serializable(falcon_data)
         raw_tracxn = self._json_serializable(tracxn_data)
         merged_data["raw_data"] = {"falcon": raw_falcon, "tracxn": raw_tracxn}
         merged_data["data_source"] = "FalconBiz / Tracxn"
-        
+
         if "company_name" in merged_data and merged_data["company_name"]:
             merged_data["company_name_normalized"] = merged_data["company_name"].lower()
-            
+
         self._cleanup_data(merged_data)
         return merged_data
 
     def _cleanup_data(self, data: Dict):
         if data.get("description_of_main_activity"):
              desc = data["description_of_main_activity"]
-             
+
              if data.get("company_name"):
                   name = data["company_name"]
                   short_name = name.replace("PRIVATE LIMITED", "PVT LTD").replace("LIMITED", "LTD")
@@ -107,13 +106,13 @@ class ScrapeService(BaseService):
                   if short_name != name and short_name in desc:
                        desc = desc.replace(short_name, "")
                   data["description_of_main_activity"] = desc.strip()
-             
+
              if "'s registered office address is" in data["description_of_main_activity"]:
                   data["description_of_main_activity"] = data["description_of_main_activity"].split("'s registered office address is")[0].strip()
-        
+
         if not data.get("description_of_business_activity"):
              data["description_of_business_activity"] = data.get("description_of_main_activity")
-        
+
         if not data.get("business_activity_code"):
              data["business_activity_code"] = data.get("main_activity_group_code")
 
@@ -168,10 +167,10 @@ class ScrapeService(BaseService):
         report_dir = os.path.join(os.getcwd(), "reports")
         if not os.path.exists(report_dir):
             os.makedirs(report_dir)
-            
+
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         report_file = os.path.join(report_dir, f"scrape_report_{timestamp}.md")
-        
+
         report_content = f"""# Scrape Batch Report
 Date: {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 
@@ -188,7 +187,7 @@ Date: {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
             report_content += "| Query | Reason |\n|---|---|\n"
             for f in failures:
                 report_content += f"| {f['query']} | {f['reason']} |\n"
-                
+
         try:
             with open(report_file, "w") as f:
                 f.write(report_content)
