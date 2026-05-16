@@ -28,18 +28,14 @@ class ScrapeService(BaseService):
     async def scrape_single(self, cin: str, uow: AbstractUnitOfWork = None) -> Optional[CompanyDomain]:
         """
         Scrape a single CIN and return a CompanyDomain object.
-        Uses provided uow or creates a new one.
         """
         data = await self._perform_scrape(cin)
         
         if not data or not data.get("company_name"):
              raise ApplicationError(response_code=constants.HTTP_404_NOT_FOUND, message=f"Company with CIN {cin} not found.")
 
-        # Use provided UOW or get a fresh one from inject
         effective_uow = uow or inject.instance(AbstractUnitOfWork)
         
-        # If uow is provided, it's already in a context, so we don't 'async with' it here
-        # unless it's the one we just created.
         if uow:
             return await self._save_data(data, uow)
         else:
@@ -49,20 +45,31 @@ class ScrapeService(BaseService):
     async def _save_data(self, data: Dict[str, Any], uow: AbstractUnitOfWork) -> CompanyDomain:
         repo = CompanyRepository(uow.session)
         existing = await repo.get_single(cin=data["cin"])
+        
+        # Filter out None/Empty values to avoid wiping out existing data in DB
+        update_data = {k: v for k, v in data.items() if v is not None and v != ""}
+        
+        logger.info(f"Saving data for CIN {data['cin']}. Payload fields: {list(update_data.keys())}")
+        
         if existing:
-            await repo.update_by(data, {"cin": data["cin"]})
+            logger.info(f"Updating existing record for CIN {data['cin']}")
+            await repo.update_by(update_data, {"cin": data["cin"]})
+            await uow.session.flush()
+            if hasattr(existing, "id"):
+                await uow.session.refresh(existing)
             result = await repo.get_single(cin=data["cin"])
         else:
-            result = await repo.add(data)
+            logger.info(f"Creating new record for CIN {data['cin']}")
+            result = await repo.add(update_data)
         
-        # Handle both model instance and dictionary
         if isinstance(result, dict):
             return CompanyDomain(**result)
         else:
-            # SQLAlchemy model instance
-            return CompanyDomain(**{c.name: getattr(result, c.name) for c in result.__table__.columns})
+            model_dict = {c.name: getattr(result, c.name) for c in result.__table__.columns}
+            return CompanyDomain(**model_dict)
 
     async def _perform_scrape(self, cin: str) -> Dict[str, Any]:
+        # Concurrency for maximum speed
         falcon_task = asyncio.create_task(self.falcon_scraper.scrape(cin))
         tracxn_task = asyncio.create_task(self.tracxn_scraper.scrape(cin))
         
@@ -91,8 +98,18 @@ class ScrapeService(BaseService):
     def _cleanup_data(self, data: Dict):
         if data.get("description_of_main_activity"):
              desc = data["description_of_main_activity"]
-             if "'s registered office address is" in desc:
-                  data["description_of_main_activity"] = desc.split("'s registered office address is")[0].strip()
+             
+             if data.get("company_name"):
+                  name = data["company_name"]
+                  short_name = name.replace("PRIVATE LIMITED", "PVT LTD").replace("LIMITED", "LTD")
+                  if name in desc:
+                       desc = desc.replace(name, "")
+                  if short_name != name and short_name in desc:
+                       desc = desc.replace(short_name, "")
+                  data["description_of_main_activity"] = desc.strip()
+             
+             if "'s registered office address is" in data["description_of_main_activity"]:
+                  data["description_of_main_activity"] = data["description_of_main_activity"].split("'s registered office address is")[0].strip()
         
         if not data.get("description_of_business_activity"):
              data["description_of_business_activity"] = data.get("description_of_main_activity")
@@ -100,8 +117,15 @@ class ScrapeService(BaseService):
         if not data.get("business_activity_code"):
              data["business_activity_code"] = data.get("main_activity_group_code")
 
-        if not data.get("latest_revenue_date") and data.get("raw_data", {}).get("tracxn", {}).get("latest_revenue_date"):
-             data["latest_revenue_date"] = data["raw_data"]["tracxn"]["latest_revenue_date"]
+        if not data.get("latest_revenue_date"):
+            raw_val = data.get("raw_data", {}).get("tracxn", {}).get("latest_revenue_date")
+            if raw_val:
+                if isinstance(raw_val, str):
+                    try:
+                        data["latest_revenue_date"] = datetime.date.fromisoformat(raw_val)
+                    except: pass
+                elif isinstance(raw_val, (datetime.date, datetime.datetime)):
+                    data["latest_revenue_date"] = raw_val
 
     def _json_serializable(self, data: Dict) -> Dict:
         serializable = {}
@@ -124,15 +148,10 @@ class ScrapeService(BaseService):
         return merged
 
     async def batch_scrape_background(self, queries: List[str]):
-        """
-        Processes batch sequentially using a single connection to avoid overhead
-        and match 'gc backend' pattern.
-        """
         success_count = 0
         failed_count = 0
         failures = []
 
-        # Use exactly ONE UOW (and thus ONE session/connection) for the entire batch
         async with inject.instance(AbstractUnitOfWork) as uow:
             for cin in queries:
                 try:

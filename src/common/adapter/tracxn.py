@@ -15,7 +15,7 @@ class TracxnScraper(BaseScraper):
     """
     
     async def scrape(self, query: str) -> Dict[str, Any]:
-        logger.info(f"Scraping Tracxn for CIN: {query}")
+        logger.info(f"Scraping Tracxn for: {query}")
         
         data = {}
         
@@ -26,11 +26,6 @@ class TracxnScraper(BaseScraper):
         # 2. Try Tracxn search snippets via aiohttp
         tracxn_data = await self._fetch_from_tracxn(query)
         data.update(tracxn_data)
-        
-        # 3. If revenue still missing, try TheCompanyCheck search snippet
-        if not data.get("latest_revenue"):
-            mirror_data = await self._fetch_from_mirror(query)
-            data.update(mirror_data)
                 
         return data
 
@@ -44,49 +39,27 @@ class TracxnScraper(BaseScraper):
                 "Referer": "https://tracxn.com/",
                 "Connection": "keep-alive"
             }
+            # Use a shorter timeout to prevent "infinite" hanging
             async with aiohttp.ClientSession() as session:
-                async with session.get(url, headers=headers, timeout=15) as resp:
+                async with session.get(url, headers=headers, timeout=8) as resp:
                     if resp.status == 200:
                         content = await resp.text()
                         return self._parse_snippet(content)
         except Exception as e:
-            logger.error(f"Error fetching from Tracxn: {e}")
-        return {}
-
-    async def _fetch_from_mirror(self, query: str) -> Dict[str, Any]:
-        try:
-            # Try TheCompanyCheck (Mirror 1)
-            url = f"https://www.thecompanycheck.com/search/search-results?q={query}"
-            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url, headers=headers, timeout=10) as resp:
-                    if resp.status == 200:
-                        content = await resp.text()
-                        data = self._parse_snippet(content)
-                        if data.get("latest_revenue"): return data
-
-            # Try Tofler (Mirror 2)
-            url = f"https://www.tofler.in/search?q={query}"
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url, headers=headers, timeout=10) as resp:
-                    if resp.status == 200:
-                        content = await resp.text()
-                        return self._parse_snippet(content)
-        except Exception as e:
-            logger.error(f"Error fetching from mirror: {e}")
+            logger.debug(f"Error fetching from Tracxn: {e}")
         return {}
 
     def _parse_snippet(self, text: str) -> Dict[str, Any]:
         data = {}
         
-        # Enhanced flexible Revenue patterns
+        # Enhanced flexible Revenue patterns including "Latest Revenue" and "Operating Revenue"
         patterns = [
             # Pattern 1: Range (e.g., "Operating Revenue: 1 Cr - 100 Cr")
-            r"(?:Revenue|Turnover|Finances).*?([\d\.,]+\s*(?:Cr|M|Lakh|L|K|Million|Billion))\s*-\s*([\d\.,]+\s*(?:Cr|M|Lakh|L|K|Million|Billion))",
-            # Pattern 2: Revenue followed by value (e.g., "Revenue: ₹ 42.0 Cr")
-            r"(?:Revenue|Turnover|Finances).*?([\d\.,]+\s*(?:Cr|M|Lakh|L|K|Million|Billion|B)?)",
+            r"(?:Latest\s+)?(?:Operating\s+)?(?:Revenue|Turnover|Finances).*?([\d\.,]+\s*(?:Cr|M|Lakh|L|K|Million|Billion|B))\s*-\s*([\d\.,]+\s*(?:Cr|M|Lakh|L|K|Million|Billion|B))",
+            # Pattern 2: Revenue followed by value (e.g., "Latest Revenue: ₹ 42.0 Cr" or "Over 500 Cr")
+            r"(?:Latest\s+)?(?:Operating\s+)?(?:Revenue|Turnover|Finances).*?([\d\.,]+\s*(?:Cr|M|Lakh|L|K|Million|Billion|B))",
             # Pattern 3: Value followed by Revenue (e.g., "100 Cr Revenue")
-            r"([\d\.,]+\s*(?:Cr|M|Lakh|L|K|Million|Billion)).*?(?:Revenue|Turnover|Finances)"
+            r"([\d\.,]+\s*(?:Cr|M|Lakh|L|K|Million|Billion|B)).*?(?:Latest\s+)?(?:Operating\s+)?(?:Revenue|Turnover|Finances)"
         ]
         
         for pattern in patterns:
@@ -144,7 +117,6 @@ class TracxnScraper(BaseScraper):
                 return None
 
             if not unit:
-                # Assume absolute value (INR)
                 return int(num)
                 
             if unit == "CR": num *= 10_000_000
