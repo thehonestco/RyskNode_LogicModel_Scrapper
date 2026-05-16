@@ -140,7 +140,7 @@ class ScrapeService(BaseService):
         merged.update(falcon)
         for k, v in tracxn.items():
             if v is not None and v != "":
-                if k in ["latest_revenue", "latest_revenue_date", "main_activity_group_code", "description_of_main_activity", "business_activity_code", "description_of_business_activity"]:
+                if k in ["latest_revenue", "latest_revenue_date", "revenue_text", "main_activity_group_code", "description_of_main_activity", "business_activity_code", "description_of_business_activity"]:
                      merged[k] = v
                 elif k not in merged or not merged[k]:
                     merged[k] = v

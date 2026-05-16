@@ -24,6 +24,7 @@ class CompanyData(Base):
     last_agm_date = Column(Date, nullable=True)
     latest_revenue = Column(BigInteger, nullable=True)
     latest_revenue_date = Column(Date, nullable=True)
+    revenue_text = Column(Text, nullable=True)
     latest_balance_sheet_date = Column(Date, nullable=True)
     authorized_capital = Column(BigInteger, nullable=True)
     paid_up_capital = Column(BigInteger, nullable=True)
