@@ -2,6 +2,7 @@ import asyncio
 import datetime
 import logging
 import os
+import re
 from typing import Any, Dict, List, Optional
 
 import inject
@@ -101,14 +102,21 @@ class ScrapeService(BaseService):
              if data.get("company_name"):
                   name = data["company_name"]
                   short_name = name.replace("PRIVATE LIMITED", "PVT LTD").replace("LIMITED", "LTD")
-                  if name in desc:
-                       desc = desc.replace(name, "")
-                  if short_name != name and short_name in desc:
-                       desc = desc.replace(short_name, "")
-                  data["description_of_main_activity"] = desc.strip()
-
-             if "'s registered office address is" in data["description_of_main_activity"]:
-                  data["description_of_main_activity"] = data["description_of_main_activity"].split("'s registered office address is")[0].strip()
+                  
+                  # Remove name variations and address boilerplate
+                  patterns = [
+                      re.escape(name),
+                      re.escape(short_name),
+                      r"'s registered office address is.*$",
+                      r"registered office address is.*$",
+                      r"is unlisted.*?$",
+                      r"it upholds a compliant status.*?$",
+                  ]
+                  
+                  for pattern in patterns:
+                      desc = re.sub(pattern, "", desc, flags=re.I | re.S)
+                  
+                  data["description_of_main_activity"] = desc.strip().strip("'s").strip()
 
         if not data.get("description_of_business_activity"):
              data["description_of_business_activity"] = data.get("description_of_main_activity")
@@ -150,17 +158,25 @@ class ScrapeService(BaseService):
         success_count = 0
         failed_count = 0
         failures = []
+        
+        # Concurrency control (max 5 parallel scrapes to avoid rate limits)
+        semaphore = asyncio.Semaphore(5)
 
-        async with inject.instance(AbstractUnitOfWork) as uow:
-            for cin in queries:
+        async def worker(cin):
+            nonlocal success_count, failed_count
+            async with semaphore:
                 try:
-                    await self.scrape_single(cin, uow=uow)
+                    # Each record gets its own UOW transaction to ensure individual commit
+                    # and that one failure doesn't affect others
+                    async with inject.instance(AbstractUnitOfWork) as fresh_uow:
+                        await self.scrape_single(cin, uow=fresh_uow)
                     success_count += 1
                 except Exception as e:
                     logger.error(f"Error in batch scrape for {cin}: {e}")
                     failed_count += 1
                     failures.append({"query": cin, "reason": str(e)})
 
+        await asyncio.gather(*(worker(cin) for cin in queries))
         await self._generate_report(len(queries), success_count, failed_count, failures)
 
     async def _generate_report(self, total: int, success: int, failed: int, failures: List[Dict]):
