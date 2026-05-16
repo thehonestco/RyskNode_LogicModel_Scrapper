@@ -26,9 +26,6 @@ class EntityNotFoundErrorResponse(BaseApplicationResponse):
 
 
 class BaseError(Exception):
-
-    include_trace: bool = False
-
     def __init__(
         self,
         message: str,
@@ -60,10 +57,8 @@ class ApplicationError(BaseError):
         msg_conf: ErrorConfig,
         headers: dict = None,
         message: str = None,
-        include_trace: bool = False,
     ):
         msg = msg_conf.get(response_code)
-        self.include_trace = include_trace
         if not msg:
             msg = {
                 "response_code": response_code,
@@ -80,7 +75,5 @@ class ApplicationError(BaseError):
 
 
 class InternalServerError(BaseError):
-    include_trace = True
-
     def __init__(self, response_code=constants.HTTP_500_INTERNAL_SERVER_ERROR, message="", headers=None):
         super(InternalServerError, self).__init__(message=message, response_code=response_code, headers=headers)

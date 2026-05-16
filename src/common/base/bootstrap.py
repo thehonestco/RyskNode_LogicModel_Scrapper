@@ -5,7 +5,6 @@ from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from fastapi.responses import JSONResponse
 
 from common.base.error import BaseError, InternalServerError
-from common.base.logger import setup_logging
 from common.base.middlewares import RequestContextLogMiddleware
 from common.base.router import APIRouter
 from common.base.utils import respond
@@ -18,8 +17,6 @@ def create_app(settings) -> FastAPI:
     :param settings:
     :return:
     """
-    # First setup logging
-    setup_logging()
     # Creating app
     api = FastAPI(
         title=settings.app_title,

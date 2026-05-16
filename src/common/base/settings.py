@@ -24,7 +24,6 @@ class CoreSettings(BaseSettings):
     base_url: str | None = None
     root_path: str = ""
     openapi_url: str = "/openapi.json"
-    log_file: str = "app.log"
     current_env: str = "LOCAL"
 
     force_https: bool = False

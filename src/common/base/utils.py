@@ -1,5 +1,4 @@
 import logging
-import traceback
 import typing
 
 import inject
@@ -11,7 +10,7 @@ from common.base.error_conf import ErrorConfig
 from common.base.settings import CoreSettings
 from common.schema import ResponseSchema
 
-logger = logging.getLogger("app")
+logger = logging.getLogger("uvicorn.error")
 
 
 def respond(
@@ -33,10 +32,6 @@ def respond(
     if not code:
         code = exc.response_code
         message = message or exc.message
-
-    include_trace = False
-    if exc:
-        include_trace = getattr(exc, "include_trace", False)
 
     msg = error_conf.get(code)
 
@@ -61,14 +56,11 @@ def respond(
 
     logger.info(f"{code!r} {exc!r} Respond with message: {msg}")
 
+    if exc:
+        logger.exception("Exception occurred:")
+
     if settings.app_env not in ["PROD"]:
-        description = msg.get("description", "")
-        if include_trace:
-            trace = traceback.format_exc()
-            logger.exception("Exception:")
-            description = f"{description} {trace}" if description else f"{trace}"
-        # Set the description only on lower environments
-        msg["description"] = description
+        msg["description"] = msg.get("description", "")
 
     if kwargs:
         msg.update(kwargs)
