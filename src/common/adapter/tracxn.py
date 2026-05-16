@@ -27,20 +27,6 @@ class TracxnScraper(BaseScraper):
         tracxn_data = await self._fetch_from_tracxn(query)
         data.update(tracxn_data)
 
-        # 3. Fallback to Mirror 1: Tofler (Highly reliable for India)
-        if not data.get("latest_revenue") or not data.get("revenue_text"):
-             logger.info(f"Tracxn failed for {query}, trying Tofler fallback")
-             tofler_data = await self._fetch_from_mirror(f"https://www.tofler.in/company/{query}", query)
-             if tofler_data:
-                  data.update({k: v for k, v in tofler_data.items() if v})
-
-        # 4. Fallback to Mirror 2: TheCompanyCheck
-        if not data.get("latest_revenue") or not data.get("revenue_text"):
-             logger.info(f"Tofler failed for {query}, trying TheCompanyCheck fallback")
-             tcc_data = await self._fetch_from_mirror(f"https://www.thecompanycheck.com/company/{query}", query)
-             if tcc_data:
-                  data.update({k: v for k, v in tcc_data.items() if v})
-
         return data
 
     async def _fetch_from_tracxn(self, query: str) -> Dict[str, Any]:
@@ -58,21 +44,6 @@ class TracxnScraper(BaseScraper):
                         return self._parse_snippet(content)
         except Exception as e:
             logger.debug(f"Error fetching from Tracxn: {e}")
-        return {}
-
-    async def _fetch_from_mirror(self, url: str, query: str) -> Dict[str, Any]:
-        try:
-            headers = {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            }
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url, headers=headers, timeout=10) as resp:
-                    if resp.status == 200:
-                        content = await resp.text()
-                        return self._parse_snippet(content)
-        except Exception as e:
-            logger.debug(f"Error fetching from mirror {url}: {e}")
         return {}
 
     def _parse_snippet(self, text: str) -> Dict[str, Any]:
