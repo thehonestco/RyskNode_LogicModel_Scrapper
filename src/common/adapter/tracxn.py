@@ -3,19 +3,22 @@ import logging
 import re
 from typing import Any, Dict, Optional
 
-import aiohttp
+from playwright.async_api import async_playwright
+from playwright_stealth import Stealth
 
 from .scraper_base import BaseScraper
 
 logger = logging.getLogger(__name__)
 
+
 class TracxnScraper(BaseScraper):
     """
     Tracxn Scraper using search list parsing and enhanced regex for high reliability.
+    Uses Playwright exclusively to bypass bot protection.
     """
 
     async def scrape(self, query: str) -> Dict[str, Any]:
-        logger.info(f"Scraping Financials for: {query}")
+        logger.info(f"Scraping Financials for: {query} using Playwright")
 
         data = {}
 
@@ -23,132 +26,146 @@ class TracxnScraper(BaseScraper):
         if len(query) == 21:
             data["main_activity_group_code"] = query[1:6]
 
-        # 2. Try Tracxn search snippets via aiohttp
+        # 2. Fetch from Tracxn using Playwright
         tracxn_data = await self._fetch_from_tracxn(query)
+            
         data.update(tracxn_data)
-
         return data
 
     async def _fetch_from_tracxn(self, query: str) -> Dict[str, Any]:
+        """
+        Launches a headless browser to solve Tracxn's bot challenge and render the page.
+        """
         try:
-            url = f"https://tracxn.com/search/legal-entities?q={query}"
-            headers = {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-                "Referer": "https://www.google.com/",
-            }
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url, headers=headers, timeout=10) as resp:
-                    if resp.status == 200:
-                        content = await resp.text()
-                        return self._parse_snippet(content)
+            async with async_playwright() as p:
+                # Launch chromium with no-sandbox for linux environments
+                browser = await p.chromium.launch(headless=True, args=["--no-sandbox"])
+                
+                # Use a realistic context with a modern User-Agent
+                context = await browser.new_context(
+                    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+                    viewport={"width": 1280, "height": 720}
+                )
+                page = await context.new_page()
+                
+                # Apply stealth plugin to bypass automation detection
+                await Stealth().apply_stealth_async(page)
+                
+                # Navigate to the base search page
+                logger.info("Navigating to Tracxn Search via Playwright Stealth")
+                await page.goto("https://tracxn.com/search/legal-entities", wait_until="networkidle", timeout=60000)
+                
+                # Type the query and search
+                logger.info(f"Typing query: {query}")
+                await page.fill("input[name='search']", "")
+                await page.fill("input[name='search']", query)
+                await page.keyboard.press("Enter")
+                
+                # Wait for results
+                try:
+                    await page.wait_for_selector("a[href*='/d/legal-entities/india/'], img[alt='no-result-found']", timeout=15000)
+                except Exception:
+                    logger.debug("Timeout waiting for search results to load.")
+                
+                content = await page.content()
+                
+                # Check if we are on a search result page with a link to the profile
+                match = re.search(r'href="(/d/legal-entities/india/[^"]+)"', content)
+                if match:
+                    profile_url = f"https://tracxn.com{match.group(1)}"
+                    logger.info(f"Found profile URL from search results: {profile_url}. Navigating...")
+                    await page.goto(profile_url, wait_until="networkidle", timeout=60000)
+                    await page.wait_for_timeout(3000)
+                    content = await page.content()
+                else:
+                    logger.info("No profile URL found in search results, checking if current page has data.")
+                    
+                await browser.close()
+                
+                logger.info(f"Successfully fetched {len(content)} bytes via Playwright")
+                return self._parse_snippet(content)
         except Exception as e:
-            logger.debug(f"Error fetching from Tracxn: {e}")
+            logger.error(f"Playwright fetch failed: {e}")
         return {}
 
     def _parse_snippet(self, text: str) -> Dict[str, Any]:
         data = {}
 
-        # 1. STRICT PRIORITY: Look for "Latest Revenue" specifically
+        # STRICT PRIORITY: Only look for "Latest Revenue"
+        # Using [\s\S]*? to handle line breaks inside HTML elements/tags
         latest_revenue_patterns = [
-            # Pattern for the specific HTML format provided by user: 
-            # <div>Latest Revenue</div><div><a>42Cr INR</a> as on Mar 31, 2023
-            r"Latest\s+Revenue(?:[^>]*>){1,20}\s*([₹]?\s*[\d\.,]+\s*(?:Cr|cr|M|m|Lakh|L|K|Million|Billion|B))\s*(?:INR|USD)?(?:\s*</a>)?\s*(?:as\s+on|on)?\s*([A-Z][a-z]+\s+\d{1,2},?\s+\d{4})",
-            # Text based Latest Revenue
-            r"Latest\s+Revenue.*?([₹]?\s*[\d\.,]+\s*(?:Cr|cr|M|m|Lakh|L|K|Million|Billion|B))\s*(?:INR|USD)?\s*(?:as\s+on|on)?\s*([A-Z][a-z]+\s+\d{1,2},?\s+\d{4})",
-            # Simple Latest Revenue without date
-            r"Latest\s+Revenue.*?([₹]?\s*[\d\.,]+\s*(?:Cr|cr|M|m|Lakh|L|K|Million|Billion|B))",
+            # 1. HTML Specific structure (handles the <a> tag and multiline breaks)
+            r"Latest\s+Revenue(?:\s*<[^>]*>)*\s*([\s\S]*?)(?:INR|USD)?(?:\s*<[^>]*>)*\s*(?:as\s+on|on)?\s*([A-Z][a-z]+\s+\d{1,2},?\s+\d{4})",
+            # 2. General text pattern fallback
+            r"Latest\s+Revenue[\s\S]*?([₹]?\s*[\d\.,]+\s*(?:Cr|cr|M|m|Lakh|lakh|L|K|k|Million|Billion|B))",
         ]
 
         for pattern in latest_revenue_patterns:
             match = re.search(pattern, text, re.I | re.S)
             if match:
+                # Capture and clean the raw match for text storage
                 raw_match = match.group(0).strip()
                 data["revenue_text"] = self._strip_html(raw_match)
-                data["latest_revenue"] = self._parse_revenue(match.group(1))
                 
-                # Extract date if captured in the pattern
-                if match.lastindex >= 2:
-                    data["latest_revenue_date"] = self._parse_date_flexible(match.group(2))
-                
-                # If we found LATEST revenue, we stop looking
+                # Extract numerical value from first group, cleaning HTML/whitespace
+                clean_val = self._strip_html(match.group(1))
+                data["latest_revenue"] = self._parse_revenue(clean_val)
+
+                # Extract date from second group if it exists
+                if match.lastindex >= 2 and match.group(2):
+                    data["latest_revenue_date"] = self._parse_date_flexible(self._strip_html(match.group(2)))
+
+                # If we found a valid number, we successfully extracted Latest Revenue
                 if data.get("latest_revenue"):
                     return data
-
-        # 2. SECONDARY: Look for Operating Revenue or General Revenue if Latest wasn't found
-        secondary_patterns = [
-            # Operating Revenue Range (Upper bound prioritized)
-            r"Operating\s+Revenue.*?([\d\.,]+\s*(?:Cr|cr|M|m|Lakh|L|K))\s*-\s*([\d\.,]+\s*(?:Cr|cr|M|m|Lakh|L|K))",
-            # Simple Revenue value
-            r"(?:Operating\s+)?(?:Revenue|Turnover|Finances).*?([₹]?\s*[\d\.,]+\s*(?:Cr|cr|M|m|Lakh|L|K|Million|Billion|B))",
-        ]
-
-        for pattern in secondary_patterns:
-            match = re.search(pattern, text, re.I | re.S)
-            if match:
-                raw_match = match.group(0).strip()
-                data["revenue_text"] = self._strip_html(raw_match)
-                
-                if "-" in pattern and match.lastindex >= 2:
-                    val1 = self._parse_revenue(match.group(1))
-                    val2 = self._parse_revenue(match.group(2))
-                    data["latest_revenue"] = val2 or val1
-                else:
-                    data["latest_revenue"] = self._parse_revenue(match.group(1))
-                break
-
-        # 3. Final Date Fallback (Look near whatever revenue we found)
-        if not data.get("latest_revenue_date") and data.get("latest_revenue"):
-            start = max(0, text.lower().find("revenue") - 100)
-            end = min(len(text), start + 800)
-            context = text[start:end]
-
-            date_match = re.search(r"(?:\d{1,2}\s+)?(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s*(?:\d{1,2})?,?\s*(20\d{2})", context, re.I)
-            if date_match:
-                data["latest_revenue_date"] = self._parse_date_flexible(date_match.group(0))
 
         return data
 
     def _strip_html(self, text: str) -> str:
-        if not text: return ""
-        # Remove HTML tags
+        if not text:
+            return ""
+        # Remove all HTML tags
         clean = re.sub(r"<[^>]*>", " ", text)
-        # Normalize whitespace
+        # Normalize whitespace (newlines/tabs -> single space)
         return re.sub(r"\s+", " ", clean).strip()
 
     def _parse_date_flexible(self, date_str: str) -> Optional[datetime.date]:
-        if not date_str: return None
+        if not date_str:
+            return None
         date_str = date_str.strip().replace(",", "")
-        # Try common formats
+        # Try common date formats
         for fmt in ("%b %d %Y", "%B %d %Y", "%d %b %Y", "%d %B %Y", "%Y-%m-%d"):
             try:
                 return datetime.datetime.strptime(date_str, fmt).date()
             except ValueError:
                 continue
-        
-        # Last resort: extract year and month
+
+        # Last resort fallback: extract year and month
         month_match = re.search(r"(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)", date_str, re.I)
         year_match = re.search(r"(20\d{2})", date_str)
         if month_match and year_match:
-             # Just use the last day of that month or assume March 31 if it's "Mar"
-             year = int(year_match.group(1))
-             return datetime.date(year, 3, 31)
-             
+            year = int(year_match.group(1))
+            # Default to end of financial year month (March)
+            return datetime.date(year, 3, 31)
+
         return None
 
     def _parse_revenue(self, rev_str: str) -> Optional[int]:
-        if not rev_str: return None
+        if not rev_str:
+            return None
         try:
-            # Clean up formatting
+            # Clean up formatting, symbols and currency codes
             rev_str = rev_str.replace(",", "").replace(" ", "").replace("₹", "")
             rev_str = rev_str.replace("INR", "").replace("USD", "").upper()
 
-            # Filter out years mistakenly caught as numbers
-            if rev_str in ["2026", "2025", "2024", "2023", "2022"]: return None
+            # Filter out years caught as numbers by mistake
+            if rev_str in ["2026", "2025", "2024", "2023", "2022"]:
+                return None
 
-            # Split number and unit
+            # Split number and unit (e.g., 42 and CR)
             match = re.search(r"([\d\.]+)\s*(CR|M|LAKH|L|K|BILLION|MILLION|B)?", rev_str)
-            if not match: return None
+            if not match:
+                return None
 
             num_str = match.group(1)
             unit = match.group(2)
@@ -161,11 +178,18 @@ class TracxnScraper(BaseScraper):
             if not unit:
                 return int(num)
 
-            if unit == "CR": num *= 10_000_000
-            elif unit in ["MILLION", "M"]: num *= 1_000_000
-            elif unit in ["LAKH", "L"]: num *= 100_000
-            elif unit == "K": num *= 1_000
-            elif unit in ["BILLION", "B"]: num *= 1_000_000_000
+            # Apply multipliers
+            if unit == "CR":
+                num *= 10_000_000
+            elif unit in ["MILLION", "M"]:
+                num *= 1_000_000
+            elif unit in ["LAKH", "L"]:
+                num *= 100_000
+            elif unit == "K":
+                num *= 1_000
+            elif unit in ["BILLION", "B"]:
+                num *= 1_000_000_000
 
             return int(num)
-        except: return None
+        except:
+            return None
