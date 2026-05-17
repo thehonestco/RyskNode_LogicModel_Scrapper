@@ -51,9 +51,17 @@ class TracxnScraper(BaseScraper):
                 # Apply stealth plugin to bypass automation detection
                 await Stealth().apply_stealth_async(page)
                 
-                # Navigate to the base search page
+                # Block unnecessary resources to massively speed up page loads
+                async def block_resources(route):
+                    if route.request.resource_type in ["image", "stylesheet", "media", "font"]:
+                        await route.abort()
+                    else:
+                        await route.continue_()
+                await page.route("**/*", block_resources)
+                
+                # Navigate to the base search page (using domcontentloaded for speed)
                 logger.info("Navigating to Tracxn Search via Playwright Stealth")
-                await page.goto("https://tracxn.com/search/legal-entities", wait_until="networkidle", timeout=60000)
+                await page.goto("https://tracxn.com/search/legal-entities", wait_until="domcontentloaded", timeout=30000)
                 
                 # Type the query and search
                 logger.info(f"Typing query: {query}")
@@ -63,7 +71,7 @@ class TracxnScraper(BaseScraper):
                 
                 # Wait for results
                 try:
-                    await page.wait_for_selector("a[href*='/d/legal-entities/india/'], img[alt='no-result-found']", timeout=15000)
+                    await page.wait_for_selector("a[href*='/d/legal-entities/india/'], img[alt='no-result-found']", timeout=10000)
                 except Exception:
                     logger.debug("Timeout waiting for search results to load.")
                 
@@ -74,8 +82,14 @@ class TracxnScraper(BaseScraper):
                 if match:
                     profile_url = f"https://tracxn.com{match.group(1)}"
                     logger.info(f"Found profile URL from search results: {profile_url}. Navigating...")
-                    await page.goto(profile_url, wait_until="networkidle", timeout=60000)
-                    await page.wait_for_timeout(3000)
+                    await page.goto(profile_url, wait_until="domcontentloaded", timeout=30000)
+                    
+                    # Wait for specific data instead of arbitrary sleep
+                    try:
+                        await page.wait_for_selector("text='Latest Revenue'", timeout=2000)
+                    except Exception:
+                        await page.wait_for_timeout(1000)
+                        
                     content = await page.content()
                 else:
                     logger.info("No profile URL found in search results, checking if current page has data.")
@@ -103,13 +117,15 @@ class TracxnScraper(BaseScraper):
         for pattern in latest_revenue_patterns:
             match = re.search(pattern, text, re.I | re.S)
             if match:
-                # Capture and clean the raw match for text storage
-                raw_match = match.group(0).strip()
-                data["revenue_text"] = self._strip_html(raw_match)
-                
-                # Extract numerical value from first group, cleaning HTML/whitespace
+                # Extract numerical value (clean capture group 1)
                 clean_val = self._strip_html(match.group(1))
-                data["latest_revenue"] = self._parse_revenue(clean_val)
+                
+                # Format exactly as requested (e.g., "INR 42Cr")
+                val_match = re.search(r"([\d\.]+)\s*(Cr|cr|M|m|Lakh|lakh|L|K|k|Million|Billion|B)?", clean_val, re.I)
+                if val_match:
+                    num = val_match.group(1)
+                    unit = (val_match.group(2) or "").capitalize()
+                    data["latest_revenue"] = f"INR {num}{unit}".strip()
 
                 # Extract date from second group if it exists
                 if match.lastindex >= 2 and match.group(2):
@@ -150,46 +166,3 @@ class TracxnScraper(BaseScraper):
 
         return None
 
-    def _parse_revenue(self, rev_str: str) -> Optional[int]:
-        if not rev_str:
-            return None
-        try:
-            # Clean up formatting, symbols and currency codes
-            rev_str = rev_str.replace(",", "").replace(" ", "").replace("₹", "")
-            rev_str = rev_str.replace("INR", "").replace("USD", "").upper()
-
-            # Filter out years caught as numbers by mistake
-            if rev_str in ["2026", "2025", "2024", "2023", "2022"]:
-                return None
-
-            # Split number and unit (e.g., 42 and CR)
-            match = re.search(r"([\d\.]+)\s*(CR|M|LAKH|L|K|BILLION|MILLION|B)?", rev_str)
-            if not match:
-                return None
-
-            num_str = match.group(1)
-            unit = match.group(2)
-
-            try:
-                num = float(num_str)
-            except ValueError:
-                return None
-
-            if not unit:
-                return int(num)
-
-            # Apply multipliers
-            if unit == "CR":
-                num *= 10_000_000
-            elif unit in ["MILLION", "M"]:
-                num *= 1_000_000
-            elif unit in ["LAKH", "L"]:
-                num *= 100_000
-            elif unit == "K":
-                num *= 1_000
-            elif unit in ["BILLION", "B"]:
-                num *= 1_000_000_000
-
-            return int(num)
-        except:
-            return None
