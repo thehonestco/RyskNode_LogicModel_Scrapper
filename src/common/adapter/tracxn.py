@@ -28,7 +28,7 @@ class TracxnScraper(BaseScraper):
 
         # 2. Fetch from Tracxn using Playwright
         tracxn_data = await self._fetch_from_tracxn(query)
-            
+
         data.update(tracxn_data)
         return data
 
@@ -40,17 +40,17 @@ class TracxnScraper(BaseScraper):
             async with async_playwright() as p:
                 # Launch chromium with no-sandbox for linux environments
                 browser = await p.chromium.launch(headless=True, args=["--no-sandbox"])
-                
+
                 # Use a realistic context with a modern User-Agent
                 context = await browser.new_context(
                     user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
                     viewport={"width": 1280, "height": 720}
                 )
                 page = await context.new_page()
-                
+
                 # Apply stealth plugin to bypass automation detection
                 await Stealth().apply_stealth_async(page)
-                
+
                 # Block unnecessary resources to massively speed up page loads
                 async def block_resources(route):
                     if route.request.resource_type in ["image", "stylesheet", "media", "font"]:
@@ -58,44 +58,44 @@ class TracxnScraper(BaseScraper):
                     else:
                         await route.continue_()
                 await page.route("**/*", block_resources)
-                
+
                 # Navigate to the base search page (using domcontentloaded for speed)
                 logger.info("Navigating to Tracxn Search via Playwright Stealth")
                 await page.goto("https://tracxn.com/search/legal-entities", wait_until="domcontentloaded", timeout=30000)
-                
+
                 # Type the query and search
                 logger.info(f"Typing query: {query}")
                 await page.fill("input[name='search']", "")
                 await page.fill("input[name='search']", query)
                 await page.keyboard.press("Enter")
-                
+
                 # Wait for results
                 try:
                     await page.wait_for_selector("a[href*='/d/legal-entities/india/'], img[alt='no-result-found']", timeout=10000)
                 except Exception:
                     logger.debug("Timeout waiting for search results to load.")
-                
+
                 content = await page.content()
-                
+
                 # Check if we are on a search result page with a link to the profile
                 match = re.search(r'href="(/d/legal-entities/india/[^"]+)"', content)
                 if match:
                     profile_url = f"https://tracxn.com{match.group(1)}"
                     logger.info(f"Found profile URL from search results: {profile_url}. Navigating...")
                     await page.goto(profile_url, wait_until="domcontentloaded", timeout=30000)
-                    
+
                     # Wait for specific data instead of arbitrary sleep
                     try:
                         await page.wait_for_selector("text='Latest Revenue'", timeout=2000)
                     except Exception:
                         await page.wait_for_timeout(1000)
-                        
+
                     content = await page.content()
                 else:
                     logger.info("No profile URL found in search results, checking if current page has data.")
-                    
+
                 await browser.close()
-                
+
                 logger.info(f"Successfully fetched {len(content)} bytes via Playwright")
                 return self._parse_snippet(content)
         except Exception as e:
@@ -119,7 +119,7 @@ class TracxnScraper(BaseScraper):
             if match:
                 # Extract numerical value (clean capture group 1)
                 clean_val = self._strip_html(match.group(1))
-                
+
                 # Format exactly as requested (e.g., "INR 42Cr")
                 val_match = re.search(r"([\d\.]+)\s*(Cr|cr|M|m|Lakh|lakh|L|K|k|Million|Billion|B)?", clean_val, re.I)
                 if val_match:

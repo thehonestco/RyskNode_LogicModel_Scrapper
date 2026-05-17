@@ -102,7 +102,7 @@ class ScrapeService(BaseService):
              if data.get("company_name"):
                   name = data["company_name"]
                   short_name = name.replace("PRIVATE LIMITED", "PVT LTD").replace("LIMITED", "LTD")
-                  
+
                   # Remove name variations and address boilerplate
                   patterns = [
                       re.escape(name),
@@ -112,10 +112,10 @@ class ScrapeService(BaseService):
                       r"is unlisted.*?$",
                       r"it upholds a compliant status.*?$",
                   ]
-                  
+
                   for pattern in patterns:
                       desc = re.sub(pattern, "", desc, flags=re.I | re.S)
-                  
+
                   data["description_of_main_activity"] = desc.strip().strip("'s").strip()
 
         if not data.get("description_of_business_activity"):
@@ -158,7 +158,7 @@ class ScrapeService(BaseService):
         success_count = 0
         failed_count = 0
         failures = []
-        
+
         # Concurrency control (max 5 parallel scrapes to avoid rate limits)
         semaphore = asyncio.Semaphore(5)
 
