@@ -1,0 +1,115 @@
+name: Deploy RyskNode FastAPI
+
+on:
+  push:
+    branches:
+      - main
+
+  workflow_dispatch:
+
+concurrency:
+  group: rysknode-fastapi-production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy FastAPI to production
+    runs-on: [self-hosted, rysknode-fastapi]
+
+    env:
+      APP_NAME: Rysknode-LogicModel-Scrapper
+      APP_DIR: /var/www/RyskNode_LogicModel_Scrapper
+      SERVICE_NAME: rysknode-fastapi
+      APP_PORT: ${{ secrets.APP_PORT }}
+      UV_BIN: /home/ubuntu/.local/bin/uv
+
+    steps:
+      - name: Checkout latest code
+        uses: actions/checkout@v4
+
+      - name: Show deployment info
+        run: |
+          echo "Deploying branch: $GITHUB_REF_NAME"
+          echo "Commit: $GITHUB_SHA"
+          echo "App directory: $APP_DIR"
+          echo "Service: $SERVICE_NAME"
+          echo "Port: $APP_PORT"
+
+      - name: Verify required tools
+        run: |
+          command -v rsync
+          test -x "$UV_BIN"
+          sudo -n systemctl status "$SERVICE_NAME" --no-pager >/dev/null || true
+
+      - name: Ensure production directory exists
+        run: |
+          mkdir -p "$APP_DIR"
+
+      - name: Sync code to production directory
+        run: |
+          rsync -az --delete \
+            --exclude ".git" \
+            --exclude ".github" \
+            --exclude ".env" \
+            --exclude ".venv" \
+            --exclude "__pycache__" \
+            --exclude ".pytest_cache" \
+            --exclude ".mypy_cache" \
+            --exclude ".ruff_cache" \
+            --exclude "reports" \
+            --exclude "*.pyc" \
+            ./ "$APP_DIR/"
+
+      - name: Create production .env from GitHub Secrets
+        working-directory: ${{ env.APP_DIR }}
+        run: |
+          cat > .env <<EOF
+          APP_ENV=${{ secrets.APP_ENV }}
+          APP_PORT=${{ secrets.APP_PORT }}
+          SQLALCHEMY_URI=${{ secrets.SQLALCHEMY_URI }}
+          EOF
+
+          chmod 600 .env
+
+      - name: Verify generated .env
+        working-directory: ${{ env.APP_DIR }}
+        run: |
+          test -f .env
+          grep -q "^APP_ENV=" .env
+          grep -q "^APP_PORT=" .env
+          grep -q "^SQLALCHEMY_URI=" .env
+          echo ".env generated successfully"
+
+      - name: Install or update dependencies
+        working-directory: ${{ env.APP_DIR }}
+        run: |
+          if [ -f uv.lock ]; then
+            "$UV_BIN" sync --frozen
+          else
+            "$UV_BIN" sync
+          fi
+
+      - name: Restart FastAPI service
+        run: |
+          sudo -n systemctl restart "$SERVICE_NAME"
+
+      - name: Wait for app to start
+        run: |
+          for i in {1..20}; do
+            if curl -fsS "http://127.0.0.1:${APP_PORT}/docs" >/dev/null; then
+              echo "FastAPI is healthy"
+              exit 0
+            fi
+
+            echo "Waiting for FastAPI... attempt $i"
+            sleep 2
+          done
+
+          echo "FastAPI health check failed"
+          sudo -n systemctl status "$SERVICE_NAME" --no-pager || true
+          sudo -n journalctl -u "$SERVICE_NAME" -n 100 --no-pager || true
+          exit 1
+
+      - name: Show final service status
+        run: |
+          sudo -n systemctl status "$SERVICE_NAME" --no-pager
