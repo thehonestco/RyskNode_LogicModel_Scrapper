@@ -19,7 +19,7 @@ class CompanyDataBase(BaseModel):
     director_appointment_date: Optional[date] = None
     address: Optional[str] = None
     last_agm_date: Optional[date] = None
-    latest_revenue: Optional[int] = None
+    latest_revenue: Optional[str] = None
     latest_revenue_date: Optional[date] = None
     latest_balance_sheet_date: Optional[date] = None
     authorized_capital: Optional[int] = None

@@ -24,7 +24,17 @@ async def scrape(
         return respond(code=constants.HTTP_200_OK, data=result)
     else:
         # Multiple requests
-        background_tasks.add_task(scrape_service.batch_scrape_background, request.queries)
+        import asyncio
+
+        def run_batch_sync(queries):
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                loop.run_until_complete(scrape_service.batch_scrape_background(queries))
+            finally:
+                loop.close()
+
+        background_tasks.add_task(run_batch_sync, request.queries)
         return respond(
             code=constants.HTTP_200_OK,
             data=ScrapeAcknowledgment(

@@ -34,7 +34,6 @@ jobs:
           echo "App directory: $APP_DIR"
           echo "Service: $SERVICE_NAME"
           echo "Port: $APP_PORT"
-
       - name: Verify required tools
         run: |
           command -v rsync
@@ -59,7 +58,6 @@ jobs:
             --exclude "reports" \
             --exclude "*.pyc" \
             ./ "$APP_DIR/"
-
       - name: Create production .env from GitHub Secrets
         working-directory: ${{ env.APP_DIR }}
         run: |
@@ -79,7 +77,6 @@ jobs:
           grep -q "^APP_PORT=" .env
           grep -q "^SQLALCHEMY_URI=" .env
           echo ".env generated successfully"
-
       - name: Install or update dependencies
         working-directory: ${{ env.APP_DIR }}
         run: |
@@ -109,7 +106,6 @@ jobs:
           sudo -n systemctl status "$SERVICE_NAME" --no-pager || true
           sudo -n journalctl -u "$SERVICE_NAME" -n 100 --no-pager || true
           exit 1
-
       - name: Show final service status
         run: |
           sudo -n systemctl status "$SERVICE_NAME" --no-pager
