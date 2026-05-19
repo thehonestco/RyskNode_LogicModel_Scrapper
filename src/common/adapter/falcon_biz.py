@@ -7,6 +7,9 @@ from typing import Any, Dict, Optional
 import aiohttp
 from lxml import html
 
+from common.base import constants
+from common.base.error import ApplicationError
+
 from .scraper_base import BaseScraper
 
 logger = logging.getLogger(__name__)
@@ -20,12 +23,31 @@ class FalconBizScraper(BaseScraper):
 
         try:
             headers = {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                "User-Agent": (
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                    "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+                ),
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.9",
+                "Cache-Control": "no-cache",
+                "Pragma": "no-cache",
+                "Referer": "https://www.falconebiz.com/",
+                "Upgrade-Insecure-Requests": "1",
             }
             async with aiohttp.ClientSession() as session:
                 async with session.get(url, headers=headers, timeout=30) as response:
                     if response.status != 200:
                         logger.error(f"Falcon Biz returned status {response.status} for {query}")
+                        if response.status == constants.HTTP_403_FORBIDDEN:
+                            raise ApplicationError(
+                                response_code=constants.HTTP_403_FORBIDDEN,
+                                message="Falcon Biz blocked this request from the hosted server.",
+                            )
+                        if response.status == constants.HTTP_429_TOO_MANY_REQUESTS:
+                            raise ApplicationError(
+                                response_code=constants.HTTP_429_TOO_MANY_REQUESTS,
+                                message="Falcon Biz rate limited this request from the hosted server.",
+                            )
                         return {}
 
                     content = await response.text()
@@ -104,6 +126,8 @@ class FalconBizScraper(BaseScraper):
                         if addr: data["address"] = addr
 
                     return data
+        except ApplicationError:
+            raise
         except Exception as e:
             logger.exception(f"Error scraping Falcon Biz for {query}: {e}")
             return {}
