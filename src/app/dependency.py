@@ -64,6 +64,7 @@ def configure_dependency(binder: inject.Binder):
     from common.adapter.falcon_biz import FalconBizScraper
     from common.adapter.tracxn import TracxnScraper
     from common.service.unit_of_work import AbstractUnitOfWork, FastCRUDUnitOfWork
+    from service.data_gov_sync_service import DataGovSyncService
     from service.scrape_service import ScrapeService
 
     settings = get_settings()
@@ -98,3 +99,61 @@ def configure_dependency(binder: inject.Binder):
         )
 
     binder.bind_to_constructor(ScrapeService, get_scrape_service)
+
+    # Bind DataGovSyncService
+    def get_data_gov_sync_service():
+        return DataGovSyncService(
+            uow=inject.instance(AbstractUnitOfWork),
+            settings=inject.instance(Settings),
+        )
+
+    binder.bind_to_constructor(DataGovSyncService, get_data_gov_sync_service)
+
+
+def create_isolated_uow(settings: Settings):
+    """
+    Creates an isolated AsyncEngine, async_sessionmaker, and FastCRUDUnitOfWork
+    to be used within worker threads (background tasks). This ensures that background tasks
+    manage their own connections within their own event loop, preventing InterfaceErrors.
+    """
+    from common.service.unit_of_work import FastCRUDUnitOfWork
+    import importlib
+    
+    pool_class = None
+    if settings.db_connection_pool_class:
+        try:
+            module = importlib.import_module("sqlalchemy.pool")
+            pool_class = getattr(module, settings.db_connection_pool_class)
+        except ImportError:
+            pool_class = None
+
+    engine = create_async_engine(
+        settings.sqlalchemy_uri,
+        poolclass=pool_class,
+    )
+    session_maker = async_sessionmaker(
+        autocommit=False,
+        autoflush=False,
+        bind=engine,
+        class_=AsyncSession
+    )
+    
+    def session_factory() -> AsyncSession:
+        return session_maker()
+
+    uow = FastCRUDUnitOfWork(session_factory=session_factory)
+    uow._engine_to_dispose = engine
+    return uow
+
+
+async def dispose_isolated_uow(uow) -> None:
+    """
+    Cleanly disposes of the dedicated engine associated with the isolated UOW.
+    """
+    engine = getattr(uow, "_engine_to_dispose", None)
+    if engine:
+        try:
+            await engine.dispose()
+            logger.info("Cleanly disposed of isolated AsyncEngine connection pool")
+        except Exception as e:
+            logger.error(f"Error disposing isolated engine: {e}")

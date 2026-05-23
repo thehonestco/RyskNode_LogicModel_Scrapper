@@ -154,7 +154,7 @@ class ScrapeService(BaseService):
                     merged[k] = v
         return merged
 
-    async def batch_scrape_background(self, queries: List[str]):
+    async def batch_scrape_background(self, queries: List[str], session_factory=None):
         success_count = 0
         failed_count = 0
         failures = []
@@ -168,8 +168,10 @@ class ScrapeService(BaseService):
                 try:
                     # Each record gets its own UOW transaction to ensure individual commit
                     # and that one failure doesn't affect others
-                    async with inject.instance(AbstractUnitOfWork) as fresh_uow:
-                        await self.scrape_single(cin, uow=fresh_uow)
+                    from common.service.unit_of_work import FastCRUDUnitOfWork
+                    fresh_uow = FastCRUDUnitOfWork(session_factory=session_factory) if session_factory else inject.instance(AbstractUnitOfWork)
+                    async with fresh_uow as active_uow:
+                        await self.scrape_single(cin, uow=active_uow)
                     success_count += 1
                 except Exception as e:
                     logger.error(f"Error in batch scrape for {cin}: {e}")

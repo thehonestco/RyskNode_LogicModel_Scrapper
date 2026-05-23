@@ -63,10 +63,14 @@ class FastCRUDUnitOfWork(AbstractUnitOfWork):
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        await super().__aexit__(exc_type, exc_val, exc_tb)
-        if self.close_on_exit:
-            logger.info("Closing SQLAlchemy Async Session created")
-            await self.session.close()
+        try:
+            await super().__aexit__(exc_type, exc_val, exc_tb)
+        finally:
+            if self.close_on_exit:
+                logger.info("Closing SQLAlchemy Async Session created")
+                if self.session:
+                    await self.session.close()
+                    self.session = None
 
     async def _commit(self):
         await self.session.commit()

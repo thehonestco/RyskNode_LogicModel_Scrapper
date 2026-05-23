@@ -27,11 +27,26 @@ async def scrape(
         import asyncio
 
         def run_batch_sync(queries):
+            from app.dependency import create_isolated_uow, dispose_isolated_uow
+            from settings import Settings
+            import logging
+            thread_logger = logging.getLogger(__name__)
+
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
+            settings = inject.instance(Settings)
+            uow = create_isolated_uow(settings)
+
             try:
-                loop.run_until_complete(scrape_service.batch_scrape_background(queries))
+                session_factory = uow.session_factory
+                loop.run_until_complete(scrape_service.batch_scrape_background(queries, session_factory=session_factory))
+            except Exception as e:
+                thread_logger.error(f"Error executing batch scrape in background: {e}", exc_info=True)
             finally:
+                try:
+                    loop.run_until_complete(dispose_isolated_uow(uow))
+                except Exception as dispose_err:
+                    thread_logger.error(f"Error disposing UOW engine in scrape thread: {dispose_err}")
                 loop.close()
 
         background_tasks.add_task(run_batch_sync, request.queries)
