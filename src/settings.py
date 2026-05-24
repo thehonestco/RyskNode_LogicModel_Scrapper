@@ -14,3 +14,4 @@ class Settings(CoreSettings):
     data_gov_resource_id: str = "4dbe5667-7b6b-41d7-82af-211562424d9a"
     data_gov_base_url: str = "https://api.data.gov.in/resource"
     data_gov_rate_limit_cooldown: int = 120
+    data_gov_api_limit: int = 10

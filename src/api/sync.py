@@ -20,7 +20,6 @@ router = APIRouter(prefix="/api/v1", tags=["Sync"])
 def run_sync_in_thread(
     statecode: str | None,
     sync_service: DataGovSyncService,
-    cooldown: int | None = None,
     offset: int | None = None,
     resume_only_on_interruption: bool = False,
 ) -> None:
@@ -39,7 +38,6 @@ def run_sync_in_thread(
             sync_service.sync_state(
                 state=statecode,
                 uow=uow,
-                rate_limit_cooldown=cooldown,
                 offset=offset,
                 resume_only_on_interruption=resume_only_on_interruption,
             )
@@ -82,7 +80,6 @@ async def sync_data_gov(
         run_sync_in_thread,
         request.statecode,
         sync_service,
-        request.cooldown,
         request.offset,
     )
 
@@ -120,7 +117,6 @@ async def continue_sync_data_gov(
         run_sync_in_thread,
         request.statecode,
         sync_service,
-        request.cooldown,
         None,  # Dynamic offset from latest report
         True,  # resume_only_on_interruption = True
     )

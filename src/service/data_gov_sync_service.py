@@ -31,10 +31,9 @@ class DataGovSyncService(BaseService):
         state: Optional[str] = None,
         api_key: Optional[str] = None,
         resource_id: Optional[str] = None,
-        limit_per_page: int = 10,
+        limit_per_page: Optional[int] = None,
         max_records: Optional[int] = None,
         uow: Optional[AbstractUnitOfWork] = None,
-        rate_limit_cooldown: Optional[int] = None,
         offset: Optional[int] = None,
         resume_only_on_interruption: bool = False,
     ) -> Dict[str, Any]:
@@ -51,10 +50,13 @@ class DataGovSyncService(BaseService):
                 message="Another synchronization task is already in progress.",
             )
 
-        # Compute effective rate limit cooldown duration
-        cooldown_duration = rate_limit_cooldown
-        if cooldown_duration is None:
-            cooldown_duration = getattr(self.settings, "data_gov_rate_limit_cooldown", 120)
+        # Compute effective rate limit cooldown duration solely from settings
+        cooldown_duration = getattr(self.settings, "data_gov_rate_limit_cooldown", 120)
+
+        # Resolve effective limit per page from settings if not explicitly provided
+        effective_limit = limit_per_page
+        if effective_limit is None:
+            effective_limit = getattr(self.settings, "data_gov_api_limit", 10)
 
         # Reset stop flag on entry
         self._stop_requested = False
@@ -94,12 +96,12 @@ class DataGovSyncService(BaseService):
                 "failed_records": [],
                 "start_time": datetime.datetime.now(),
                 "end_time": None,
-                "pages_processed": start_offset // limit_per_page if limit_per_page > 0 else 0,
+                "pages_processed": start_offset // effective_limit if effective_limit > 0 else 0,
                 "status": "Running",
                 "last_offset": start_offset,
             }
 
-            limit = min(limit_per_page, 1000)
+            limit = min(effective_limit, 1000)
 
             # aiohttp session for querying data.gov.in
             async with aiohttp.ClientSession() as session:
