@@ -1,10 +1,11 @@
 import asyncio
 import logging
 import os
+
+import inject
 from fastapi import BackgroundTasks, Depends, HTTPException
 from fastapi.responses import PlainTextResponse
 
-import inject
 from api.schema.sync import SyncRequest
 from common.base import constants
 from common.base.router import APIRouter

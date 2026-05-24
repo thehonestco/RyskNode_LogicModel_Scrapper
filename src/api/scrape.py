@@ -27,9 +27,10 @@ async def scrape(
         import asyncio
 
         def run_batch_sync(queries):
+            import logging
+
             from app.dependency import create_isolated_uow, dispose_isolated_uow
             from settings import Settings
-            import logging
             thread_logger = logging.getLogger(__name__)
 
             loop = asyncio.new_event_loop()

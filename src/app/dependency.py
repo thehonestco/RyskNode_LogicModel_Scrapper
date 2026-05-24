@@ -116,9 +116,10 @@ def create_isolated_uow(settings: Settings):
     to be used within worker threads (background tasks). This ensures that background tasks
     manage their own connections within their own event loop, preventing InterfaceErrors.
     """
-    from common.service.unit_of_work import FastCRUDUnitOfWork
     import importlib
-    
+
+    from common.service.unit_of_work import FastCRUDUnitOfWork
+
     pool_class = None
     if settings.db_connection_pool_class:
         try:
@@ -137,7 +138,7 @@ def create_isolated_uow(settings: Settings):
         bind=engine,
         class_=AsyncSession
     )
-    
+
     def session_factory() -> AsyncSession:
         return session_maker()
 
