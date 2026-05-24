@@ -4,7 +4,7 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict
 
 
-class CompanyDataBase(BaseModel):
+class CompanyBase(BaseModel):
     company_name: str
     company_name_normalized: Optional[str] = None
     cin: str
@@ -33,14 +33,14 @@ class CompanyDataBase(BaseModel):
     raw_data: Optional[dict] = None
     is_active: bool = True
 
-class CompanyDataCreate(CompanyDataBase):
+class CompanyCreate(CompanyBase):
     pass
 
-class CompanyDataUpdate(CompanyDataBase):
+class CompanyUpdate(CompanyBase):
     company_name: Optional[str] = None
     cin: Optional[str] = None
 
-class CompanyDataResponse(CompanyDataBase):
+class CompanyResponse(CompanyBase):
     id: int
     created_at: datetime
     updated_at: datetime

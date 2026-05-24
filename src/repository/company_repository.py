@@ -1,7 +1,7 @@
 from common.adapter.base import FastCRUDRepository
-from common.schema.company import CompanyDataCreate, CompanyDataUpdate
-from model.company_data import CompanyData
+from common.schema.company import CompanyCreate, CompanyUpdate
+from model.company import Company
 
 
-class CompanyRepository(FastCRUDRepository[CompanyData, CompanyDataCreate, CompanyDataUpdate]):
-    model = CompanyData
+class CompanyRepository(FastCRUDRepository[Company, CompanyCreate, CompanyUpdate]):
+    model = Company

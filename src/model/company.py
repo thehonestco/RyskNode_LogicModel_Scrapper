@@ -4,8 +4,8 @@ from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
 from common.model.base import Base
 
 
-class CompanyData(Base):
-    __tablename__ = "company_data"
+class Company(Base):
+    __tablename__ = "company"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     company_name = Column(String(255), nullable=False)

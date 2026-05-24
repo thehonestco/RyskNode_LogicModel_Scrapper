@@ -1,3 +1,3 @@
-from .company_data import CompanyData
+from .company import Company
 
-__all__ = ["CompanyData"]
+__all__ = ["Company"]
