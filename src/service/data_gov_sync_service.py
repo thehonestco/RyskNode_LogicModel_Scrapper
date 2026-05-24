@@ -257,15 +257,20 @@ class DataGovSyncService(BaseService):
                                 }
 
                                 try:
-                                    existing = await repo.get_single(cin=cin.strip())
-                                    if existing:
-                                        # Filter out None/Empty values to avoid overwriting existing valid DB data
-                                        update_data = {k: v for k, v in mapped_data.items() if v is not None and v != ""}
-                                        await repo.update_by(update_data, {"cin": cin.strip()})
-                                        stats["updated"] += 1
-                                    else:
-                                        await repo.add(mapped_data)
-                                        stats["added"] += 1
+                                    # Use a nested transaction (savepoint) for each record.
+                                    # If a database operation fails for a specific record, the savepoint
+                                    # is rolled back, keeping the main page transaction healthy and active
+                                    # to avoid InFailedSQLTransactionError for subsequent records.
+                                    async with active_uow.session.begin_nested():
+                                        existing = await repo.get_single(cin=cin.strip())
+                                        if existing:
+                                            # Filter out None/Empty values to avoid overwriting existing valid DB data
+                                            update_data = {k: v for k, v in mapped_data.items() if v is not None and v != ""}
+                                            await repo.update_by(update_data, {"cin": cin.strip()})
+                                            stats["updated"] += 1
+                                        else:
+                                            await repo.add(mapped_data)
+                                            stats["added"] += 1
                                 except Exception as save_err:
                                     logger.error(f"Failed to save record with CIN {cin}: {save_err}")
                                     stats["failed_records"].append({
