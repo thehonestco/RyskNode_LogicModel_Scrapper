@@ -65,6 +65,11 @@ jobs:
           APP_ENV=${{ secrets.APP_ENV }}
           APP_PORT=${{ secrets.APP_PORT }}
           SQLALCHEMY_URI=${{ secrets.SQLALCHEMY_URI }}
+          DATA_GOV_API_KEY=${{ secrets.DATA_GOV_API_KEY }}
+          DATA_GOV_RESOURCE_ID=4dbe5667-7b6b-41d7-82af-211562424d9a
+          DATA_GOV_BASE_URL=https://api.data.gov.in/resource
+          DATA_GOV_RATE_LIMIT_COOLDOWN=120
+          DATA_GOV_API_LIMIT=1000
           EOF
 
           chmod 600 .env
@@ -73,9 +78,13 @@ jobs:
         working-directory: ${{ env.APP_DIR }}
         run: |
           test -f .env
-          grep -q "^APP_ENV=" .env
-          grep -q "^APP_PORT=" .env
-          grep -q "^SQLALCHEMY_URI=" .env
+          grep -q "^APP_ENV=." .env
+          grep -q "^APP_PORT=." .env
+          grep -q "^SQLALCHEMY_URI=." .env
+          grep -q "^DATA_GOV_API_KEY=." .env
+          grep -q "^DATA_GOV_RESOURCE_ID=." .env
+          grep -q "^DATA_GOV_BASE_URL=." .env
+          grep -q "^DATA_GOV_RATE_LIMIT_COOLDOWN=." .env
           echo ".env generated successfully"
       - name: Install or update dependencies
         working-directory: ${{ env.APP_DIR }}
