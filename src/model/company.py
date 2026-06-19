@@ -1,5 +1,6 @@
 from sqlalchemy import BigInteger, Boolean, Column, Date, DateTime, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
+from sqlalchemy.orm import relationship
 
 from common.model.base import Base
 
@@ -39,3 +40,7 @@ class Company(Base):
     created_at = Column(DateTime, nullable=False, server_default=func.now())
     updated_at = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
     deleted_at = Column(DateTime, nullable=True)
+
+    # Relationships
+    snapshots = relationship("CompanyDataSnapshot", back_populates="company", order_by="desc(CompanyDataSnapshot.fetched_at)", cascade="all, delete-orphan")
+

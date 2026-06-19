@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Pralyon · Vendor Due Diligence · Arora Precision Metals Pvt Ltd</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0d1117;color:#e6edf3;font-family:'Segoe UI',Arial,sans-serif;font-size:14px;line-height:1.6}
+.cover{background:linear-gradient(135deg,#0d1117 0%,#161b22 60%,#1c2333 100%);border-bottom:3px solid #238636;padding:52px 56px 44px;position:relative}
+.cover-corner{position:absolute;top:22px;right:56px;color:#58a6ff;font-size:11px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase}
+.series-tag{color:#8b949e;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px}
+.cover h1{font-size:38px;font-weight:800;color:#e6edf3;line-height:1.15;margin-bottom:12px}
+.cover h1 span{color:#58a6ff}
+.cover-sub{color:#8b949e;font-size:14px;margin-bottom:28px}
+.kpi-row{display:flex;gap:18px;flex-wrap:wrap}
+.kpi{background:rgba(88,166,255,0.08);border:1px solid rgba(88,166,255,0.22);border-radius:8px;padding:13px 18px;min-width:152px}
+.kpi strong{display:block;font-size:15px;color:#58a6ff;font-weight:700}
+.kpi span{font-size:11px;color:#8b949e;text-transform:uppercase;letter-spacing:.8px;margin-top:2px;display:block}
+.banner{display:flex;align-items:flex-start;gap:16px;padding:20px 56px;border-bottom:1.5px solid rgba(248,81,73,0.4);background:rgba(248,81,73,0.1)}
+.banner.amber{background:rgba(210,153,34,0.1);border-color:rgba(210,153,34,0.4)}
+.banner.green{background:rgba(35,134,54,0.1);border-color:rgba(35,134,54,0.4)}
+.b-icon{font-size:30px;line-height:1;padding-top:2px}
+.b-text strong{display:block;font-size:15px;color:#e6edf3;font-weight:700;margin-bottom:3px}
+.b-text span{color:#8b949e;font-size:13px;line-height:1.55}
+.tiles{display:flex;background:#161b22;border-bottom:1px solid #30363d;flex-wrap:wrap}
+.tile{flex:1;min-width:130px;padding:18px 20px;border-right:1px solid #30363d}
+.tile:last-child{border-right:none}
+.t-label{font-size:10px;color:#8b949e;text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px}
+.t-val{font-size:26px;font-weight:800;color:#34d399;line-height:1;margin-bottom:3px}
+.t-sub{font-size:12px;color:#8b949e}
+.t-red{color:#f85149}
+.t-amber{color:#e3b341}
+.sec{padding:28px 56px;border-bottom:1px solid #21262d}
+.sec-label{font-size:10px;color:#58a6ff;text-transform:uppercase;letter-spacing:1.2px;font-weight:700;margin-bottom:7px}
+.sec h2{font-size:17px;font-weight:700;color:#e6edf3;margin-bottom:14px}
+.sec h3{font-size:13px;font-weight:700;color:#c9d1d9;margin:16px 0 9px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:#161b22;color:#8b949e;text-align:left;padding:9px 13px;font-size:10px;text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid #30363d}
+td{padding:9px 13px;border-bottom:1px solid #21262d;color:#c9d1d9;vertical-align:top}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(88,166,255,0.04)}
+.tp{background:rgba(35,134,54,.18);color:#56d364;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:600;white-space:nowrap}
+.tw{background:rgba(210,153,34,.18);color:#e3b341;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:600;white-space:nowrap}
+.tf{background:rgba(248,81,73,.18);color:#f85149;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:600;white-space:nowrap}
+.tb{background:rgba(88,166,255,.15);color:#58a6ff;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:600;white-space:nowrap}
+.nbox{border-left:3px solid #e3b341;background:rgba(210,153,34,.07);border-radius:0 8px 8px 0;padding:12px 16px;margin-top:12px;color:#c9d1d9;font-size:13px;line-height:1.65}
+.nbox.g{border-color:#56d364;background:rgba(35,134,54,.07)}
+.nbox.r{border-color:#f85149;background:rgba(248,81,73,.07)}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-top:13px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:13px;margin-top:13px}
+.card{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:15px 17px}
+.card h4{font-size:12px;color:#58a6ff;font-weight:700;margin-bottom:6px}
+.card p{font-size:12px;color:#8b949e;line-height:1.6}
+.hl td{background:rgba(88,166,255,0.07)!important;font-weight:700}
+.hl-r td{background:rgba(248,81,73,0.07)!important;font-weight:700}
+.disclaimer{padding:26px 56px;background:#0d1117;border-top:1px solid #21262d}
+.disclaimer h3{font-size:11px;color:#8b949e;text-transform:uppercase;letter-spacing:1px;margin-bottom:9px}
+.disclaimer p{font-size:11px;color:#6e7681;line-height:1.7;margin-bottom:7px}
+.footer{display:flex;justify-content:space-between;padding:15px 56px;background:#010409;border-top:1px solid #21262d;font-size:11px;color:#6e7681}
+</style>
+</head>
+<body>
+<div class="cover">
+  <div class="cover-corner">Pralyon™ Suite · 4 / 5 · RPT-VDD-20260518-0019</div>
+  <div class="series-tag">Service 4 of 5 · Vendor Due Diligence</div>
+  <h1>Vendor Due Diligence<br><span>Report</span></h1>
+  <p class="cover-sub">Supplier viability, integrity, compliance and onboarding readiness before commercial engagement</p>
+  <div class="kpi-row">
+    <div class="kpi"><strong>Arora Precision Metals Pvt Ltd</strong><span>Vendor assessed</span></div>
+    <div class="kpi"><strong>Manufacturing Vendor</strong><span>Profile</span></div>
+    <div class="kpi"><strong>Risk Committee</strong><span>Escalation level</span></div>
+    <div class="kpi"><strong>18 May 2026</strong><span>Generated</span></div>
+    <div class="kpi"><strong>Internal Use Only</strong><span>Distribution</span></div>
+  </div>
+</div>
+
+<div class="banner">
+  <div class="b-icon">⛔</div>
+  <div class="b-text">
+    <strong>ONBOARDING NOT APPROVED — unresolved AML match, incomplete UBO chain, active cheque bounce matters, and missing manufacturing compliance documents.</strong>
+    <span>This is not a pricing or commercial negotiation issue. It is a supplier integrity and onboarding-control issue. Procurement should not release purchase orders until all critical gaps are closed.</span>
+  </div>
+</div>
+
+<div class="tiles">
+  <div class="tile"><div class="t-label">Onboarding Status</div><div class="t-val t-red">Hold</div><div class="t-sub">Do not onboard</div></div>
+  <div class="tile"><div class="t-label">Critical Flags</div><div class="t-val t-red">4</div><div class="t-sub">Immediate blockers</div></div>
+  <div class="tile"><div class="t-label">High Flags</div><div class="t-val t-amber">6</div><div class="t-sub">Material risks</div></div>
+  <div class="tile"><div class="t-label">Docs Missing</div><div class="t-val t-red">7</div><div class="t-sub">Mandatory gaps</div></div>
+  <div class="tile"><div class="t-label">Legal Cases</div><div class="t-val t-red">7+</div><div class="t-sub">Across NI Act & civil</div></div>
+  <div class="tile"><div class="t-label">API Cost</div><div class="t-val t-amber">₹250</div><div class="t-sub">Estimated per run</div></div>
+</div>
+
+<div class="sec">
+  <div class="sec-label">Entity Identity</div>
+  <h2>Supplier identity and submission posture</h2>
+  <table>
+    <tr><th>Field</th><th>Value</th><th>Status</th><th>Comment</th></tr>
+    <tr><td><strong>Entity name</strong></td><td>Arora Precision Metals Pvt Ltd</td><td><span class="tw">Verified with caveats</span></td><td>Name resolves, but similar-name adverse references require disposition.</td></tr>
+    <tr><td><strong>Business type</strong></td><td>Manufacturing vendor</td><td><span class="tp">Confirmed</span></td><td>Manufacturing compliance therefore mandatory.</td></tr>
+    <tr><td><strong>GSTIN</strong></td><td>Active</td><td><span class="tp">Active</span></td><td>No suspension or cancellation notice found.</td></tr>
+    <tr><td><strong>Udyam</strong></td><td>UDYAM-MH-12-0012345</td><td><span class="tp">Valid</span></td><td>MSME status confirmed.</td></tr>
+    <tr><td><strong>Authorised signatory</strong></td><td>Rajeev Arora</td><td><span class="tp">Submitted</span></td><td>Board resolution received and adequate.</td></tr>
+    <tr><td><strong>Site address consistency</strong></td><td>Address inconsistency across documents</td><td><span class="tf">Mismatch</span></td><td>Physical site visit mandatory before onboarding.</td></tr>
+  </table>
+</div>
+
+<div class="sec">
+  <div class="sec-label">Red-Flag Register</div>
+  <h2>Immediate blockers before procurement onboarding</h2>
+  <table>
+    <tr><th>Critical issue</th><th>Observed result</th><th>Status</th><th>Required action</th></tr>
+    <tr class="hl-r"><td><strong>AML / sanctions screening</strong></td><td>Name match flagged above threshold; close-match watchlist record unresolved.</td><td><span class="tf">Critical</span></td><td>Manual false-positive confirmation and compliance officer sign-off.</td></tr>
+    <tr class="hl-r"><td><strong>UBO chain</strong></td><td>Primary promoter identified at 40%, but final beneficial ownership not resolved due to layered nominee pattern.</td><td><span class="tf">Critical</span></td><td>Notarised UBO affidavit + complete shareholding chart mandatory.</td></tr>
+    <tr class="hl-r"><td><strong>Cheque bounce matters</strong></td><td>4 NI Act Section 138 proceedings linked to entity and primary director.</td><td><span class="tf">Critical</span></td><td>Obtain settlement status, court stage, and documentary closure proof.</td></tr>
+    <tr class="hl-r"><td><strong>Manufacturing licences</strong></td><td>Factory licence / boiler certificate / pollution consents not submitted.</td><td><span class="tf">Critical</span></td><td>No onboarding until statutory plant permissions are validated.</td></tr>
+  </table>
+  <div class="nbox r">These are onboarding controls, not soft observations. Procurement, finance, and compliance should all treat them as hard blockers until documentary closure is complete.</div>
+</div>
+
+<div class="sec">
+  <div class="sec-label">AML · Sanctions · Integrity</div>
+  <h2>Integrity screening summary</h2>
+  <table>
+    <tr><th>Check</th><th>Result</th><th>Status</th><th>Risk</th><th>Action</th></tr>
+    <tr><td><strong>Entity AML screening</strong></td><td>Name match flagged in AML database with similarity score above threshold.</td><td><span class="tf">Escalate</span></td><td>Cannot onboard until analyst disposition documented.</td><td>Manual false-positive confirmation required.</td></tr>
+    <tr><td><strong>Sanctions / watchlist</strong></td><td>No confirmed OFAC/UN/EU hit; one close-match record exists.</td><td><span class="tf">Escalate</span></td><td>Zero-tolerance policy requires documented clearance.</td><td>Compliance officer sign-off mandatory.</td></tr>
+    <tr><td><strong>PEP match — directors</strong></td><td>Director 1 screened clear. Director 2 not screened yet.</td><td><span class="tw">Incomplete</span></td><td>Partial screening insufficient for onboarding.</td><td>Screen all significant persons including UBO chain.</td></tr>
+    <tr><td><strong>Adverse media</strong></td><td>Trade-community references to disputed deliveries and possible forged test certifications.</td><td><span class="tf">Escalate</span></td><td>Integrity and product-quality risk.</td><td>Independent validation + management explanation.</td></tr>
+    <tr><td><strong>Fraud / corruption mention</strong></td><td>Procurement blacklist mention under similar trading name — unconfirmed.</td><td><span class="tw">Unconfirmed</span></td><td>Cannot be ignored at first engagement.</td><td>Obtain documentary proof or rebuttal.</td></tr>
+    <tr><td><strong>FATF high-risk jurisdiction link</strong></td><td>No cross-border or high-risk linkage detected.</td><td><span class="tp">Clear</span></td><td>No geographic AML risk at present.</td><td>Monitor only if export business develops.</td></tr>
+  </table>
+</div>
+
+<div class="sec">
+  <div class="sec-label">Ownership & Governance</div>
+  <h2>UBO, shareholding and director transparency</h2>
+  <table>
+    <tr><th>Check</th><th>Observed result</th><th>Status</th><th>Why it matters</th><th>Follow-up</th></tr>
+    <tr><td><strong>Ultimate Beneficial Owner</strong></td><td>Primary promoter identified at 40%; two further layers show nominee pattern. Final UBO unresolved.</td><td><span class="tf">Critical gap</span></td><td>Cannot establish final control with confidence.</td><td>Notarised UBO affidavit + shareholding chart.</td></tr>
+    <tr><td><strong>Shareholding pattern</strong></td><td>Top shareholder 40%; remaining 60% split across 3 entities, including 1 inactive entity.</td><td><span class="tw">Layered</span></td><td>Shell / nominee risk in ownership structure.</td><td>Explain purpose of each holding entity.</td></tr>
+    <tr><td><strong>Director 1 — Rajeev Arora</strong></td><td>Active DIN. No Sec 164 disqualification. Linked to 4 other entities; 2 struck off.</td><td><span class="tw">Monitor</span></td><td>Struck-off history needs explanation.</td><td>Obtain management note on struck-off links.</td></tr>
+    <tr><td><strong>Director 2 disclosure</strong></td><td>Historic MCA filing shows second person not disclosed in onboarding pack.</td><td><span class="tf">Incomplete</span></td><td>Transparency failure at onboarding stage.</td><td>Full KYC for all current and recent directors.</td></tr>
+    <tr><td><strong>Director disqualification check</strong></td><td>Director 1 clear; Director 2 unscreened because DIN not provided.</td><td><span class="tw">Partial</span></td><td>Partial screening insufficient.</td><td>DIN mandatory before onboarding.</td></tr>
+    <tr><td><strong>Related-party / group exposure</strong></td><td>2 linked entities in same sector under same DIN cluster.</td><td><span class="tw">Flag</span></td><td>Cross-billing / invoice inflation risk.</td><td>Confirm independent commercial relationships.</td></tr>
+  </table>
+</div>
+
+<div class="sec">
+  <div class="sec-label">Litigation & Legal</div>
+  <h2>Legal case and dispute register</h2>
+  <table>
+    <tr><th>Check</th><th>Observed result</th><th>Status</th><th>Why it matters</th><th>Follow-up</th></tr>
+    <tr><td><strong>e-Courts civil disputes</strong></td><td>3 active commercial suits filed by buyers — delivery and damages matters.</td><td><span class="tf">High</span></td><td>Signals recurring delivery or quality failures.</td><td>Case list + counsel summary required.</td></tr>
+    <tr><td><strong>Section 138 — cheque bounce</strong></td><td>4 proceedings linked to entity and primary director.</td><td><span class="tf">Critical</span></td><td>Material payment-discipline failure.</td><td>Resolution proof required before onboarding.</td></tr>
+    <tr><td><strong>NCLT / CIRP</strong></td><td>No admitted CIRP. Entity appears as creditor in one CIRP matter.</td><td><span class="tw">Monitor</span></td><td>Trade ecosystem stress may create indirect exposure.</td><td>Confirm no cross-liability.</td></tr>
+    <tr><td><strong>DRT / lender recovery</strong></td><td>One DRT reference under similar-name cluster — entity resolution pending.</td><td><span class="tw">Review</span></td><td>Possible hidden borrowing stress or group liability.</td><td>Entity-resolution confirmation required.</td></tr>
+    <tr><td><strong>Regulatory blacklisting</strong></td><td>No confirmed blacklisting; one unverified procurement blacklist mention.</td><td><span class="tw">Unverified</span></td><td>If confirmed, immediate onboarding bar.</td><td>Documentary proof or rebuttal required.</td></tr>
+    <tr><td><strong>IP / quality / spec disputes</strong></td><td>2 complaints on tolerance non-conformance in prior lots.</td><td><span class="tf">Material</span></td><td>Product and warranty risk in your supply chain.</td><td>QA certifications + buyer references required.</td></tr>
+    <tr><td><strong>Labour / industrial disputes</strong></td><td>No labour tribunal case found at this stage.</td><td><span class="tp">Clear</span></td><td>Low current labour-dispute risk.</td><td>Verify during site visit.</td></tr>
+    <tr><td><strong>Environmental notices</strong></td><td>Factory consents not submitted.</td><td><span class="tw">Pending</span></td><td>Operating without clearance creates buyer liability.</td><td>MPCB consents mandatory.</td></tr>
+  </table>
+</div>
+
+<div class="sec">
+  <div class="sec-label">Compliance Intelligence</div>
+  <h2>GST, labour and statutory compliance</h2>
+  <table>
+    <tr><th>Parameter</th><th>Result</th><th>Status</th><th>Risk</th></tr>
+    <tr><td><strong>GSTIN active & valid</strong></td><td>Active. No cancellation or suspension notice.</td><td><span class="tp">Active</span></td><td>Basic compliance confirmed.</td></tr>
+    <tr><td><strong>GSTR-1 continuity (12m)</strong></td><td>2 months missing in last 12 months.</td><td><span class="tw">Gaps</span></td><td>ITC claim risk for procurement.</td></tr>
+    <tr><td><strong>GSTR-3B continuity (12m)</strong></td><td>3 months delayed by more than 30 days.</td><td><span class="tw">Delayed</span></td><td>Cash-flow stress signal.</td></tr>
+    <tr><td><strong>GST vs MCA turnover</strong></td><td>₹8.2 Cr in GST vs ₹9.1 Cr in MCA — ₹0.9 Cr gap.</td><td><span class="tw">Reconcile</span></td><td>Under-reporting or deferred recognition risk.</td></tr>
+    <tr><td><strong>TDS compliance</strong></td><td>No major default found.</td><td><span class="tp">Clean</span></td><td>Low direct tax risk.</td></tr>
+    <tr><td><strong>EPFO / PF filing + headcount</strong></td><td>48 employees declared vs ~85 estimated from plant size.</td><td><span class="tf">Mismatch</span></td><td>Labour compliance under-reporting risk.</td></tr>
+    <tr><td><strong>ESIC registration</strong></td><td>Applicable but not verified in submission.</td><td><span class="tw">Pending</span></td><td>Labour compliance gap.</td></tr>
+    <tr><td><strong>Professional tax</strong></td><td>Not verified.</td><td><span class="tw">Under review</span></td><td>Minor but expected compliance item.</td></tr>
+    <tr><td><strong>Shop & establishment licence</strong></td><td>Not submitted.</td><td><span class="tf">Missing</span></td><td>Basic operating licence absent.</td></tr>
+    <tr><td><strong>Factory / boiler certificate</strong></td><td>Not submitted for manufacturing vendor.</td><td><span class="tf">Missing</span></td><td>Cannot validate lawful manufacturing operations.</td></tr>
+    <tr><td><strong>RBI defaulter list</strong></td><td>Entity not listed.</td><td><span class="tp">Clear</span></td><td>No banking default on record.</td></tr>
+  </table>
+</div>
+
+<div class="sec">
+  <div class="sec-label">Financial Quality</div>
+  <h2>Financial pressure signals derived from MCA + GST data</h2>
+  <div class="g3">
+    <div class="card"><h4>Turnover mismatch</h4><p>GST turnover of ₹8.2 Cr versus MCA revenue of ₹9.1 Cr creates a ₹0.9 Cr reconciliation gap. This is large enough to require management explanation before onboarding.</p></div>
+    <div class="card"><h4>Borrowing stack</h4><p>3 active charges remain on MCA — working capital CC, equipment finance, and invoice discounting. This financing mix is consistent with liquidity pressure in vendor operations.</p></div>
+    <div class="card"><h4>Working-capital stress</h4><p>GSTR-3B delays, headcount mismatch, and invoice discounting together indicate stretched operations rather than a clean, well-funded supplier profile.</p></div>
+  </div>
+</div>
+
+<div class="sec">
+  <div class="sec-label">MCA Charges</div>
+  <h2>Secured lender register</h2>
+  <table>
+    <tr><th>Charge ID</th><th>Lender</th><th>Amount</th><th>Created</th><th>Status</th><th>Risk note</th></tr>
+    <tr><td>CH-001</td><td>HDFC Bank Ltd</td><td>₹80 L</td><td>Apr 2022</td><td><span class="tp">Satisfied</span></td><td>Closed — no live risk.</td></tr>
+    <tr><td>CH-002</td><td>IDFC First Bank</td><td>₹1.2 Cr</td><td>Sep 2023</td><td><span class="tw">Active</span></td><td>Working capital CC facility. Utilisation unknown.</td></tr>
+    <tr><td>CH-003</td><td>Tata Capital</td><td>₹45 L</td><td>Jan 2024</td><td><span class="tw">Active</span></td><td>Equipment finance. Cross-default clause possible.</td></tr>
+    <tr><td>CH-004</td><td>Vivriti Capital</td><td>₹30 L</td><td>Mar 2024</td><td><span class="tw">Active</span></td><td>Invoice discounting facility — working-capital strain signal.</td></tr>
+  </table>
+  <div class="nbox">Total active secured borrowing observed: ₹1.95 Cr across 3 live facilities. Invoice discounting plus delayed GST filings materially increase supplier reliability risk for a first-time onboarding.</div>
+</div>
+
+<div class="sec">
+  <div class="sec-label">Operational Viability</div>
+  <h2>Site, quality and capacity readiness</h2>
+  <table>
+    <tr><th>Parameter</th><th>Current status</th><th>Required action</th></tr>
+    <tr><td><strong>Plant / site existence</strong></td><td>Unverified — address inconsistency across documents.</td><td>Physical site visit mandatory before onboarding manufacturing vendor.</td></tr>
+    <tr><td><strong>Production capacity vs order size</strong></td><td>Unverified.</td><td>Verify declared capacity against proposed ₹1.2 Cr annual volume.</td></tr>
+    <tr><td><strong>Quality systems (ISO / BIS / NABL)</strong></td><td>Not submitted.</td><td>Mandatory before technical approval.</td></tr>
+    <tr><td><strong>Batch traceability / testing records</strong></td><td>Adverse media alleges falsification.</td><td>Independent lab test of samples before any order placement.</td></tr>
+    <tr><td><strong>Subcontracting dependence</strong></td><td>Not disclosed.</td><td>Declare all sub-vendors and their compliance status.</td></tr>
+    <tr><td><strong>Raw material concentration</strong></td><td>1–2 suppliers per category.</td><td>Request alternate sourcing plan.</td></tr>
+    <tr><td><strong>On-time delivery history</strong></td><td>Dispute trail exists; eCourts confirms buyer complaints.</td><td>Reference check with 3 independent current buyers.</td></tr>
+    <tr><td><strong>Insurance cover</strong></td><td>Not provided.</td><td>Plant, product liability, and transit insurance certificates required.</td></tr>
+    <tr><td><strong>Business continuity plan</strong></td><td>Not available.</td><td>Required for critical or high-volume component supply.</td></tr>
+  </table>
+</div>
+
+<div class="sec">
+  <div class="sec-label">Document Register</div>
+  <h2>Submitted vs missing onboarding pack</h2>
+  <table>
+    <tr><th>Document</th><th>Status</th><th>Adequacy</th><th>Comment</th></tr>
+    <tr><td><strong>Certificate of incorporation</strong></td><td>Received</td><td><span class="tp">Adequate</span></td><td>CIN verified.</td></tr>
+    <tr><td><strong>GST registration + 12m filings</strong></td><td>Partial</td><td><span class="tw">Incomplete</span></td><td>Filing gaps confirmed.</td></tr>
+    <tr><td><strong>PAN card</strong></td><td>Received</td><td><span class="tp">Adequate</span></td><td>PAN ↔ CIN cross-verified.</td></tr>
+    <tr><td><strong>Audited financials FY24 + FY23</strong></td><td>Received via MCA</td><td><span class="tp">Auto-parsed</span></td><td>Ratios computed from MCA data.</td></tr>
+    <tr><td><strong>MCA charges (5y)</strong></td><td>Auto-fetched</td><td><span class="tp">Complete</span></td><td>4 charges found.</td></tr>
+    <tr><td><strong>Shareholding pattern + UBO declaration</strong></td><td>Not provided</td><td><span class="tf">Critical gap</span></td><td>Mandatory before onboarding.</td></tr>
+    <tr><td><strong>Director KYC (all directors)</strong></td><td>Partial</td><td><span class="tf">Incomplete</span></td><td>Second director not screened.</td></tr>
+    <tr><td><strong>Board resolution / authorisation</strong></td><td>Received</td><td><span class="tp">Adequate</span></td><td>Authorised signatory covered.</td></tr>
+    <tr><td><strong>Factory / pollution consent</strong></td><td>Not provided</td><td><span class="tf">Required</span></td><td>Mandatory for manufacturing vendor.</td></tr>
+    <tr><td><strong>EPFO / PF compliance certificate</strong></td><td>Partial</td><td><span class="tw">Insufficient</span></td><td>Headcount mismatch unresolved.</td></tr>
+    <tr><td><strong>ISO / BIS / quality certifications</strong></td><td>Not provided</td><td><span class="tf">Required</span></td><td>Essential given quality allegations.</td></tr>
+    <tr><td><strong>Litigation disclosure declaration</strong></td><td>Not provided</td><td><span class="tf">Mandatory</span></td><td>Needed for committee review.</td></tr>
+    <tr><td><strong>Customer references (3)</strong></td><td>Partial</td><td><span class="tw">Insufficient</span></td><td>Only 1 reference provided.</td></tr>
+    <tr><td><strong>Insurance certificates</strong></td><td>Not provided</td><td><span class="tw">Recommended</span></td><td>Needed for plant and product risk coverage.</td></tr>
+  </table>
+</div>
+
+<div class="sec">
+  <div class="sec-label">Decision View</div>
+  <h2>Risk committee recommendation</h2>
+  <table>
+    <tr><th>Decision parameter</th><th>Recommendation</th><th>Reason</th></tr>
+    <tr><td><strong>Onboard vendor?</strong></td><td><span class="tf">No — hold</span></td><td>4 critical blockers unresolved.</td></tr>
+    <tr><td><strong>Permit sample order?</strong></td><td><span class="tw">Only after compliance clearance</span></td><td>Quality allegations and missing plant certifications require pre-check.</td></tr>
+    <tr><td><strong>Advance payment allowed?</strong></td><td><span class="tf">No</span></td><td>Cheque bounce and ownership opacity make prepayment unsafe.</td></tr>
+    <tr><td><strong>Risk committee escalation?</strong></td><td><span class="tp">Mandatory</span></td><td>AML and sanctions match unresolved.</td></tr>
+    <tr><td><strong>Re-open onboarding when</strong></td><td>All critical documents + false-positive clearance submitted</td><td>Only then should commercial diligence resume.</td></tr>
+  </table>
+</div>
+
+<div class="disclaimer">
+  <h3>Legal Disclaimer & Data Notices</h3>
+  <p><strong>1.</strong> This report is a supplier-onboarding intelligence output for internal procurement, compliance, and finance use only.</p>
+  <p><strong>2.</strong> It is not a criminal finding, sanctions declaration, or legal opinion. All flagged records require documented internal disposition before onboarding.</p>
+  <p><strong>3.</strong> Operational viability cannot be concluded from API sources alone; site visit and quality validation remain mandatory for manufacturing vendors.</p>
+</div>
+
+<div class="footer">
+  <span>Pralyon™ AI · RyskNode Intelligence Platform</span>
+  <span>Service 4 · Vendor Due Diligence · RPT-VDD-20260518-0019</span>
+  <span>18 May 2026 · Internal Use Only</span>
+</div>
+</body>
+</html>

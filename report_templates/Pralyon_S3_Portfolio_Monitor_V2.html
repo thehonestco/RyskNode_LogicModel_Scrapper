@@ -1,0 +1,221 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<title>Pralyon · Portfolio &amp; Counterparty Monitor · Seller: Honest Digital Pvt Ltd</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0d1117;color:#e6edf3;font-family:'Segoe UI',Arial,sans-serif;font-size:14px;line-height:1.6}
+.cover{background:linear-gradient(135deg,#0d1117 0%,#161b22 60%,#1c2333 100%);border-bottom:3px solid #238636;padding:52px 56px 44px;position:relative}
+.cover-corner{position:absolute;top:22px;right:56px;color:#58a6ff;font-size:11px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase}
+.series-tag{color:#8b949e;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px}
+.cover h1{font-size:38px;font-weight:800;color:#e6edf3;line-height:1.15;margin-bottom:12px}
+.cover h1 span{color:#58a6ff}
+.cover-sub{color:#8b949e;font-size:14px;margin-bottom:28px}
+.kpi-row{display:flex;gap:16px;flex-wrap:wrap}
+.kpi{background:rgba(88,166,255,0.08);border:1px solid rgba(88,166,255,0.22);border-radius:8px;padding:12px 17px;min-width:145px}
+.kpi strong{display:block;font-size:14px;color:#58a6ff;font-weight:700}
+.kpi span{font-size:11px;color:#8b949e;text-transform:uppercase;letter-spacing:.7px;margin-top:2px;display:block}
+.banner{display:flex;align-items:flex-start;gap:16px;padding:18px 56px;background:rgba(35,134,54,0.11);border-bottom:1.5px solid rgba(35,134,54,0.32)}
+.banner.warn{background:rgba(210,153,34,0.1);border-color:rgba(210,153,34,0.32)}
+.banner.fail{background:rgba(248,81,73,0.1);border-color:rgba(248,81,73,0.32)}
+.b-icon{font-size:28px;line-height:1;padding-top:2px}
+.b-text strong{display:block;font-size:14px;color:#e6edf3;font-weight:700;margin-bottom:3px}
+.b-text span{color:#8b949e;font-size:13px;line-height:1.55}
+.tiles{display:flex;background:#161b22;border-bottom:1px solid #30363d;flex-wrap:wrap}
+.tile{flex:1;min-width:130px;padding:16px 18px;border-right:1px solid #30363d}
+.tile:last-child{border-right:none}
+.t-label{font-size:10px;color:#8b949e;text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px}
+.t-val{font-size:24px;font-weight:800;color:#34d399;line-height:1;margin-bottom:3px}
+.t-val.r{color:#f85149}.t-val.y{color:#e3b341}.t-val.b{color:#58a6ff}
+.t-sub{font-size:11px;color:#8b949e}
+.sec{padding:26px 56px;border-bottom:1px solid #21262d}
+.sec-label{font-size:10px;color:#58a6ff;text-transform:uppercase;letter-spacing:1.2px;font-weight:700;margin-bottom:6px}
+.sec h2{font-size:17px;font-weight:700;color:#e6edf3;margin-bottom:13px}
+.sec h3{font-size:13px;font-weight:700;color:#c9d1d9;margin:15px 0 8px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:#161b22;color:#8b949e;text-align:left;padding:8px 13px;font-size:10px;text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid #30363d}
+td{padding:8px 13px;border-bottom:1px solid #21262d;color:#c9d1d9;vertical-align:top}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(88,166,255,0.03)}
+.hl td{background:rgba(88,166,255,0.07)!important;font-weight:700}
+.hl-r td{background:rgba(248,81,73,0.07)!important;font-weight:700}
+.hl-y td{background:rgba(210,153,34,0.07)!important}
+.tp{background:rgba(35,134,54,.18);color:#56d364;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:600;white-space:nowrap}
+.tw{background:rgba(210,153,34,.18);color:#e3b341;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:600;white-space:nowrap}
+.tf{background:rgba(248,81,73,.18);color:#f85149;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:600;white-space:nowrap}
+.tb{background:rgba(88,166,255,.15);color:#58a6ff;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:600;white-space:nowrap}
+.nbox{border-left:3px solid #e3b341;background:rgba(210,153,34,.07);border-radius:0 8px 8px 0;padding:11px 15px;margin-top:11px;color:#c9d1d9;font-size:13px;line-height:1.65}
+.nbox.g{border-color:#56d364;background:rgba(35,134,54,.07)}
+.nbox.r{border-color:#f85149;background:rgba(248,81,73,.07)}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:12px}
+.card{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:14px 16px}
+.card h4{font-size:12px;color:#58a6ff;font-weight:700;margin-bottom:5px}
+.card p{font-size:12px;color:#8b949e;line-height:1.6}
+.disclaimer{padding:24px 56px;background:#0d1117;border-top:1px solid #21262d}
+.disclaimer h3{font-size:11px;color:#8b949e;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+.disclaimer p{font-size:11px;color:#6e7681;line-height:1.7;margin-bottom:6px}
+.footer{display:flex;justify-content:space-between;padding:13px 56px;background:#010409;border-top:1px solid #21262d;font-size:11px;color:#6e7681}
+</style></head><body>
+
+<div class="cover">
+  <div class="cover-corner">Pralyon™ Suite · 3 / 5 · RPT-PCM-20260518-0043</div>
+  <div class="series-tag">Service 3 of 5 · Portfolio &amp; Counterparty Monitor</div>
+  <h1>Portfolio &amp; Counterparty<br><span>Monitor</span></h1>
+  <p class="cover-sub">Live portfolio exposure · RiskBand™ drift alerts · GST / DRT / Director trigger engine · Limit breach detection · Recompute queue</p>
+  <div class="kpi-row">
+    <div class="kpi"><strong>Honest Digital Pvt Ltd</strong><span>Portfolio owner</span></div>
+    <div class="kpi"><strong>12</strong><span>Counterparties monitored</span></div>
+    <div class="kpi"><strong>₹7.97 Cr</strong><span>Total exposure</span></div>
+    <div class="kpi"><strong>2 Critical · 2 Active</strong><span>Alerts open</span></div>
+    <div class="kpi"><strong>18 May 2026</strong><span>Snapshot date</span></div>
+    <div class="kpi"><strong>Live</strong><span>Monitoring status</span></div>
+  </div>
+</div>
+
+<div class="banner fail">
+  <div class="b-icon">🚨</div>
+  <div class="b-text">
+    <strong>2 CRITICAL ALERTS REQUIRE IMMEDIATE ACTION — Bharat Forge (DRT filed · limit = 0) · Omkar Industrial (exposure exceeds revised limit).</strong>
+    <span>Halt all new orders and shipments to both entities. Portfolio aggregate exposure ₹7.97 Cr across 12 counterparties. 4 alerts open: 2 critical, 1 watch, 1 hold. 1 counterparty due for reassessment tomorrow.</span>
+  </div>
+</div>
+
+<div class="tiles">
+  <div class="tile"><div class="t-label">Total portfolio exposure</div><div class="t-val b">₹7.97 Cr</div><div class="t-sub">12 counterparties</div></div>
+  <div class="tile"><div class="t-label">Critical alerts</div><div class="t-val r">2</div><div class="t-sub">Halt + reassess</div></div>
+  <div class="tile"><div class="t-label">Active alerts</div><div class="t-val y">2</div><div class="t-sub">Watch + Hold</div></div>
+  <div class="tile"><div class="t-label">At-risk exposure</div><div class="t-val r">₹1.79 Cr</div><div class="t-sub">Bharat Forge + Omkar</div></div>
+  <div class="tile"><div class="t-label">Band upgrades</div><div class="t-val" style="color:#34d399">1</div><div class="t-sub">Reliance Industrial</div></div>
+  <div class="tile"><div class="t-label">Due for reassessment</div><div class="t-val y">2</div><div class="t-sub">Tomorrow + overdue</div></div>
+</div>
+
+<div class="sec">
+  <div class="sec-label">Portfolio Exposure Register · 12 Counterparties · Live</div>
+  <h2>Full portfolio as of 18 May 2026 · Sorted by alert severity</h2>
+  <table>
+    <tr><th>Counterparty</th><th>CIN</th><th>RiskBand™</th><th>Band drift</th><th>Exposure</th><th>vs Limit</th><th>Last assessed</th><th>Alert</th><th>Action</th></tr>
+    <tr class="hl-r"><td><strong>Bharat Forge Components Ltd</strong></td><td>U28990MH2015PTC271234</td><td><span class="tf">B</span></td><td>↓ AA → B</td><td>₹84 L</td><td><span class="tf">₹0 limit · HALT</span></td><td>12 days ago</td><td>🚨 DRT Filed</td><td><span class="tf">⚡ Halt &amp; Review</span></td></tr>
+    <tr class="hl-r"><td><strong>Omkar Industrial Pvt Ltd</strong></td><td>U29100GJ2018PTC104882</td><td><span class="tw">BBB</span></td><td>↓ AA → BBB</td><td>₹95 L</td><td><span class="tf">Exceeds ₹41L limit</span></td><td>6h ago</td><td>📉 Band Drift</td><td><span class="tf">⚡ Reassess Now</span></td></tr>
+    <tr class="hl-y"><td><strong>Mehta Electricals Pvt Ltd</strong></td><td>U31300GJ2011PTC063211</td><td><span class="tw">A</span></td><td>→ Stable</td><td>₹38 L</td><td>38% of ₹99L limit</td><td>18 days ago</td><td>⚠️ GST Gap</td><td><span class="tw">⚠ Watch</span></td></tr>
+    <tr class="hl-y"><td><strong>Sunrise Power Tech Ltd</strong></td><td>U40100RJ2016PTC055678</td><td><span class="tw">A</span></td><td>→ Stable</td><td>₹52 L</td><td>52% of ₹100L limit</td><td>22 days ago</td><td>👤 Director Change</td><td><span class="tw">⚠ Hold Orders</span></td></tr>
+    <tr><td><strong>Highly Electrical Pvt Ltd</strong></td><td>U29254GJ2012PTC069841</td><td><span class="tp">AA</span></td><td>→ Stable</td><td>₹35 L</td><td>26% of ₹135.5L limit</td><td>29 days ago</td><td>📅 Due tomorrow</td><td><span class="tb">↻ Reassess</span></td></tr>
+    <tr><td><strong>Reliance Industrial Supplies</strong></td><td>U51900MH2008PTC184321</td><td><span class="tp">AA</span></td><td>⬆ A → AA</td><td>₹1.20 Cr</td><td>57% of ₹2.1Cr limit</td><td>4 days ago</td><td>⬆ Band Upgrade</td><td><span class="tp">✓ Monitor</span></td></tr>
+    <tr><td><strong>Patel Engineering Works</strong></td><td>U29100GJ2009PTC057832</td><td><span class="tp">AA</span></td><td>→ Stable</td><td>₹72 L</td><td>41% of ₹175L limit</td><td>8 days ago</td><td>All clear</td><td><span class="tp">✓ Monitor</span></td></tr>
+    <tr><td><strong>Gujarat Switchgear Ltd</strong></td><td>U31300GJ2006PTC047211</td><td><span class="tw">A</span></td><td>→ Stable</td><td>₹44 L</td><td>44% of ₹100L limit</td><td>15 days ago</td><td>All clear</td><td><span class="tp">✓ Monitor</span></td></tr>
+    <tr><td><strong>Tata AutoComp Systems Ltd</strong></td><td>U34300MH2000PLC125348</td><td><span class="tp">AAA</span></td><td>→ Stable</td><td>₹2.80 Cr</td><td>31% of ₹9Cr limit</td><td>3 days ago</td><td>All clear</td><td><span class="tp">✓ Monitor</span></td></tr>
+    <tr><td><strong>Sigma Controls India Pvt Ltd</strong></td><td>U33000GJ2014PTC078943</td><td><span class="tw">BBB</span></td><td>↓ A → BBB</td><td>₹28 L</td><td>38% of ₹73L limit</td><td>21 days ago</td><td>Band drift −1</td><td><span class="tw">↻ Reassess</span></td></tr>
+    <tr><td><strong>Narmada Wire Industries</strong></td><td>U27500GJ2017PTC098712</td><td><span class="tw">A</span></td><td>🆕 New</td><td>₹18 L</td><td>19% of ₹95L limit</td><td>2 days ago</td><td>First assessment</td><td><span class="tp">✓ Monitor</span></td></tr>
+    <tr><td><strong>Vijay Transformers Pvt Ltd</strong></td><td>U31100GJ2005PTC045672</td><td><span class="tw">A</span></td><td>→ Stable</td><td>₹31 L</td><td>31% of ₹100L limit</td><td>11 days ago</td><td>All clear</td><td><span class="tp">✓ Monitor</span></td></tr>
+  </table>
+</div>
+
+<div class="sec">
+  <div class="sec-label">Critical Alert Detail · Immediate Action Required</div>
+  <h2>Alert 1 — Bharat Forge Components Ltd · DRT Filed · Limit = ₹0 · Halt all credit</h2>
+  <table>
+    <tr><th>Parameter</th><th>Before trigger</th><th>Current state</th><th>Impact</th></tr>
+    <tr><td><strong>RiskBand™</strong></td><td>AA</td><td><span class="tf">B</span></td><td>4-notch downgrade · unprecedented velocity</td></tr>
+    <tr><td><strong>ZeroPass™ G-07 (DRT)</strong></td><td>Clear</td><td><span class="tf">BREACH — DRT case filed by HDFC Bank</span></td><td>Hard stop · AnchorEngine™ limit overridden to ₹0</td></tr>
+    <tr><td><strong>Evaluated limit</strong></td><td>₹1.12 Cr</td><td><span class="tf">₹0</span></td><td>Full limit collapsed · no further credit extension permissible</td></tr>
+    <tr><td><strong>Current exposure</strong></td><td>—</td><td><strong>₹84 L outstanding</strong></td><td>Full recovery action required immediately</td></tr>
+    <tr><td><strong>Trigger source</strong></td><td>—</td><td>DRT cause list · HDFC Bank Ltd as applicant</td><td>Lender recovery action signals acute cash flow failure</td></tr>
+  </table>
+  <div class="nbox r"><strong>Required actions:</strong> (1) Halt all new orders and shipments immediately. (2) Issue demand notice for ₹84L outstanding. (3) Engage legal counsel — explore Section 8 MSME arbitration or commercial court filing. (4) File proof of debt in DRT proceedings if eligible.</div>
+
+  <h3>Alert 2 — Omkar Industrial Pvt Ltd · Band Drift AA → BBB · Exposure Exceeds Revised Limit</h3>
+  <table>
+    <tr><th>Parameter</th><th>Before trigger</th><th>Current state</th><th>Impact</th></tr>
+    <tr><td><strong>RiskBand™</strong></td><td>AA</td><td><span class="tw">BBB</span></td><td>2-notch downgrade triggered 6 hours ago</td></tr>
+    <tr><td><strong>Revised limit (BBB band)</strong></td><td>₹1.35 Cr (AA)</td><td><span class="tw">₹41 L (BBB)</span></td><td>Limit fell by 70% on band reclassification</td></tr>
+    <tr><td><strong>Current exposure</strong></td><td>₹95 L</td><td><span class="tf">₹95 L — exceeds revised limit by ₹54 L</span></td><td>Over-limit position · immediate corrective action</td></tr>
+    <tr><td><strong>Trigger source</strong></td><td>—</td><td>GST GSTR-3B: 3 consecutive months missed · Quick Ratio fell to 0.71×</td><td>Liquidity deterioration + compliance failure</td></tr>
+  </table>
+  <div class="nbox r"><strong>Required actions:</strong> (1) Halt new orders until exposure drops below revised ₹41L limit. (2) Re-run full Buyer Risk Assessment (Service 1) + Operational Limit Assessment (Service 2) immediately. (3) Demand part-payment to bring exposure within new limit. (4) Review outstanding invoice schedule for early payment terms.</div>
+</div>
+
+<div class="sec">
+  <div class="sec-label">Active Alert Detail</div>
+  <h2>Alert 3 — Mehta Electricals · GST Gap · Watch</h2>
+  <table>
+    <tr><th>Parameter</th><th>Observed</th><th>Status</th><th>Required action</th></tr>
+    <tr><td><strong>GSTR-3B gap</strong></td><td>1 month missed (Apr 2026) · not yet filed as of today</td><td><span class="tw">1 of 2 trigger threshold</span></td><td>Monitor — second miss triggers mandatory re-assessment</td></tr>
+    <tr><td><strong>Current exposure</strong></td><td>₹38L · 38% of ₹99L limit</td><td><span class="tp">Within limit</span></td><td>No limit action required yet</td></tr>
+    <tr><td><strong>ShockFrame™ view</strong></td><td>If second GST miss: revised limit drops to ~₹71L · exposure still within</td><td>Manageable</td><td>Pause new orders over ₹71L until filing restored</td></tr>
+  </table>
+
+  <h3>Alert 4 — Sunrise Power Tech · Director Change · Hold Orders</h3>
+  <table>
+    <tr><th>Parameter</th><th>Observed</th><th>Status</th><th>Required action</th></tr>
+    <tr><td><strong>Director change</strong></td><td>New director (DIN 08921347) added via MCA filing 20 Apr 2026 · not in original assessment</td><td><span class="tw">Unscreened person</span></td><td>Re-run identity + Sec 164 check on new director immediately</td></tr>
+    <tr><td><strong>Current exposure</strong></td><td>₹52L · 52% of ₹100L limit</td><td><span class="tp">Within limit</span></td><td>Hold new orders until new director screened and cleared</td></tr>
+    <tr><td><strong>Risk note</strong></td><td>Original assessment did not cover this DIN. Cannot confirm ZeroPass™ G-02 until screened.</td><td><span class="tw">Partial ZeroPass™</span></td><td>Screen within 5 business days</td></tr>
+  </table>
+</div>
+
+<div class="sec">
+  <div class="sec-label">Portfolio Concentration &amp; Exposure Analysis</div>
+  <h2>Exposure distribution across RiskBand™ grades · ₹7.97 Cr total</h2>
+  <table>
+    <tr><th>RiskBand™</th><th>Counterparties</th><th>Exposure</th><th>% of portfolio</th><th>At-limit status</th><th>Portfolio health</th></tr>
+    <tr><td><strong>AAA</strong></td><td>1 (Tata AutoComp)</td><td>₹2.80 Cr</td><td>35.1%</td><td>31% utilisation</td><td><span class="tp">Healthy</span></td></tr>
+    <tr><td><strong>AA</strong></td><td>3 (Reliance, Patel, Highly Electrical)</td><td>₹2.27 Cr</td><td>28.5%</td><td>All within limit</td><td><span class="tp">Healthy</span></td></tr>
+    <tr><td><strong>A</strong></td><td>4 (Gujarat Switchgear, Mehta, Sunrise, Narmada, Vijay)</td><td>₹1.83 Cr</td><td>22.9%</td><td>Mehta + Sunrise: alert</td><td><span class="tw">Watch</span></td></tr>
+    <tr><td><strong>BBB</strong></td><td>2 (Omkar, Sigma)</td><td>₹1.23 Cr</td><td>15.4%</td><td>Omkar: over-limit</td><td><span class="tf">Critical</span></td></tr>
+    <tr><td><strong>B</strong></td><td>1 (Bharat Forge)</td><td>₹84 L</td><td>10.5%</td><td>Limit = 0 · DRT</td><td><span class="tf">Critical</span></td></tr>
+  </table>
+  <div class="nbox"><strong>Portfolio concentration note:</strong> Top single counterparty (Tata AutoComp ₹2.80 Cr) represents 35.1% of total exposure — above recommended concentration ceiling of 25% for a ₹8Cr portfolio. This is low credit risk given AAA band but concentration limits a risk management best practice. Consider setting an exposure ceiling per counterparty at 20–25%.</div>
+</div>
+
+<div class="sec">
+  <div class="sec-label">Trigger Engine · What We Monitor · Frequency</div>
+  <h2>8 trigger types polled continuously across all 12 counterparties</h2>
+  <table>
+    <tr><th>Trigger type</th><th>Source</th><th>Polling frequency</th><th>Alert threshold</th><th>Response</th></tr>
+    <tr><td><strong>RiskBand™ drift</strong></td><td>Full re-score on key signal change</td><td>On trigger</td><td>Any band change</td><td>Alert + revised limit issued</td></tr>
+    <tr><td><strong>GSTIN suspension / cancellation</strong></td><td>GSTIN Advanced API</td><td>Daily</td><td>Status change</td><td>Critical alert · ZeroPass™ G-03 breach</td></tr>
+    <tr><td><strong>GSTR-3B filing gap</strong></td><td>GSTIN Advanced API</td><td>Monthly (post due date)</td><td>1 miss = Watch · 2 miss = Alert</td><td>ShockFrame™ rerun + limit revision</td></tr>
+    <tr><td><strong>DRT filing</strong></td><td>DRT cause list + eCourts</td><td>Weekly</td><td>New case matched to entity</td><td>Critical alert · limit → ₹0</td></tr>
+    <tr><td><strong>NCLT / CIRP</strong></td><td>NCLT cause list</td><td>Weekly</td><td>Admission of CIRP</td><td>Critical alert · halt all credit</td></tr>
+    <tr><td><strong>Director change</strong></td><td>MCA CIN + DIN API</td><td>Weekly</td><td>New DIN on entity</td><td>Alert + ZeroPass™ partial · re-screen</td></tr>
+    <tr><td><strong>New MCA charge</strong></td><td>MCA Doc Pull</td><td>Monthly</td><td>Charge above ₹50L</td><td>Alert + limit recompute</td></tr>
+    <tr><td><strong>Report validity expiry</strong></td><td>Pralyon internal</td><td>Daily</td><td>29 days post assessment</td><td>Reassessment reminder</td></tr>
+  </table>
+</div>
+
+<div class="sec">
+  <div class="sec-label">Reassessment Queue</div>
+  <h2>4 counterparties requiring action within next 7 days</h2>
+  <table>
+    <tr><th>Counterparty</th><th>Reason</th><th>Priority</th><th>Due by</th><th>Estimated cost</th></tr>
+    <tr class="hl-r"><td><strong>Bharat Forge Components</strong></td><td>DRT filed · limit = 0</td><td><span class="tf">Immediate</span></td><td>Today</td><td>₹180 (Service 1) + ₹230 (Service 2)</td></tr>
+    <tr class="hl-r"><td><strong>Omkar Industrial</strong></td><td>Band drift + over-limit</td><td><span class="tf">Immediate</span></td><td>Today</td><td>₹180 (Service 1) + ₹230 (Service 2)</td></tr>
+    <tr class="hl-y"><td><strong>Highly Electrical</strong></td><td>30-day validity expires tomorrow</td><td><span class="tw">Tomorrow</span></td><td>19 May 2026</td><td>₹180 (Service 1) + ₹230 (Service 2)</td></tr>
+    <tr class="hl-y"><td><strong>Sunrise Power Tech</strong></td><td>New director unscreened</td><td><span class="tw">5 days</span></td><td>23 May 2026</td><td>₹180 (Service 1)</td></tr>
+  </table>
+</div>
+
+<div class="sec">
+  <div class="sec-label">TraceLayer™ · Monitor Signal Sources</div>
+  <h2>APIs polled per monitoring cycle · Cost per full portfolio refresh ≈ ₹320</h2>
+  <table>
+    <tr><th>Signal</th><th>API</th><th>Cost / call</th><th>Calls / month (12 counterparties)</th><th>Monthly cost</th></tr>
+    <tr><td>GSTIN status + filing</td><td>/corporate/gstin-advanced</td><td>₹4</td><td>12 (monthly)</td><td>₹48</td></tr>
+    <tr><td>Director DIN change check</td><td>/corporate/cin + /corporate/din</td><td>₹1.5 + ₹1.5</td><td>12 × weekly = ~52</td><td>₹156</td></tr>
+    <tr><td>eCourts / DRT sweep</td><td>/ecourts/ecourt-search-v2</td><td>₹34</td><td>12 (weekly) = 48</td><td>₹1,632</td></tr>
+    <tr><td>MCA charge change detection</td><td>/mca-api/create-order</td><td>₹125</td><td>12 (monthly)</td><td>₹1,500</td></tr>
+    <tr><td>RiskBand™ recompute (triggered)</td><td>Full re-run (Services 1+2)</td><td>₹180+₹230</td><td>On trigger only</td><td>Variable</td></tr>
+  </table>
+</div>
+
+<div class="disclaimer">
+  <h3>Legal Disclaimer</h3>
+  <p><strong>1.</strong> Portfolio monitoring data is sourced from public-regulatory APIs. Signal latency depends on source API refresh cycles — typically 24–72 hours from underlying registry update.</p>
+  <p><strong>2.</strong> Alert thresholds are Pralyon-defined defaults. Portfolio owner may customise per counterparty based on commercial relationship context.</p>
+  <p><strong>3.</strong> Pralyon does not provide legal advice. Actions recommended are risk-management guidance only. Engage qualified counsel for recovery and enforcement actions.</p>
+  <p><strong>4.</strong> For internal use only.</p>
+</div>
+<div class="footer">
+  <span>Pralyon™ AI · RyskNode Intelligence Platform</span>
+  <span>Service 3 · Portfolio &amp; Counterparty Monitor · RPT-PCM-20260518-0043</span>
+  <span>18 May 2026 · Snapshot · Live monitoring active · Confidential</span>
+</div>
+</body></html>

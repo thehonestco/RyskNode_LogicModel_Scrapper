@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Pralyon · Operational Limit Assessment · ABC Industrial Components Pvt Ltd</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0d1117;color:#e6edf3;font-family:'Segoe UI',Arial,sans-serif;font-size:14px;line-height:1.6}
+/* ── COVER ── */
+.cover{background:linear-gradient(135deg,#0d1117 0%,#161b22 60%,#1c2333 100%);border-bottom:3px solid #238636;padding:52px 56px 44px;position:relative}
+.cover-corner{position:absolute;top:22px;right:56px;color:#58a6ff;font-size:11px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase}
+.series-tag{color:#8b949e;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px}
+.cover h1{font-size:38px;font-weight:800;color:#e6edf3;line-height:1.15;margin-bottom:12px}
+.cover h1 span{color:#58a6ff}
+.cover-sub{color:#8b949e;font-size:14px;margin-bottom:28px}
+.kpi-row{display:flex;gap:18px;flex-wrap:wrap}
+.kpi{background:rgba(88,166,255,0.08);border:1px solid rgba(88,166,255,0.22);border-radius:8px;padding:13px 18px;min-width:152px}
+.kpi strong{display:block;font-size:15px;color:#58a6ff;font-weight:700}
+.kpi span{font-size:11px;color:#8b949e;text-transform:uppercase;letter-spacing:.8px;margin-top:2px;display:block}
+/* ── VERDICT BANNER ── */
+.banner{display:flex;align-items:flex-start;gap:16px;padding:20px 56px;background:rgba(35,134,54,0.11);border-bottom:1.5px solid rgba(35,134,54,0.32)}
+.banner.warn{background:rgba(210,153,34,0.1);border-color:rgba(210,153,34,0.32)}
+.b-icon{font-size:30px;line-height:1;padding-top:2px}
+.b-text strong{display:block;font-size:15px;color:#e6edf3;font-weight:700;margin-bottom:3px}
+.b-text span{color:#8b949e;font-size:13px;line-height:1.55}
+/* ── VERDICT TILES ── */
+.tiles{display:flex;background:#161b22;border-bottom:1px solid #30363d;flex-wrap:wrap}
+.tile{flex:1;min-width:130px;padding:18px 20px;border-right:1px solid #30363d}
+.tile:last-child{border-right:none}
+.t-label{font-size:10px;color:#8b949e;text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px}
+.t-val{font-size:26px;font-weight:800;color:#34d399;line-height:1;margin-bottom:3px}
+.t-sub{font-size:12px;color:#8b949e}
+/* ── SECTIONS ── */
+.sec{padding:28px 56px;border-bottom:1px solid #21262d}
+.sec-label{font-size:10px;color:#58a6ff;text-transform:uppercase;letter-spacing:1.2px;font-weight:700;margin-bottom:7px}
+.sec h2{font-size:17px;font-weight:700;color:#e6edf3;margin-bottom:14px}
+.sec h3{font-size:13px;font-weight:700;color:#c9d1d9;margin:16px 0 9px}
+/* ── TABLES ── */
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:#161b22;color:#8b949e;text-align:left;padding:9px 13px;font-size:10px;text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid #30363d}
+td{padding:9px 13px;border-bottom:1px solid #21262d;color:#c9d1d9;vertical-align:top}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(88,166,255,0.04)}
+/* ── TAGS ── */
+.tp{background:rgba(35,134,54,.18);color:#56d364;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:600;white-space:nowrap}
+.tw{background:rgba(210,153,34,.18);color:#e3b341;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:600;white-space:nowrap}
+.tf{background:rgba(248,81,73,.18);color:#f85149;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:600;white-space:nowrap}
+.tb{background:rgba(88,166,255,.15);color:#58a6ff;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:600;white-space:nowrap}
+.pass{color:#56d364;font-weight:600}
+.warn{color:#e3b341;font-weight:600}
+.fail{color:#f85149;font-weight:600}
+/* ── NOTE BOX ── */
+.nbox{border-left:3px solid #e3b341;background:rgba(210,153,34,.07);border-radius:0 8px 8px 0;padding:12px 16px;margin-top:12px;color:#c9d1d9;font-size:13px;line-height:1.65}
+.nbox.g{border-color:#56d364;background:rgba(35,134,54,.07)}
+.nbox.r{border-color:#f85149;background:rgba(248,81,73,.07)}
+/* ── GRID ── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-top:13px}
+.card{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:15px 17px}
+.card h4{font-size:12px;color:#58a6ff;font-weight:700;margin-bottom:6px}
+.card p{font-size:12px;color:#8b949e;line-height:1.6}
+/* ── HIGHLIGHTED ROW ── */
+.hl td{background:rgba(88,166,255,0.07)!important;font-weight:700}
+/* ── SHOCKFRAME ── */
+.sf-row td:first-child{font-weight:600}
+/* ── DISCLAIMER / FOOTER ── */
+.disclaimer{padding:26px 56px;background:#0d1117;border-top:1px solid #21262d}
+.disclaimer h3{font-size:11px;color:#8b949e;text-transform:uppercase;letter-spacing:1px;margin-bottom:9px}
+.disclaimer p{font-size:11px;color:#6e7681;line-height:1.7;margin-bottom:7px}
+.footer{display:flex;justify-content:space-between;padding:15px 56px;background:#010409;border-top:1px solid #21262d;font-size:11px;color:#6e7681}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════ COVER -->
+<div class="cover">
+  <div class="cover-corner">Pralyon™ Suite · 2 / 5 · RPT-OLA-20260518-0042</div>
+  <div class="series-tag">Service 2 of 5 · Operational Limit Assessment</div>
+  <h1>Operational Limit<br><span>Assessment</span></h1>
+  <p class="cover-sub">Verified buyer intelligence · AnchorEngine™ credit limit · ShockFrame™ stress view · Tenor decision</p>
+  <div class="kpi-row">
+    <div class="kpi"><strong>ABC Industrial Components Pvt Ltd</strong><span>Buyer assessed</span></div>
+    <div class="kpi"><strong>U28990MH2015PTC271234</strong><span>CIN</span></div>
+    <div class="kpi"><strong>27AABCA1234F1Z5</strong><span>GSTIN</span></div>
+    <div class="kpi"><strong>Capital Goods · NIC 2822</strong><span>Sector</span></div>
+    <div class="kpi"><strong>18 May 2026</strong><span>Generated</span></div>
+    <div class="kpi"><strong>Valid 30 days</strong><span>Validity</span></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ VERDICT BANNER -->
+<div class="banner">
+  <div class="b-icon">✅</div>
+  <div class="b-text">
+    <strong>APPROVED — Credit limit of ₹1.35 Cr at 45-day tenor. Seller exposure of ₹35 L = 25.8% utilisation.</strong>
+    <span>ZeroPass™ gates clear. RiskBand™ AA. No governance, legal, or compliance override. Limit stress-tested across four adverse scenarios before tenor is set.</span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ VERDICT TILES -->
+<div class="tiles">
+  <div class="tile"><div class="t-label">RiskBand™</div><div class="t-val">AA</div><div class="t-sub">Low risk</div></div>
+  <div class="tile"><div class="t-label">Blended PD</div><div class="t-val">0.8%</div><div class="t-sub">12-month forward</div></div>
+  <div class="tile"><div class="t-label">Credit Limit</div><div class="t-val">₹1.35 Cr</div><div class="t-sub">AnchorEngine™ evaluated</div></div>
+  <div class="tile"><div class="t-label">Recommended Tenor</div><div class="t-val">45 Days</div><div class="t-sub">Sector-benchmarked</div></div>
+  <div class="tile"><div class="t-label">Seller Exposure</div><div class="t-val">₹35 L</div><div class="t-sub">25.8% of limit</div></div>
+  <div class="tile"><div class="t-label">ZeroPass™</div><div class="t-val" style="font-size:20px;color:#34d399">CLEAR</div><div class="t-sub">No hard stop triggered</div></div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ ENTITY IDENTITY -->
+<div class="sec">
+  <div class="sec-label">Entity Identity · ZeroPass™ Verified</div>
+  <h2>ABC Industrial Components Pvt Ltd</h2>
+  <table>
+    <tr><th>Field</th><th>Value</th><th>Source</th><th>Status</th></tr>
+    <tr><td><strong>Legal name</strong></td><td>ABC Industrial Components Pvt Ltd</td><td>MCA CIN API</td><td><span class="tp">Verified</span></td></tr>
+    <tr><td><strong>CIN</strong></td><td>U28990MH2015PTC271234</td><td>MCA CIN API</td><td><span class="tp">Active</span></td></tr>
+    <tr><td><strong>GSTIN</strong></td><td>27AABCA1234F1Z5</td><td>GSTIN Advanced API</td><td><span class="tp">Active</span></td></tr>
+    <tr><td><strong>PAN</strong></td><td>AABCA1234F</td><td>PAN → CIN cross-verified</td><td><span class="tp">Match</span></td></tr>
+    <tr><td><strong>Incorporation date</strong></td><td>14 March 2015 · 11 years</td><td>MCA CIN API</td><td><span class="tp">Verified</span></td></tr>
+    <tr><td><strong>Registered address</strong></td><td>Plot 42, MIDC Bhosari, Pune – 411 026, Maharashtra</td><td>MCA CIN API</td><td><span class="tp">Confirmed</span></td></tr>
+    <tr><td><strong>Sector / NIC</strong></td><td>NIC 2822 · Industrial Machinery (Capital Goods)</td><td>MCA CIN API</td><td><span class="tp">Confirmed</span></td></tr>
+    <tr><td><strong>Authorised capital</strong></td><td>₹2,50,00,000</td><td>MCA</td><td><span class="tp">On file</span></td></tr>
+    <tr><td><strong>Paid-up capital</strong></td><td>₹1,80,00,000</td><td>MCA</td><td><span class="tp">On file</span></td></tr>
+    <tr><td><strong>Udyam / MSME status</strong></td><td>UDYAM-MH-11-0048231 · Small Enterprise</td><td>Udyam API</td><td><span class="tp">Valid</span></td></tr>
+  </table>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ DIRECTOR PROFILE -->
+<div class="sec">
+  <div class="sec-label">Director Profile · DIN Verified</div>
+  <h2>Promoter &amp; Director Intelligence</h2>
+  <table>
+    <tr><th>Name</th><th>DIN</th><th>Designation</th><th>Sec 164 Disqualified</th><th>Other entities</th><th>Struck-off links</th><th>Status</th></tr>
+    <tr><td><strong>Rajesh Mehta</strong></td><td>02918347</td><td>Managing Director</td><td><span class="tp">No</span></td><td>3 active</td><td>None</td><td><span class="tp">Clear</span></td></tr>
+    <tr><td><strong>Sunita Mehta</strong></td><td>05124893</td><td>Director</td><td><span class="tp">No</span></td><td>1 active</td><td>None</td><td><span class="tp">Clear</span></td></tr>
+    <tr><td><strong>Deepak Joshi</strong></td><td>07341256</td><td>Independent Director</td><td><span class="tp">No</span></td><td>4 active</td><td>1 (FY18 — explained)</td><td><span class="tw">Monitor</span></td></tr>
+  </table>
+  <div class="nbox g">All directors cleared for disqualification under Sec 164 MCA. No PEP match. No adverse media. One struck-off entity link under Independent Director — historical, no active risk.</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ ZEROPASS -->
+<div class="sec">
+  <div class="sec-label">ZeroPass™ · Hard-Stop Gate Evaluation</div>
+  <h2>All 8 ZeroPass™ gates evaluated before any limit is issued</h2>
+  <table>
+    <tr><th>Gate</th><th>Check</th><th>Result</th><th>Disposition</th></tr>
+    <tr><td><strong>G-01</strong></td><td>NCLT / CIRP insolvency proceedings</td><td>None found</td><td><span class="tp">Clear</span></td></tr>
+    <tr><td><strong>G-02</strong></td><td>Director disqualification under Sec 164</td><td>All clear</td><td><span class="tp">Clear</span></td></tr>
+    <tr><td><strong>G-03</strong></td><td>GSTIN active — not suspended / cancelled</td><td>Active</td><td><span class="tp">Clear</span></td></tr>
+    <tr><td><strong>G-04</strong></td><td>MCA company status — Active</td><td>Active</td><td><span class="tp">Clear</span></td></tr>
+    <tr><td><strong>G-05</strong></td><td>RBI / CIBIL defaulter list</td><td>Not listed</td><td><span class="tp">Clear</span></td></tr>
+    <tr><td><strong>G-06</strong></td><td>Section 138 cheque bounce (NI Act)</td><td>Nil active proceedings</td><td><span class="tp">Clear</span></td></tr>
+    <tr><td><strong>G-07</strong></td><td>DRT lender recovery proceedings</td><td>None</td><td><span class="tp">Clear</span></td></tr>
+    <tr><td><strong>G-08</strong></td><td>Negative net worth (MCA XBRL)</td><td>Positive TNW ₹5.92 Cr</td><td><span class="tp">Clear</span></td></tr>
+  </table>
+  <div class="nbox g">All 8 ZeroPass™ gates clear. No hard stop triggered. Limit evaluation proceeds.</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ RISKBAND + SCORE -->
+<div class="sec">
+  <div class="sec-label">RiskBand™ · Tri-Core™ Score Breakdown</div>
+  <h2>Composite score: 79.4 / 100 · RiskBand™ AA · Blended PD 0.8%</h2>
+  <table>
+    <tr><th>Dimension</th><th>Weight</th><th>Score</th><th>Reading</th></tr>
+    <tr><td><strong>Financial Health</strong></td><td>40%</td><td><strong class="pass">81 / 100</strong></td><td>Strong profitability and leverage position. Quick ratio borderline — monitor.</td></tr>
+    <tr><td><strong>Identity &amp; Governance</strong></td><td>25%</td><td><strong class="pass">84 / 100</strong></td><td>CIN, PAN, GSTIN verified. All directors clear. No Sec 164 flags.</td></tr>
+    <tr><td><strong>Legal &amp; Compliance</strong></td><td>20%</td><td><strong class="pass">76 / 100</strong></td><td>ZeroPass™ all clear. One minor eCourts civil reference — no material risk.</td></tr>
+    <tr><td><strong>Conduct &amp; Behaviour</strong></td><td>15%</td><td><strong class="pass">72 / 100</strong></td><td>BehaviourPrint™ signals broadly positive. DPO elevated — watch.</td></tr>
+  </table>
+
+  <h3>RiskBand™ scale</h3>
+  <table>
+    <tr><th>Band</th><th>PD Range</th><th>Reading</th></tr>
+    <tr><td>AAA</td><td>&lt; 0.3%</td><td>Institutional-grade counterparty</td></tr>
+    <tr class="hl"><td><strong>AA ◀ This entity</strong></td><td>0.3–1.0%</td><td>Low risk — generous terms justifiable with sector-appropriate tenor cap</td></tr>
+    <tr><td>A</td><td>1.0–3.0%</td><td>Low-moderate risk — standard trade credit</td></tr>
+    <tr><td>BBB</td><td>3.0–7.0%</td><td>Moderate risk — conservative limit</td></tr>
+    <tr><td>BB</td><td>7.0–15%</td><td>Elevated risk — short tenor, small limit</td></tr>
+    <tr><td>B</td><td>15–25%</td><td>High risk — advance collection advised</td></tr>
+    <tr><td>CCC–D</td><td>&gt; 25%</td><td>Do not extend trade credit</td></tr>
+  </table>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ FINANCIAL RATIOS -->
+<div class="sec">
+  <div class="sec-label">Financial Ratios · MCA XBRL FY25 (Audited)</div>
+  <h2>10 ratios · Benchmarked against NIC 2822 peer median</h2>
+  <table>
+    <tr><th>Ratio</th><th>Value</th><th>Benchmark</th><th>Status</th><th>Seller implication</th></tr>
+    <tr><td><strong>Current Ratio</strong></td><td>1.84×</td><td>1.5–2.5×</td><td><span class="tp">Pass</span></td><td>Short-term assets comfortably cover liabilities. Low liquidity-crunch payment risk over 12 months.</td></tr>
+    <tr><td><strong>Quick Ratio</strong></td><td>0.97×</td><td>≥ 1.0×</td><td><span class="tw">Borderline</span></td><td>Below 1.0× — buyer relies partly on inventory sales to pay short-term dues. Payment risk rises if buyer's sales slow.</td></tr>
+    <tr><td><strong>Debt / Equity</strong></td><td>0.82×</td><td>≤ 2.5×</td><td><span class="tp">Pass</span></td><td>Conservative leverage — not overleveraged. Flag if this crosses 1.5× at next recompute.</td></tr>
+    <tr><td><strong>Debt / Assets</strong></td><td>0.34×</td><td>≤ 0.6×</td><td><span class="tp">Pass</span></td><td>34% of assets funded by debt — significant equity buffer remains.</td></tr>
+    <tr><td><strong>Net Profit Margin</strong></td><td>5.2%</td><td>≥ 4%</td><td><span class="tp">Pass</span></td><td>Buyer retains 5.2 paise per rupee of revenue. Profitable operations reduce payable servicing risk.</td></tr>
+    <tr><td><strong>EBITDA Margin</strong></td><td>12.4%</td><td>≥ 10%</td><td><span class="tp">Pass</span></td><td>Operating cash generation healthy — covers interest, depreciation, and supplier dues.</td></tr>
+    <tr><td><strong>DSO</strong></td><td>74 days</td><td>≤ 120d</td><td><span class="tp">Pass</span></td><td>Buyer collects from its own customers in time to fund your 45-day payment. Not a risk factor at current tenor.</td></tr>
+    <tr><td><strong>DPO</strong></td><td>98 days</td><td>45–90d</td><td><span class="tw">Elevated</span></td><td>Buyer already pays its own suppliers in 98 days — 8+ days above ceiling. Primary reason for 45-day tenor cap.</td></tr>
+    <tr><td><strong>Interest Coverage</strong></td><td>4.8×</td><td>≥ 3.0×</td><td><span class="tp">Pass</span></td><td>No debt-servicing stress. Bank interest not crowding out supplier payments.</td></tr>
+    <tr><td><strong>Cash Conversion Cycle</strong></td><td>88 days</td><td>90–150d</td><td><span class="tp">Pass</span></td><td>CCC = DSO + Inventory days − DPO = 88 days. 45-day terms sit comfortably inside this window.</td></tr>
+  </table>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ BEHAVIOURPRINT -->
+<div class="sec">
+  <div class="sec-label">BehaviourPrint™ · Conduct Intelligence</div>
+  <h2>5 signals read · 3 strengths · 2 watchpoints</h2>
+  <table>
+    <tr><th>Signal</th><th>Type</th><th>Observation</th><th>Seller Implication</th></tr>
+    <tr><td><strong>GST filing discipline</strong></td><td><span class="tp">Strength</span></td><td>GSTR-1 + GSTR-3B filed on time for 11 of last 12 months. One minor delay in Dec 2024 — self-corrected within 8 days.</td><td>Strong compliance discipline; not a payment risk signal.</td></tr>
+    <tr><td><strong>MCA ROC filing regularity</strong></td><td><span class="tp">Strength</span></td><td>Annual returns and financial statements filed within due dates for 4 of 4 years reviewed.</td><td>Governance-compliant entity — low documentation default risk.</td></tr>
+    <tr><td><strong>EPFO workforce continuity</strong></td><td><span class="tp">Strength</span></td><td>PF challan paid continuously for 36 months. Headcount stable at 74 employees — growing.</td><td>Stable operations. No sudden workforce contraction signals.</td></tr>
+    <tr><td><strong>DPO behaviour</strong></td><td><span class="tw">Watchpoint</span></td><td>DPO of 98 days is 8 days above sector ceiling of 90 days. Consistent across FY24 and FY25 data.</td><td>Buyer already operates a stretched payable cycle. Cap tenor at 45 days to avoid entering the late-pay queue.</td></tr>
+    <tr><td><strong>Inventory days trending up</strong></td><td><span class="tw">Watchpoint</span></td><td>Inventory days moved from 88 days (FY24) to 112 days (FY25) — 27% increase YoY.</td><td>Combined with borderline Quick Ratio, rising inventory days signal growing WC pressure. Monitor if extending credit beyond 45 days.</td></tr>
+  </table>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ GST + EPFO COMPLIANCE -->
+<div class="sec">
+  <div class="sec-label">Compliance Intelligence</div>
+  <h2>GST, EPFO &amp; Statutory Compliance Summary</h2>
+  <table>
+    <tr><th>Check</th><th>Result</th><th>Status</th><th>Seller implication</th></tr>
+    <tr><td><strong>GSTIN status</strong></td><td>Active · Registered since Apr 2015</td><td><span class="tp">Active</span></td><td>ITC can be claimed on invoices raised to this buyer.</td></tr>
+    <tr><td><strong>GSTR-3B filing (12 months)</strong></td><td>11 of 12 filed on time · 1 delayed (Dec 24, 8 days)</td><td><span class="tp">Compliant</span></td><td>No material ITC risk.</td></tr>
+    <tr><td><strong>GSTR-1 filing (12 months)</strong></td><td>12 of 12 filed — fully current</td><td><span class="tp">Compliant</span></td><td>Sales declaration complete — no liability concealment risk.</td></tr>
+    <tr><td><strong>GST turnover vs MCA financials</strong></td><td>₹4.79 Cr GST vs ₹4.81 Cr MCA · ₹2L variance</td><td><span class="tp">Reconciled</span></td><td>Variance within acceptable threshold — no under-reporting concern.</td></tr>
+    <tr><td><strong>EPFO / PF continuity</strong></td><td>36 consecutive months of challan payments</td><td><span class="tp">Compliant</span></td><td>Workforce stability confirmed.</td></tr>
+    <tr><td><strong>EPFO headcount</strong></td><td>74 declared vs ~78 estimated from site area</td><td><span class="tw">Minor gap</span></td><td>Small headcount variance — not a material risk flag at this scale.</td></tr>
+    <tr><td><strong>RBI defaulter list</strong></td><td>Not listed</td><td><span class="tp">Clear</span></td><td>No banking default on record.</td></tr>
+    <tr><td><strong>TDS compliance</strong></td><td>No default found</td><td><span class="tp">Clear</span></td><td>Tax discipline aligned with GST and MCA filing behaviour.</td></tr>
+  </table>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ MCA CHARGES -->
+<div class="sec">
+  <div class="sec-label">MCA Charges · Secured Lender Register</div>
+  <h2>Active secured credit lines held by buyer · FY20–FY25</h2>
+  <table>
+    <tr><th>Charge ID</th><th>Lender</th><th>Amount</th><th>Created</th><th>Status</th><th>Risk note</th></tr>
+    <tr><td>CH-001</td><td>HDFC Bank Ltd</td><td>₹80 L</td><td>Jan 2020</td><td><span class="tp">Satisfied</span></td><td>Closed. No residual risk.</td></tr>
+    <tr><td>CH-002</td><td>ICICI Bank Ltd</td><td>₹1.50 Cr</td><td>Aug 2022</td><td><span class="tw">Active</span></td><td>Primary working capital CC facility. Utilisation not disclosed — standard for this scale.</td></tr>
+    <tr><td>CH-003</td><td>Tata Capital Financial Services</td><td>₹55 L</td><td>Mar 2023</td><td><span class="tw">Active</span></td><td>Equipment finance. Cross-default clause standard — monitor if new DRT or covenant breach emerges.</td></tr>
+    <tr><td>CH-004</td><td>SIDBI (MSME Refinance)</td><td>₹35 L</td><td>Nov 2024</td><td><span class="tw">Active</span></td><td>MSME growth capital — low risk signal. Government-backed lender comfort.</td></tr>
+  </table>
+  <div class="nbox">3 active charges totalling ₹2.40 Cr. Interest coverage of 4.8× comfortably services these obligations. No adverse lender signals. CH-003 cross-default clause requires monitoring if financial conditions change.</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ TRACELAYER -->
+<div class="sec">
+  <div class="sec-label">TraceLayer™ · Intelligence Source Register</div>
+  <h2>Every finding is traceable to its verified source signal</h2>
+  <table>
+    <tr><th>Signal</th><th>Source API</th><th>Provider</th><th>Cost/call</th><th>Finding</th></tr>
+    <tr><td>CIN verification + company status</td><td>/corporate/cin</td><td>Surepass</td><td>₹1.5</td><td>Active · incorporated Mar 2015</td></tr>
+    <tr><td>Director DIN + disqualification</td><td>/corporate/din · /corporate/din-kyc</td><td>Surepass</td><td>₹3</td><td>All 3 directors clear of Sec 164</td></tr>
+    <tr><td>GSTIN + filing history</td><td>/corporate/gstin-advanced</td><td>Surepass</td><td>₹4</td><td>Active · 11/12 on time</td></tr>
+    <tr><td>MCA financials + charges</td><td>/mca-api/create-order</td><td>Surepass</td><td>₹125</td><td>FY25 ratios computed · 4 charges found</td></tr>
+    <tr><td>EPFO establishment + headcount</td><td>/epfo/establishment-details</td><td>Surepass</td><td>₹9</td><td>74 employees · 36m continuous</td></tr>
+    <tr><td>eCourts litigation check</td><td>/ecourts/ecourt-search-v2</td><td>Surepass</td><td>₹34</td><td>1 minor civil reference · no material risk</td></tr>
+    <tr><td>RBI / CIBIL defaulter + PAN cross</td><td>/corporate/pan-to-company</td><td>Surepass</td><td>₹2</td><td>Not listed · PAN-CIN match</td></tr>
+    <tr><td>Udyam / MSME status</td><td>Udyam verification</td><td>Surepass</td><td>₹2</td><td>Small enterprise · valid</td></tr>
+  </table>
+  <div class="nbox g">Total per-run API cost for this report: ≈ ₹180. No self-reported data accepted. No manual inputs in financial computation. All signals from authoritative public-regulatory sources.</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ SHOCKFRAME -->
+<div class="sec">
+  <div class="sec-label">ShockFrame™ · Stress-Tested Downside View</div>
+  <h2>Credit limit validated across 4 adverse scenarios before tenor is set</h2>
+  <table>
+    <tr><th>Scenario</th><th>Stress Trigger</th><th>Stress Limit</th><th>Seller ₹35L vs Limit</th><th>Utilisation</th><th>Decision view</th></tr>
+    <tr class="hl"><td><strong>Base Case</strong></td><td>Current verified data · no shock</td><td><strong>₹1,35,52,000</strong></td><td>✓ Within limit</td><td>25.8%</td><td><span class="tp">Approve at 45D ⭐</span></td></tr>
+    <tr><td><strong>Revenue –20%</strong></td><td>Buyer revenue falls ₹4.81Cr → ₹3.85Cr</td><td>₹1,08,40,000</td><td>✓ Within limit</td><td>32.3%</td><td><span class="tp">Still safe · no change</span></td></tr>
+    <tr><td><strong>Revenue –35%</strong></td><td>Severe sector downturn shock</td><td>₹88,00,000</td><td>✓ Within limit</td><td>39.8%</td><td><span class="tw">Review tenor → 30D</span></td></tr>
+    <tr><td><strong>Liquidity shock</strong></td><td>Current ratio falls to 1.35× · Quick ratio 0.78×</td><td>₹96,00,000</td><td>✓ Within limit</td><td>36.5%</td><td><span class="tw">Tighten monitoring</span></td></tr>
+    <tr><td><strong>DRT filing</strong></td><td>New lender recovery case filed against buyer</td><td>₹67,00,000</td><td>✓ Within limit</td><td>52.2%</td><td><span class="tf">Immediate reassessment</span></td></tr>
+    <tr><td><strong>GST filing gap</strong></td><td>Two missed GSTR-3B months</td><td>₹82,00,000</td><td>✓ Within limit</td><td>42.7%</td><td><span class="tw">Tighten tenor to 30D</span></td></tr>
+  </table>
+  <div class="g2">
+    <div class="card"><h4>ShockFrame™ reading</h4><p>Seller exposure of ₹35 L remains inside the evaluated limit across all six scenarios — including severe revenue shock and DRT filing. The risk is to tenor comfort, not to raw headroom. This confirms the ₹35 L exposure is appropriately sized for this counterparty.</p></div>
+    <div class="card"><h4>Trigger escalation</h4><p>If DRT is filed or two GST months are missed: immediate reassessment required. Pralyon ShockFrame™ flags these automatically when Portfolio Monitor (Service 3) is active on this counterparty.</p></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ TENOR DECISIONING -->
+<div class="sec">
+  <div class="sec-label">Tenor Decisioning · Sector-Benchmarked</div>
+  <h2>Credit limit by tenor — select the appropriate row for your commercial terms</h2>
+  <table>
+    <tr><th>Tenor</th><th>Evaluated Limit</th><th>Seller ₹35L vs Limit</th><th>Utilisation</th><th>Recommendation</th></tr>
+    <tr><td><strong>15 Days</strong></td><td>₹1,54,00,000</td><td>✓ Within limit</td><td>22.7%</td><td>Available</td></tr>
+    <tr><td><strong>30 Days</strong></td><td>₹1,46,30,000</td><td>✓ Within limit</td><td>23.9%</td><td>Available</td></tr>
+    <tr class="hl"><td><strong>45 Days ⭐</strong></td><td><strong>₹1,35,52,000</strong></td><td>✓ Within limit</td><td>25.8%</td><td><strong>Recommended — Sector norm · DPO-adjusted</strong></td></tr>
+    <tr><td><strong>60 Days</strong></td><td>₹1,23,20,000</td><td>✓ Within limit</td><td>28.4%</td><td><span class="tw">Caution — DPO already 98D</span></td></tr>
+    <tr><td><strong>75 Days</strong></td><td>₹1,10,88,000</td><td>✓ Within limit</td><td>31.6%</td><td><span class="tw">Not advised</span></td></tr>
+    <tr><td><strong>90 Days</strong></td><td>₹1,00,10,000</td><td>✓ Within limit</td><td>35.0%</td><td><span class="tf">Do not extend</span></td></tr>
+    <tr><td><strong>120 Days</strong></td><td>₹84,70,000</td><td>✓ Within limit</td><td>41.3%</td><td><span class="tf">Do not extend</span></td></tr>
+    <tr><td><strong>150 Days</strong></td><td>₹69,30,000</td><td>✓ Within limit</td><td>50.5%</td><td><span class="tf">Do not extend</span></td></tr>
+  </table>
+  <div class="nbox g"><strong>Recommendation:</strong> Approve at 45 days. ₹35L exposure = 25.8% utilisation. Buyer's DPO of 98 days is the binding behavioural constraint — extending beyond 45 days places the seller inside the buyer's own stretched-payable queue.</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ MONITORING CONDITIONS -->
+<div class="sec">
+  <div class="sec-label">Monitoring Conditions &amp; Escalation Triggers</div>
+  <h2>Conditions that require limit revision or escalation</h2>
+  <table>
+    <tr><th>Trigger</th><th>Event</th><th>Automatic response</th><th>Required action</th></tr>
+    <tr><td><strong>RiskBand™ drift</strong></td><td>Band falls from AA to A or below</td><td>Alert · Pralyon Service 3</td><td>Reassess limit within 5 days</td></tr>
+    <tr><td><strong>GST filing gap</strong></td><td>Two or more consecutive GSTR-3B misses</td><td>Alert · ShockFrame™ rerun</td><td>Tighten tenor to 30 days</td></tr>
+    <tr><td><strong>New DRT case</strong></td><td>Lender recovery filing against buyer or director</td><td>Critical alert · halt new orders</td><td>Immediate review · pause shipments</td></tr>
+    <tr><td><strong>New MCA charge</strong></td><td>Charge above ₹50L created after this report</td><td>Alert · recompute</td><td>Rerun limit within 10 days</td></tr>
+    <tr><td><strong>Director change</strong></td><td>MD or promoter exits or new director added</td><td>Alert · governance recheck</td><td>Rerun identity and compliance check</td></tr>
+    <tr><td><strong>Sec 164 disqualification</strong></td><td>Any director disqualified after this report</td><td>Critical alert</td><td>Halt all credit · escalate immediately</td></tr>
+    <tr><td><strong>NCLT / CIRP</strong></td><td>Insolvency admitted against buyer</td><td>ZeroPass™ G-01 breach · auto limit = 0</td><td>Recover exposure · legal counsel</td></tr>
+    <tr><td><strong>Report expiry</strong></td><td>30 days from generation date (17 June 2026)</td><td>Expiry alert</td><td>Rerun report before next shipment</td></tr>
+  </table>
+  <div class="nbox"><strong>Automatic monitoring available:</strong> Add this counterparty to Service 3 — Portfolio &amp; Counterparty Monitor — to receive real-time alerts on all above triggers without manual rerunning.</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ DISCLAIMER -->
+<div class="disclaimer">
+  <h3>Legal Disclaimer &amp; Data Notices</h3>
+  <p><strong>1. Nature of output:</strong> This report is an algorithmic intelligence output for trade credit decisioning. It is not banking, legal, or investment advice. Pralyon does not act as a credit bureau, lender, or regulated financial institution.</p>
+  <p><strong>2. Data sources:</strong> All signals sourced from MCA, GSTN, EPFO, eCourts, and Udyam via Surepass API infrastructure. Financial ratios computed from MCA XBRL filings. No self-reported data accepted.</p>
+  <p><strong>3. Validity:</strong> This report is valid for 30 days from generation date or until a material trigger event — litigation filing, GST lapse, new charge creation, RiskBand™ drift, or director change — whichever comes first.</p>
+  <p><strong>4. Confidentiality:</strong> This output is generated for the requesting organisation's internal use only. Redistribution or sharing with the assessed counterparty is prohibited.</p>
+</div>
+
+<div class="footer">
+  <span>Pralyon™ AI · RyskNode Intelligence Platform</span>
+  <span>Service 2 · Operational Limit Assessment · RPT-OLA-20260518-0042</span>
+  <span>18 May 2026 · Valid 30 days · Confidential</span>
+</div>
+
+</body>
+</html>

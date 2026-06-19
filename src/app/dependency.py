@@ -109,6 +109,22 @@ def configure_dependency(binder: inject.Binder):
 
     binder.bind_to_constructor(DataGovSyncService, get_data_gov_sync_service)
 
+    # Bind PPREService
+    from service.ppre_service import PPREService
+    def get_ppre_service():
+        return PPREService(uow=inject.instance(AbstractUnitOfWork))
+
+    binder.bind_to_constructor(PPREService, get_ppre_service)
+
+    # Bind ReportService
+    from service.report_service import ReportService
+    def get_report_service():
+        return ReportService()
+
+    binder.bind_to_constructor(ReportService, get_report_service)
+
+
+
 
 def create_isolated_uow(settings: Settings):
     """

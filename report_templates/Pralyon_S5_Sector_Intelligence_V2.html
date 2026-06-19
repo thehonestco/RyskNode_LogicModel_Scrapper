@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Pralyon · Sector Intelligence Report · Fabricated Metals / Components</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0d1117;color:#e6edf3;font-family:'Segoe UI',Arial,sans-serif;font-size:14px;line-height:1.6}
+.cover{background:linear-gradient(135deg,#0d1117 0%,#161b22 60%,#1c2333 100%);border-bottom:3px solid #238636;padding:52px 56px 44px;position:relative}
+.cover-corner{position:absolute;top:22px;right:56px;color:#58a6ff;font-size:11px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase}
+.series-tag{color:#8b949e;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px}
+.cover h1{font-size:38px;font-weight:800;color:#e6edf3;line-height:1.15;margin-bottom:12px}
+.cover h1 span{color:#58a6ff}
+.cover-sub{color:#8b949e;font-size:14px;margin-bottom:28px}
+.kpi-row{display:flex;gap:18px;flex-wrap:wrap}
+.kpi{background:rgba(88,166,255,0.08);border:1px solid rgba(88,166,255,0.22);border-radius:8px;padding:13px 18px;min-width:152px}
+.kpi strong{display:block;font-size:15px;color:#58a6ff;font-weight:700}
+.kpi span{font-size:11px;color:#8b949e;text-transform:uppercase;letter-spacing:.8px;margin-top:2px;display:block}
+.banner{display:flex;align-items:flex-start;gap:16px;padding:20px 56px;border-bottom:1.5px solid rgba(248,81,73,0.4);background:rgba(248,81,73,0.1)}
+.banner.amber{background:rgba(210,153,34,0.1);border-color:rgba(210,153,34,0.4)}
+.banner.green{background:rgba(35,134,54,0.1);border-color:rgba(35,134,54,0.4)}
+.b-icon{font-size:30px;line-height:1;padding-top:2px}
+.b-text strong{display:block;font-size:15px;color:#e6edf3;font-weight:700;margin-bottom:3px}
+.b-text span{color:#8b949e;font-size:13px;line-height:1.55}
+.tiles{display:flex;background:#161b22;border-bottom:1px solid #30363d;flex-wrap:wrap}
+.tile{flex:1;min-width:130px;padding:18px 20px;border-right:1px solid #30363d}
+.tile:last-child{border-right:none}
+.t-label{font-size:10px;color:#8b949e;text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px}
+.t-val{font-size:26px;font-weight:800;color:#34d399;line-height:1;margin-bottom:3px}
+.t-sub{font-size:12px;color:#8b949e}
+.t-red{color:#f85149}
+.t-amber{color:#e3b341}
+.sec{padding:28px 56px;border-bottom:1px solid #21262d}
+.sec-label{font-size:10px;color:#58a6ff;text-transform:uppercase;letter-spacing:1.2px;font-weight:700;margin-bottom:7px}
+.sec h2{font-size:17px;font-weight:700;color:#e6edf3;margin-bottom:14px}
+.sec h3{font-size:13px;font-weight:700;color:#c9d1d9;margin:16px 0 9px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:#161b22;color:#8b949e;text-align:left;padding:9px 13px;font-size:10px;text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid #30363d}
+td{padding:9px 13px;border-bottom:1px solid #21262d;color:#c9d1d9;vertical-align:top}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(88,166,255,0.04)}
+.tp{background:rgba(35,134,54,.18);color:#56d364;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:600;white-space:nowrap}
+.tw{background:rgba(210,153,34,.18);color:#e3b341;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:600;white-space:nowrap}
+.tf{background:rgba(248,81,73,.18);color:#f85149;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:600;white-space:nowrap}
+.tb{background:rgba(88,166,255,.15);color:#58a6ff;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:600;white-space:nowrap}
+.nbox{border-left:3px solid #e3b341;background:rgba(210,153,34,.07);border-radius:0 8px 8px 0;padding:12px 16px;margin-top:12px;color:#c9d1d9;font-size:13px;line-height:1.65}
+.nbox.g{border-color:#56d364;background:rgba(35,134,54,.07)}
+.nbox.r{border-color:#f85149;background:rgba(248,81,73,.07)}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-top:13px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:13px;margin-top:13px}
+.card{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:15px 17px}
+.card h4{font-size:12px;color:#58a6ff;font-weight:700;margin-bottom:6px}
+.card p{font-size:12px;color:#8b949e;line-height:1.6}
+.hl td{background:rgba(88,166,255,0.07)!important;font-weight:700}
+.hl-r td{background:rgba(248,81,73,0.07)!important;font-weight:700}
+.disclaimer{padding:26px 56px;background:#0d1117;border-top:1px solid #21262d}
+.disclaimer h3{font-size:11px;color:#8b949e;text-transform:uppercase;letter-spacing:1px;margin-bottom:9px}
+.disclaimer p{font-size:11px;color:#6e7681;line-height:1.7;margin-bottom:7px}
+.footer{display:flex;justify-content:space-between;padding:15px 56px;background:#010409;border-top:1px solid #21262d;font-size:11px;color:#6e7681}
+</style>
+</head>
+<body>
+<div class="cover">
+  <div class="cover-corner">Pralyon™ Suite · 5 / 5 · RPT-SIR-20260518-0008</div>
+  <div class="series-tag">Service 5 of 5 · Sector Intelligence Report</div>
+  <h1>Sector Intelligence<br><span>Report</span></h1>
+  <p class="cover-sub">Peer benchmarking, sector risk context, macro overlay and credit-structuring context for counterparty decisions</p>
+  <div class="kpi-row">
+    <div class="kpi"><strong>Fabricated Metals / Components</strong><span>Sector</span></div>
+    <div class="kpi"><strong>NIC 2599</strong><span>Peer cohort</span></div>
+    <div class="kpi"><strong>42 Companies</strong><span>Peer universe</span></div>
+    <div class="kpi"><strong>₹5–25 Cr</strong><span>Revenue band</span></div>
+    <div class="kpi"><strong>MH + GJ</strong><span>Geography</span></div>
+    <div class="kpi"><strong>FY24</strong><span>Latest audited cut</span></div>
+  </div>
+</div>
+
+<div class="banner amber">
+  <div class="b-icon">⚠</div>
+  <div class="b-text">
+    <strong>Sector remains under margin and working-capital pressure. The subject entity sits below peer median on 4 of 7 core operating parameters and ranks 31st out of 42 companies.</strong>
+    <span>Growth is healthy, but liquidity, leverage, and receivable efficiency remain weaker than peer median. Credit decisions should use sector context, not standalone financials only.</span>
+  </div>
+</div>
+
+<div class="tiles">
+  <div class="tile"><div class="t-label">Peer Rank</div><div class="t-val t-amber">31 / 42</div><div class="t-sub">Below average</div></div>
+  <div class="tile"><div class="t-label">Composite Score</div><div class="t-val t-amber">48</div><div class="t-sub">Peer-relative score</div></div>
+  <div class="tile"><div class="t-label">Sector NPA</div><div class="t-val t-amber">6.8%</div><div class="t-sub">Elevated</div></div>
+  <div class="tile"><div class="t-label">Avg Delay</div><div class="t-val t-amber">18 Days</div><div class="t-sub">Beyond terms</div></div>
+  <div class="tile"><div class="t-label">CC Utilisation</div><div class="t-val t-amber">74%</div><div class="t-sub">High</div></div>
+  <div class="tile"><div class="t-label">Outlook</div><div class="t-val t-amber">Cautious</div><div class="t-sub">RBI MSME lens</div></div>
+</div>
+
+<div class="sec">
+  <div class="sec-label">Peer Universe</div>
+  <h2>Benchmark cohort used for sector comparison</h2>
+  <table>
+    <tr><th>Universe parameter</th><th>Value</th><th>Comment</th></tr>
+    <tr><td><strong>Sector code</strong></td><td>NIC 2599</td><td>Fabricated metal products / components cluster.</td></tr>
+    <tr><td><strong>Company count</strong></td><td>42</td><td>Audited peer set.</td></tr>
+    <tr><td><strong>Revenue filter</strong></td><td>₹5–25 Cr</td><td>Comparable MSME / lower mid-market range.</td></tr>
+    <tr><td><strong>Geography</strong></td><td>Maharashtra + Gujarat</td><td>Relevant industrial belts.</td></tr>
+    <tr><td><strong>Period</strong></td><td>FY24 audited</td><td>With FY22–FY24 trend context.</td></tr>
+    <tr><td><strong>Data source</strong></td><td>MCA Doc Pull JSON + GST context</td><td>Internal peer benchmarking only.</td></tr>
+  </table>
+</div>
+
+<div class="sec">
+  <div class="sec-label">Subject vs Peers</div>
+  <h2>Core benchmarking table</h2>
+  <table>
+    <tr><th>Parameter</th><th>Subject value</th><th>Peer median</th><th>Peer P75</th><th>Position</th><th>Implication</th></tr>
+    <tr><td><strong>Revenue (FY24)</strong></td><td>₹9.1 Cr</td><td>₹8.4 Cr</td><td>₹14.2 Cr</td><td>P52</td><td>Size-adequate for sector — room to grow.</td></tr>
+    <tr><td><strong>Gross margin %</strong></td><td>34.2%</td><td>31.2%</td><td>38.9%</td><td>P58</td><td>Above median — suggests product mix or pricing power.</td></tr>
+    <tr><td><strong>EBITDA margin %</strong></td><td>12.4%</td><td>11.6%</td><td>16.4%</td><td>P54</td><td>Slight edge on cost efficiency.</td></tr>
+    <tr><td><strong>Net profit margin %</strong></td><td>4.8%</td><td>5.4%</td><td>8.1%</td><td>P42</td><td>Below median — likely higher interest or depreciation burden.</td></tr>
+    <tr><td><strong>Current ratio</strong></td><td>1.18×</td><td>1.54×</td><td>2.12×</td><td>P25</td><td>Bottom quartile liquidity — material concern.</td></tr>
+    <tr><td><strong>Debt / equity</strong></td><td>1.42×</td><td>1.04×</td><td>1.68×</td><td>P60</td><td>Moderately leveraged relative to peers.</td></tr>
+    <tr><td><strong>Debtor days</strong></td><td>68 days</td><td>58 days</td><td>76 days</td><td>P65</td><td>Collections slower than median — working-capital pressure.</td></tr>
+    <tr><td><strong>Revenue growth YoY</strong></td><td>16.7%</td><td>12.4%</td><td>22.1%</td><td>P58</td><td>Healthy growth above sector median.</td></tr>
+  </table>
+</div>
+
+<div class="sec">
+  <div class="sec-label">Peer Position</div>
+  <h2>Why the subject ranks 31st out of 42</h2>
+  <div class="g3">
+    <div class="card"><h4>What is better than peers</h4><p>Gross margin, EBITDA margin, and revenue growth all sit above peer median. The business is commercially viable and not structurally uncompetitive.</p></div>
+    <div class="card"><h4>What drags the rank down</h4><p>Current ratio at P25, net margin below median, slower collections, and leverage above peer median together pull the subject into below-average territory.</p></div>
+    <div class="card"><h4>Credit reading</h4><p>This is not a distressed business, but it is weaker than the average peer on liquidity quality. Sector context therefore justifies tighter working-capital assumptions and closer monitoring.</p></div>
+  </div>
+</div>
+
+<div class="sec">
+  <div class="sec-label">Sector Trends</div>
+  <h2>FY22–FY24 peer trendline</h2>
+  <table>
+    <tr><th>Metric</th><th>FY22</th><th>FY23</th><th>FY24</th><th>Trend</th></tr>
+    <tr><td><strong>Median revenue growth</strong></td><td>8.2%</td><td>14.6%</td><td>12.4%</td><td>Slowing</td></tr>
+    <tr><td><strong>Median EBITDA margin</strong></td><td>13.4%</td><td>11.2%</td><td>11.6%</td><td>Compressed</td></tr>
+    <tr><td><strong>Median current ratio</strong></td><td>1.72×</td><td>1.61×</td><td>1.54×</td><td>Declining</td></tr>
+    <tr><td><strong>Median D/E ratio</strong></td><td>0.88×</td><td>0.96×</td><td>1.04×</td><td>Rising leverage</td></tr>
+    <tr><td><strong>Median debtor days</strong></td><td>52 days</td><td>55 days</td><td>58 days</td><td>Elongating</td></tr>
+    <tr><td><strong>% companies with loss</strong></td><td>9.4%</td><td>12.1%</td><td>14.3%</td><td>Rising</td></tr>
+    <tr><td><strong>% with net worth erosion</strong></td><td>6.2%</td><td>9.8%</td><td>11.4%</td><td>Rising</td></tr>
+    <tr><td><strong>Avg active charges / entity</strong></td><td>1.8</td><td>2.1</td><td>2.6</td><td>More borrowing</td></tr>
+  </table>
+</div>
+
+<div class="sec">
+  <div class="sec-label">Credit Conditions</div>
+  <h2>Sector-level credit stress indicators</h2>
+  <table>
+    <tr><th>Indicator</th><th>Value</th><th>Status</th><th>Interpretation</th></tr>
+    <tr><td><strong>Sector NPA rate (MSME lending)</strong></td><td>6.8%</td><td><span class="tw">Elevated</span></td><td>Formal-lender stress remains above comfortable levels.</td></tr>
+    <tr><td><strong>SMA-2 rate</strong></td><td>4.2%</td><td><span class="tw">Watch</span></td><td>Early delinquency remains meaningful.</td></tr>
+    <tr><td><strong>Average CC utilisation</strong></td><td>74% of limits</td><td><span class="tw">High</span></td><td>Working-capital lines are already well drawn.</td></tr>
+    <tr><td><strong>Restructured accounts</strong></td><td>8.1% of sector</td><td><span class="tw">Residual stress</span></td><td>Post-COVID balance sheet stress not fully washed out.</td></tr>
+    <tr><td><strong>New NPA formation rate</strong></td><td>2.1% YoY</td><td><span class="tw">Stable but elevated</span></td><td>No sharp deterioration, but not normalised.</td></tr>
+    <tr><td><strong>Trade credit default rate</strong></td><td>3.4%</td><td><span class="tw">Above average</span></td><td>Supplier-credit risk remains structurally elevated.</td></tr>
+    <tr><td><strong>Average payment delay</strong></td><td>18 days beyond terms</td><td><span class="tw">Structural</span></td><td>Sector routinely stretches supplier terms.</td></tr>
+  </table>
+</div>
+
+<div class="sec">
+  <div class="sec-label">Macro Overlay</div>
+  <h2>Demand, regulatory and pricing forces shaping the sector</h2>
+  <table>
+    <tr><th>Factor</th><th>Status</th><th>Impact</th></tr>
+    <tr><td><strong>PLI scheme</strong></td><td>Active</td><td>Positive demand pull from PLI-linked OEMs.</td></tr>
+    <tr><td><strong>Government capex</strong></td><td>High</td><td>Strong order pipeline for fabricated metal suppliers.</td></tr>
+    <tr><td><strong>Export demand</strong></td><td>Softening</td><td>Global slowdown affects export-oriented units.</td></tr>
+    <tr><td><strong>Interest rate environment</strong></td><td>Stable-high</td><td>Working-capital borrowing costs remain elevated.</td></tr>
+    <tr><td><strong>GST input credit rules</strong></td><td>Tightening</td><td>ITC mismatch rules increase compliance burden.</td></tr>
+    <tr><td><strong>China dumping risk</strong></td><td>Active risk</td><td>Margin pressure on lower-value fabricated items.</td></tr>
+    <tr><td><strong>INR / USD stability</strong></td><td>Stable</td><td>Neutral for domestic-focused suppliers.</td></tr>
+  </table>
+</div>
+
+<div class="sec">
+  <div class="sec-label">Input Cost Pressure</div>
+  <h2>Cost-side pressure points in the operating model</h2>
+  <table>
+    <tr><th>Input</th><th>Trend</th><th>Risk</th></tr>
+    <tr><td><strong>HR steel coil</strong></td><td>Volatile +12% YoY</td><td>Primary raw material — direct margin squeeze risk.</td></tr>
+    <tr><td><strong>Aluminium / alloys</strong></td><td>+8% YoY</td><td>Moderate exposure for mixed-material units.</td></tr>
+    <tr><td><strong>Energy / power costs</strong></td><td>+18% YoY</td><td>Major P&L pressure for energy-intensive fabrication.</td></tr>
+    <tr><td><strong>Logistics / freight</strong></td><td>Stable</td><td>Low current risk.</td></tr>
+    <tr><td><strong>Tooling / consumables</strong></td><td>+6% YoY</td><td>Manageable — not a primary cost driver.</td></tr>
+    <tr><td><strong>Skilled labour availability</strong></td><td>Tight</td><td>8–12% wage inflation risk.</td></tr>
+    <tr><td><strong>Single-supplier dependency</strong></td><td>Common in MSME tier</td><td>Supply disruption remains sector-wide.</td></tr>
+  </table>
+</div>
+
+<div class="sec">
+  <div class="sec-label">Commercial Structure</div>
+  <h2>Demand and customer-base structure</h2>
+  <table>
+    <tr><th>Factor</th><th>Sector observation</th><th>Subject-specific</th></tr>
+    <tr><td><strong>Top 2 buyer concentration</strong></td><td>Median 58% of revenue</td><td>72% — above median</td></tr>
+    <tr><td><strong>Automotive OEM exposure</strong></td><td>34% of sector revenue</td><td>Not confirmed — assess</td></tr>
+    <tr><td><strong>Government / defence exposure</strong></td><td>18% of sector</td><td>Not confirmed — assess</td></tr>
+    <tr><td><strong>Export revenue share</strong></td><td>Median 8%</td><td>Not disclosed</td></tr>
+    <tr><td><strong>Buyer payment terms</strong></td><td>Average 52 days</td><td>Assess against subject collection behaviour</td></tr>
+    <tr><td><strong>Seasonality</strong></td><td>Q3 peak (Oct–Dec)</td><td>Relevant for WC planning</td></tr>
+    <tr><td><strong>New buyer acquisition</strong></td><td>Slowing in MSME tier</td><td>Subject added 1 new buyer in FY24</td></tr>
+  </table>
+</div>
+
+<div class="sec">
+  <div class="sec-label">Compliance Benchmarking</div>
+  <h2>How the subject compares on sector compliance maturity</h2>
+  <table>
+    <tr><th>Regulation / requirement</th><th>Sector compliance rate</th><th>Subject status</th><th>Risk note</th></tr>
+    <tr><td><strong>GST filing regularity</strong></td><td>74% fully compliant</td><td>Gaps — below sector average</td><td>Subject lags peer compliance quality.</td></tr>
+    <tr><td><strong>EPFO / PF filing</strong></td><td>68% fully compliant</td><td>Headcount mismatch</td><td>Under-reporting common in sector; subject flagged.</td></tr>
+    <tr><td><strong>Factory / pollution consent</strong></td><td>58% with valid consents</td><td>Not submitted</td><td>Subject below even a weak sector average.</td></tr>
+    <tr><td><strong>MCA ROC filing regularity</strong></td><td>81% compliant</td><td>Compliant</td><td>One area where subject is above average.</td></tr>
+    <tr><td><strong>BIS / quality certification</strong></td><td>42% hold active certs</td><td>Not provided</td><td>Low sector base, but still required for defensible DD.</td></tr>
+    <tr><td><strong>Labour law compliance</strong></td><td>51% compliant</td><td>Not verified</td><td>Common MSME gap; subject unresolved.</td></tr>
+    <tr><td><strong>Income tax / ITR filing</strong></td><td>87% compliant</td><td>Pending verification</td><td>Gap notable if unresolved.</td></tr>
+  </table>
+</div>
+
+<div class="sec">
+  <div class="sec-label">Peer Ranking Table</div>
+  <h2>Selected positions from the anonymised peer league table</h2>
+  <table>
+    <tr><th>Rank</th><th>Entity</th><th>Revenue FY24</th><th>EBITDA %</th><th>Current ratio</th><th>D/E</th><th>Composite score</th><th>Status</th></tr>
+    <tr><td>1</td><td>Peer A (Pune, auto-comp.)</td><td>₹22.4 Cr</td><td>19.2%</td><td>2.84×</td><td>0.41×</td><td>88</td><td><span class="tp">Strong</span></td></tr>
+    <tr><td>2</td><td>Peer B (Nashik, defence)</td><td>₹18.1 Cr</td><td>17.8%</td><td>2.61×</td><td>0.58×</td><td>84</td><td><span class="tp">Strong</span></td></tr>
+    <tr><td>3</td><td>Peer C (Ahmedabad, export)</td><td>₹15.6 Cr</td><td>16.4%</td><td>2.44×</td><td>0.72×</td><td>81</td><td><span class="tp">Strong</span></td></tr>
+    <tr><td>10</td><td>Peer J (Mumbai, domestic)</td><td>₹9.8 Cr</td><td>12.1%</td><td>1.74×</td><td>1.12×</td><td>68</td><td><span class="tp">Good</span></td></tr>
+    <tr><td>21</td><td>Peer U (Thane, mixed)</td><td>₹8.6 Cr</td><td>11.6%</td><td>1.54×</td><td>1.04×</td><td>58</td><td><span class="tw">Average</span></td></tr>
+    <tr class="hl-r"><td><strong>31</strong></td><td><strong>▶ SUBJECT — ABC Industrial</strong></td><td><strong>₹9.1 Cr</strong></td><td><strong>12.4%</strong></td><td><strong>1.18×</strong></td><td><strong>1.42×</strong></td><td><strong>48</strong></td><td><span class="tw">Below avg.</span></td></tr>
+    <tr><td>35</td><td>Peer AI (Bhiwandi, domestic)</td><td>₹7.2 Cr</td><td>9.4%</td><td>1.12×</td><td>1.58×</td><td>41</td><td><span class="tw">Weak</span></td></tr>
+    <tr><td>39</td><td>Peer AM (Navi Mumbai)</td><td>₹6.1 Cr</td><td>7.2%</td><td>0.98×</td><td>1.84×</td><td>34</td><td><span class="tf">Distressed</span></td></tr>
+    <tr><td>42</td><td>Peer AP (Thane, stressed)</td><td>₹5.4 Cr</td><td>5.1%</td><td>0.84×</td><td>2.24×</td><td>24</td><td><span class="tf">Critical</span></td></tr>
+  </table>
+</div>
+
+<div class="sec">
+  <div class="sec-label">Structuring View</div>
+  <h2>What this means for counterparty credit structuring</h2>
+  <div class="g3">
+    <div class="card"><h4>Tenor stance</h4><p>Because average sector payment delay already runs 18 days beyond terms, long-credit structures should not be justified off sector growth alone. Liquidity quality matters more than topline growth.</p></div>
+    <div class="card"><h4>Exposure stance</h4><p>Below-median liquidity and above-median leverage justify conservative exposure sizing versus stronger peers, even when EBITDA margin appears acceptable.</p></div>
+    <div class="card"><h4>Monitoring stance</h4><p>Entities ranking in the lower third of the peer table should be monitored for GST continuity, active charge growth, and collection slippage at a higher frequency.</p></div>
+  </div>
+</div>
+
+<div class="disclaimer">
+  <h3>Legal Disclaimer & Data Notes</h3>
+  <p><strong>1.</strong> This report provides sector and peer context for internal credit and commercial decisioning. It is not an industry research publication for external distribution.</p>
+  <p><strong>2.</strong> Peer names are anonymised and intended only for internal relative benchmarking. Use this output alongside entity-level intelligence, not as a substitute.</p>
+  <p><strong>3.</strong> Sector observations reflect the selected peer cohort and current macro overlay; conclusions should be refreshed when new audited filings become available.</p>
+</div>
+
+<div class="footer">
+  <span>Pralyon™ AI · RyskNode Intelligence Platform</span>
+  <span>Service 5 · Sector Intelligence Report · RPT-SIR-20260518-0008</span>
+  <span>18 May 2026 · Internal Use Only</span>
+</div>
+</body>
+</html>

@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Pralyon · Buyer Risk Assessment · Honest Digital Pvt Ltd</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #07101f; --surface: #0d1b2e; --card: #0f2035; --border: rgba(255,255,255,.07);
+  --text: #d8eaf8; --muted: #6e94b8; --accent: #41c8ff; --accent2: #3a7fff;
+  --pass: #27c97a; --warn: #f5a623; --fail: #e84b6a; --neutral: #41c8ff;
+}
+body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text);
+  -webkit-font-smoothing: antialiased; line-height: 1.65; font-size: 14px; }
+
+/* ── COVER ── */
+.cover {
+  min-height: 100vh; display: flex; flex-direction: column; justify-content: flex-end;
+  padding: 64px 60px 72px; position: relative; overflow: hidden;
+  background: radial-gradient(ellipse 85% 60% at 108% -8%, #41c8ff1a, transparent 52%),
+              radial-gradient(ellipse 65% 50% at -6% 108%, #3a7fff14, transparent 52%),
+              linear-gradient(170deg, #0d1b2e 0%, #07101f 100%);
+  border-bottom: 1px solid var(--border);
+}
+.cover-corner { position: absolute; top: 40px; right: 52px; font-size: 10px;
+  letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,.14); }
+.suite-tag { font-size: 10px; letter-spacing: 2.8px; text-transform: uppercase; color: var(--accent);
+  margin-bottom: 28px; display: flex; align-items: center; gap: 10px; }
+.suite-tag::before { content:''; display: block; width: 30px; height: 1px; background: var(--accent); opacity: .65; }
+.cover h1 { font-size: clamp(40px, 5.8vw, 68px); font-weight: 900; line-height: .96;
+  letter-spacing: -3px; margin-bottom: 16px;
+  background: linear-gradient(108deg, #fff 10%, var(--accent) 80%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; max-width: 780px; }
+.cover .sub { font-size: clamp(20px, 2.4vw, 28px); font-weight: 700; color: #fff;
+  margin-bottom: 10px; letter-spacing: -.5px; }
+.cover .tagline { font-size: 16px; color: var(--muted); font-weight: 300; margin-bottom: 44px; max-width: 560px; }
+.meta-bar { display: flex; flex-wrap: wrap; gap: 28px; margin-bottom: 36px; }
+.meta-item .label { font-size: 10px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--muted); margin-bottom: 3px; }
+.meta-item .val { font-size: 13px; font-weight: 600; color: #fff; }
+.pills { display: flex; flex-wrap: wrap; gap: 10px; }
+.pill { padding: 10px 18px; border-radius: 10px; background: rgba(255,255,255,.04);
+  border: 1px solid var(--border); }
+.pill strong { display: block; font-size: 13px; color: var(--accent); font-weight: 700; margin-bottom: 2px; }
+.pill span { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+
+/* ── VERDICT BANNER ── */
+.verdict-banner {
+  display: flex; align-items: center; gap: 28px; padding: 32px 60px;
+  background: rgba(245,166,35,.06); border-bottom: 1px solid rgba(245,166,35,.2);
+}
+.vb-badge { padding: 12px 26px; border-radius: 10px; font-size: 20px; font-weight: 800;
+  letter-spacing: -.3px; white-space: nowrap; border: 1.5px solid var(--warn); color: var(--warn);
+  background: rgba(245,166,35,.1); }
+.vb-text h2 { font-size: 18px; font-weight: 700; color: #fff; margin-bottom: 6px; }
+.vb-text p { font-size: 13.5px; color: var(--muted); max-width: 760px; line-height: 1.7; }
+
+/* ── TILES ── */
+.tiles { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; padding: 24px 60px;
+  border-bottom: 1px solid var(--border); }
+.tile { padding: 20px 22px; border-radius: 14px; background: var(--card);
+  border: 1px solid var(--border); position: relative; overflow: hidden; }
+.tile::after { content:''; position: absolute; top:0; left:0; right:0; height: 2px;
+  background: linear-gradient(90deg, var(--tc, var(--accent)) 0%, transparent 100%); }
+.tile .t-label { font-size: 10px; letter-spacing: 1.4px; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 8px; }
+.tile .t-value { font-size: 26px; font-weight: 800; letter-spacing: -1px;
+  color: var(--tc, var(--accent)); line-height: 1; }
+.tile .t-sub { font-size: 11.5px; color: var(--muted); margin-top: 5px; }
+
+/* ── SECTIONS ── */
+.sec { padding: 44px 60px; border-bottom: 1px solid var(--border); }
+.sec-label { display: inline-block; font-size: 9.5px; letter-spacing: 2px; text-transform: uppercase;
+  color: var(--accent); padding: 4px 13px; border-radius: 999px;
+  border: 1px solid rgba(65,200,255,.28); background: rgba(65,200,255,.06); margin-bottom: 14px; }
+.sec h2 { font-size: clamp(20px, 2.6vw, 32px); font-weight: 800; letter-spacing: -1px;
+  color: #fff; margin-bottom: 14px; line-height: 1.15; }
+.sec p { font-size: 14px; color: var(--muted); line-height: 1.75; margin-bottom: 12px; max-width: 840px; }
+.sec strong { color: var(--text); }
+
+/* ── TABLES ── */
+table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 13.5px; }
+th { text-align: left; padding: 11px 14px; background: rgba(255,255,255,.03);
+  border-bottom: 1px solid var(--border); color: #a8c8e8; font-weight: 600; font-size: 12px; }
+td { padding: 11px 14px; border-bottom: 1px solid var(--border); color: var(--muted);
+  vertical-align: top; line-height: 1.55; }
+tr:last-child td { border-bottom: none; }
+td strong { color: var(--text); }
+tr.hl td { background: rgba(245,166,35,.05); }
+
+/* ── STATUS CHIPS ── */
+.chip { display: inline-block; padding: 3px 11px; border-radius: 999px;
+  font-size: 11px; font-weight: 600; letter-spacing: .2px; }
+.pass { background: rgba(39,201,122,.11); border: 1px solid rgba(39,201,122,.28); color: var(--pass); }
+.warn { background: rgba(245,166,35,.11); border: 1px solid rgba(245,166,35,.28); color: var(--warn); }
+.fail { background: rgba(232,75,106,.11); border: 1px solid rgba(232,75,106,.28); color: var(--fail); }
+.neutral { background: rgba(65,200,255,.08); border: 1px solid rgba(65,200,255,.25); color: var(--accent); }
+
+/* ── SIGNAL GRID ── */
+.sig-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-top: 18px; }
+.sig-card { padding: 18px 20px; border-radius: 13px; background: var(--card); border: 1px solid var(--border); }
+.sig-card h3 { font-size: 13px; color: var(--accent); margin-bottom: 6px; font-weight: 600; }
+.sig-card p { font-size: 13px; color: var(--muted); margin: 0; max-width: 100%; line-height: 1.6; }
+
+/* ── TRACE ITEMS ── */
+.trace { padding: 16px 20px; border-radius: 12px; background: rgba(255,255,255,.018);
+  border: 1px solid var(--border); margin-bottom: 10px; }
+.trace .ts { font-size: 10.5px; letter-spacing: 1.2px; text-transform: uppercase;
+  color: var(--accent); margin-bottom: 6px; }
+.trace h3 { font-size: 14px; color: #fff; margin-bottom: 5px; font-weight: 600; }
+.trace p { font-size: 13px; color: var(--muted); margin: 0; max-width: 100%; }
+.trace .wp { font-size: 12px; color: var(--warn); margin-top: 8px; padding-top: 8px;
+  border-top: 1px solid rgba(255,255,255,.05); }
+
+/* ── UPSELL ── */
+.upsell { margin-top: 28px; padding: 24px 26px; border-radius: 14px;
+  background: linear-gradient(135deg, rgba(255,255,255,.025), rgba(255,255,255,.008));
+  border: 1px solid var(--border); border-left: 3px solid var(--accent); }
+.upsell h3 { font-size: 14px; color: var(--accent); margin-bottom: 8px; font-weight: 600; }
+.upsell p { font-size: 13.5px; color: var(--muted); margin: 0; }
+
+/* ── CLOSING ── */
+.closing { padding: 68px 60px; text-align: center;
+  background: radial-gradient(ellipse 70% 60% at 50% 100%, #41c8ff12, transparent 70%);
+  border-top: 1px solid var(--border); }
+.closing h2 { font-size: clamp(26px, 4vw, 50px); font-weight: 900; letter-spacing: -2px;
+  background: linear-gradient(112deg, #fff 20%, var(--accent) 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  margin-bottom: 16px; max-width: 680px; margin-left: auto; margin-right: auto; }
+.closing p { font-size: 13px; color: var(--muted); max-width: 500px; margin: 0 auto 18px; }
+.e-tags { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; }
+.e-tags span { font-size: 11px; color: rgba(255,255,255,.22); padding: 4px 12px;
+  border-radius: 999px; border: 1px solid rgba(255,255,255,.07); }
+
+/* ── FOOTER ── */
+.footer { padding: 16px 60px; display: flex; justify-content: space-between; align-items: center;
+  border-top: 1px solid var(--border); font-size: 10px; color: rgba(255,255,255,.16); letter-spacing: .4px; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════ COVER ═══════════════════════ -->
+<div class="cover">
+  <div class="cover-corner">RyskNode · Pralyon Suite 1 / 5</div>
+  <div class="suite-tag">Service 1 of 5 · Pralyon Intelligence Suite</div>
+  <h1>Buyer Risk Assessment</h1>
+  <p class="sub">Honest Digital Private Limited</p>
+  <p class="tagline">Complete buyer intelligence — verified, synthesised, and explained before a single rupee of exposure is created.</p>
+  <div class="meta-bar">
+    <div class="meta-item"><div class="label">CIN</div><div class="val">U62099DL2020PTC366018</div></div>
+    <div class="meta-item"><div class="label">GSTIN</div><div class="val">07AAHCH5533R1ZD</div></div>
+    <div class="meta-item"><div class="label">PAN</div><div class="val">AAHCH5533R</div></div>
+    <div class="meta-item"><div class="label">Registered State</div><div class="val">Delhi</div></div>
+    <div class="meta-item"><div class="label">Incorporated</div><div class="val">04 March 2020 · 6 years</div></div>
+    <div class="meta-item"><div class="label">Report Date</div><div class="val">19 May 2026</div></div>
+    <div class="meta-item"><div class="label">Report ID</div><div class="val">PRY-S1-2026-0519-0047</div></div>
+  </div>
+  <div class="pills">
+    <div class="pill"><strong>Pralyon AI</strong><span>Predictive engine</span></div>
+    <div class="pill"><strong>Tri-Core™</strong><span>3-track synthesis</span></div>
+    <div class="pill"><strong>RiskBand™ BB</strong><span>7-tier classification</span></div>
+    <div class="pill"><strong>35 Signals</strong><span>6 authoritative sources</span></div>
+    <div class="pill"><strong>TraceLayer™</strong><span>Full explainability</span></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ VERDICT BANNER ═══════════════════════ -->
+<div class="verdict-banner">
+  <div class="vb-badge">⚠ BB — MONITORED PASS</div>
+  <div class="vb-text">
+    <h2>Buyer clears all ZeroPass™ gates. Exposure supported with active monitoring conditions.</h2>
+    <p>Honest Digital Private Limited passes all 8 ZeroPass™ hard-stop checks. Tri-Core™ synthesis across three independent intelligence tracks — Financial (40%), Identity & Governance (25%), Legal & Compliance (20%), Conduct & Behaviour (15%) — produces a <strong>RiskBand™ BB</strong> with a <strong>Blended PD of 4.8%</strong>. GST compliance is strong and revenue is growing. EPFO headcount has contracted 20% YoY. One minor commercial court matter is active at pre-decree stage. Credit limit and tenor are not computed in this report — upgrade to Service 2 for evaluated exposure limits and tenor decisioning.</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════ VERDICT TILES ═══════════════════════ -->
+<div class="tiles">
+  <div class="tile" style="--tc:#f5a623">
+    <div class="t-label">RiskBand™</div>
+    <div class="t-value">BB</div>
+    <div class="t-sub">Monitored Pass</div>
+  </div>
+  <div class="tile" style="--tc:#f5a623">
+    <div class="t-label">Blended PD</div>
+    <div class="t-value">4.8%</div>
+    <div class="t-sub">12-month horizon</div>
+  </div>
+  <div class="tile" style="--tc:#27c97a">
+    <div class="t-label">ZeroPass™</div>
+    <div class="t-value" style="font-size:16px;letter-spacing:0">ALL CLEAR</div>
+    <div class="t-sub">8 of 8 gates passed</div>
+  </div>
+  <div class="tile" style="--tc:#41c8ff">
+    <div class="t-label">Signals Pulled</div>
+    <div class="t-value">35</div>
+    <div class="t-sub">Across 6 sources</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ 1. ENTITY IDENTITY ═══════════════════════ -->
+<div class="sec">
+  <div class="sec-label">Entity Identity</div>
+  <h2>Verified company profile</h2>
+  <table>
+    <tr><th>Field</th><th>Value</th><th>Source</th><th>Status</th></tr>
+    <tr><td><strong>Legal name</strong></td><td>Honest Digital Private Limited</td><td>MCA CIN API</td><td><span class="chip pass">Verified</span></td></tr>
+    <tr><td><strong>CIN</strong></td><td>U62099DL2020PTC366018</td><td>MCA CIN API</td><td><span class="chip pass">Active</span></td></tr>
+    <tr><td><strong>GSTIN</strong></td><td>07AAHCH5533R1ZD</td><td>GSTIN Advanced API</td><td><span class="chip pass">Active · Regular</span></td></tr>
+    <tr><td><strong>PAN</strong></td><td>AAHCH5533R</td><td>PAN → CIN cross-verified</td><td><span class="chip pass">Match</span></td></tr>
+    <tr><td><strong>Incorporation date</strong></td><td>04 March 2020 · 6 years</td><td>MCA CIN API</td><td><span class="chip neutral">Verified</span></td></tr>
+    <tr><td><strong>Registered address</strong></td><td>Plot No. 57, Sector 44, Gurugram, Haryana – 122 003</td><td>MCA CIN API</td><td><span class="chip pass">Confirmed</span></td></tr>
+    <tr><td><strong>Sector / NIC</strong></td><td>U62099 · Software Publishing / Verification Tech</td><td>MCA CIN API</td><td><span class="chip neutral">Confirmed</span></td></tr>
+    <tr><td><strong>Authorised capital</strong></td><td>₹25,00,000</td><td>MCA</td><td><span class="chip neutral">On file</span></td></tr>
+    <tr><td><strong>Paid-up capital</strong></td><td>₹10,00,000</td><td>MCA</td><td><span class="chip neutral">On file</span></td></tr>
+    <tr><td><strong>ROC</strong></td><td>RoC-Delhi</td><td>MCA CIN API</td><td><span class="chip pass">Compliant</span></td></tr>
+    <tr><td><strong>Annual filings (last 3 yrs)</strong></td><td>FY23 ✔ · FY24 ✔ · FY25 ✔</td><td>MCA CIN API</td><td><span class="chip pass">Filed on time</span></td></tr>
+    <tr><td><strong>MCA company status</strong></td><td>Active · Non-Government Private Limited</td><td>MCA CIN API</td><td><span class="chip pass">Active</span></td></tr>
+  </table>
+</div>
+
+<!-- ═══════════════════════ 2. DIRECTOR PROFILE ═══════════════════════ -->
+<div class="sec">
+  <div class="sec-label">Director Profile</div>
+  <h2>Director DIN assessment</h2>
+  <table>
+    <tr><th>Name</th><th>DIN</th><th>Designation</th><th>Sec 164 Disqualified</th><th>Other entities</th><th>Struck-off links</th><th>Status</th></tr>
+    <tr>
+      <td><strong>Abhishek Kumar</strong></td><td>08721234</td><td>Managing Director</td>
+      <td><span class="chip pass">No</span></td><td>2 active</td><td><span class="chip pass">None</span></td><td><span class="chip pass">Clear</span></td>
+    </tr>
+    <tr>
+      <td><strong>Priya Mehta</strong></td><td>08729876</td><td>Director</td>
+      <td><span class="chip pass">No</span></td><td>1 active</td><td><span class="chip pass">None</span></td><td><span class="chip pass">Clear</span></td>
+    </tr>
+  </table>
+  <p style="margin-top:14px">Both directors hold active DIN status. No disqualification under Section 164(2). No association with struck-off or wound-up entities. No director changes or resignations in the past 24 months — governance is stable.</p>
+</div>
+
+<!-- ═══════════════════════ 3. ZEROPASS ═══════════════════════ -->
+<div class="sec">
+  <div class="sec-label">ZeroPass™ Hard-Stop Gating</div>
+  <h2>All 8 gates cleared — scoring proceeds</h2>
+  <p>ZeroPass™ evaluates 8 disqualifying conditions before any score is computed. If any gate triggers, the report stops and surfaces a hard-stop — no RiskBand™ is produced for an unsafe subject.</p>
+  <table>
+    <tr><th>Gate</th><th>Check</th><th>Result</th><th>Disposition</th></tr>
+    <tr><td><strong>G-01</strong></td><td>NCLT / CIRP insolvency proceedings</td><td>None found</td><td><span class="chip pass">Clear</span></td></tr>
+    <tr><td><strong>G-02</strong></td><td>Director disqualification under Sec 164</td><td>All clear — both directors</td><td><span class="chip pass">Clear</span></td></tr>
+    <tr><td><strong>G-03</strong></td><td>GSTIN active — not suspended / cancelled</td><td>Active · Regular taxpayer</td><td><span class="chip pass">Clear</span></td></tr>
+    <tr><td><strong>G-04</strong></td><td>MCA company status — Active</td><td>Active</td><td><span class="chip pass">Clear</span></td></tr>
+    <tr><td><strong>G-05</strong></td><td>RBI / CIBIL wilful defaulter list</td><td>Not listed</td><td><span class="chip pass">Clear</span></td></tr>
+    <tr><td><strong>G-06</strong></td><td>Section 138 cheque bounce (NI Act)</td><td>Nil active proceedings</td><td><span class="chip pass">Clear</span></td></tr>
+    <tr><td><strong>G-07</strong></td><td>DRT lender recovery proceedings</td><td>None found</td><td><span class="chip pass">Clear</span></td></tr>
+    <tr><td><strong>G-08</strong></td><td>Negative net worth (MCA XBRL)</td><td>Positive TNW — ₹1.42 Cr (FY25)</td><td><span class="chip pass">Clear</span></td></tr>
+  </table>
+</div>
+
+<!-- ═══════════════════════ 4. TRI-CORE SYNTHESIS ═══════════════════════ -->
+<div class="sec">
+  <div class="sec-label">Tri-Core™ Synthesis</div>
+  <h2>RiskBand™ BB · Blended PD 4.8%</h2>
+  <p>Three independent scoring tracks are run in parallel and synthesised into a single calibrated score, which maps to the RiskBand™. No single track can override the others — all three must converge.</p>
+  <table>
+    <tr><th>Dimension</th><th>Weight</th><th>Score</th><th>Reading</th></tr>
+    <tr><td><strong>Financial Health</strong></td><td>40%</td><td>74 / 100</td><td>Revenue growing at 31% YoY. Thin net margins at 7.2%. Debtor days elevated at 54. Low leverage is a meaningful offset.</td></tr>
+    <tr><td><strong>Identity &amp; Governance</strong></td><td>25%</td><td>88 / 100</td><td>CIN, PAN, GSTIN fully verified and matched. Both directors clear. Annual filings current. No ROC notices.</td></tr>
+    <tr><td><strong>Legal &amp; Compliance</strong></td><td>20%</td><td>71 / 100</td><td>ZeroPass™ all clear. One active minor commercial court matter at pre-decree stage adds moderate legal track pressure.</td></tr>
+    <tr><td><strong>Conduct &amp; Behaviour</strong></td><td>15%</td><td>68 / 100</td><td>GST filing discipline strong. EPFO headcount contracting 20% YoY despite revenue growth — primary behavioural watchpoint.</td></tr>
+  </table>
+  <table style="margin-top:20px">
+    <tr><th>Band</th><th>PD Range</th><th>Reading</th></tr>
+    <tr><td><strong>AAA</strong></td><td>&lt; 0.3%</td><td>Institutional-grade counterparty</td></tr>
+    <tr><td><strong>AA</strong></td><td>0.3–1.0%</td><td>Very strong — generous terms justifiable</td></tr>
+    <tr><td><strong>A</strong></td><td>1.0–3.0%</td><td>Low-moderate risk — standard trade credit</td></tr>
+    <tr><td><strong>BBB</strong></td><td>3.0–4.0%</td><td>Adequate — minor watchpoints present</td></tr>
+    <tr class="hl"><td><strong>BB ◀ This entity</strong></td><td>4.0–7.0%</td><td>Monitored pass — exposure supportable with conditions · Blended PD 4.8%</td></tr>
+    <tr><td><strong>B</strong></td><td>7.0–15%</td><td>Elevated risk — short tenor only</td></tr>
+    <tr><td><strong>CCC–D</strong></td><td>&gt; 15%</td><td>Do not extend trade credit</td></tr>
+  </table>
+</div>
+
+<!-- ═══════════════════════ 5. FINANCIAL RATIOS ═══════════════════════ -->
+<div class="sec">
+  <div class="sec-label">Financial Ratios</div>
+  <h2>10-parameter financial assessment · FY25 MCA filings</h2>
+  <table>
+    <tr><th>Ratio</th><th>Value</th><th>Benchmark</th><th>Status</th><th>Seller implication</th></tr>
+    <tr><td><strong>Current Ratio</strong></td><td>1.82×</td><td>≥ 1.5×</td><td><span class="chip pass">Pass</span></td><td>Short-term assets adequately cover near-term liabilities. Low immediate liquidity risk.</td></tr>
+    <tr><td><strong>Quick Ratio</strong></td><td>1.44×</td><td>≥ 1.0×</td><td><span class="chip pass">Pass</span></td><td>Asset-light tech business — strong quick ratio without inventory dependency.</td></tr>
+    <tr><td><strong>Debt / Equity</strong></td><td>0.31×</td><td>≤ 2.5×</td><td><span class="chip pass">Pass</span></td><td>Conservative leverage. Significant equity buffer available — no overleveraging risk.</td></tr>
+    <tr><td><strong>Debt / Assets</strong></td><td>0.19×</td><td>≤ 0.6×</td><td><span class="chip pass">Pass</span></td><td>Only 19% of assets funded by debt — strong balance sheet insulation.</td></tr>
+    <tr><td><strong>Net Profit Margin</strong></td><td>7.2%</td><td>≥ 6%</td><td><span class="chip warn">Thin</span></td><td>Profitable but thin. 7.2 paise retained per rupee of revenue. Monitor if revenue growth slows.</td></tr>
+    <tr><td><strong>EBITDA Margin</strong></td><td>14.1%</td><td>≥ 10%</td><td><span class="chip pass">Pass</span></td><td>Operating cash generation healthy — covers supplier payables and running obligations.</td></tr>
+    <tr><td><strong>Revenue Growth (YoY)</strong></td><td>+31%</td><td>Positive</td><td><span class="chip pass">Strong</span></td><td>GST-declared turnover ₹21.7 Cr (FY24) → ₹28.4 Cr (FY25). Positive business momentum.</td></tr>
+    <tr><td><strong>DSO (Debtor Days)</strong></td><td>54 days</td><td>≤ 90 days</td><td><span class="chip warn">Elevated</span></td><td>Buyer collects in 54 days from its own customers. Elevated for a SaaS platform — watch if this rises.</td></tr>
+    <tr><td><strong>Interest Coverage</strong></td><td>6.2×</td><td>≥ 3.0×</td><td><span class="chip pass">Pass</span></td><td>No debt-servicing stress. Bank interest not crowding out supplier payments.</td></tr>
+    <tr><td><strong>Tangible Net Worth</strong></td><td>₹1.42 Cr</td><td>Positive</td><td><span class="chip pass">Pass</span></td><td>Positive TNW confirms solvency at current scale. Thin in absolute terms for exposure beyond ₹30L.</td></tr>
+  </table>
+</div>
+
+<!-- ═══════════════════════ 6. BEHAVIOURPRINT ═══════════════════════ -->
+<div class="sec">
+  <div class="sec-label">BehaviourPrint™</div>
+  <h2>Statutory conduct — how this buyer actually behaves</h2>
+  <table>
+    <tr><th>Signal</th><th>Type</th><th>Observation</th><th>Seller Implication</th></tr>
+    <tr><td><strong>GST filing discipline</strong></td><td><span class="chip pass">Strength</span></td><td>GSTR-1 + GSTR-3B filed on time for 12 of last 12 months. No delays in trailing year.</td><td>Strong compliance discipline — low statutory default risk.</td></tr>
+    <tr><td><strong>MCA ROC filing regularity</strong></td><td><span class="chip pass">Strength</span></td><td>Annual returns and financials filed on time for FY23, FY24, FY25 — all 3 years reviewed.</td><td>Governance-compliant entity. Low documentation default risk.</td></tr>
+    <tr><td><strong>GST 3B vs GSTR-1 variance</strong></td><td><span class="chip pass">Strength</span></td><td>Variance under 4% across 12 months. No discrepancies flagged on GSTN portal.</td><td>Revenue declarations are reliable. No under-reporting concern at this threshold.</td></tr>
+    <tr><td><strong>EPFO headcount trend</strong></td><td><span class="chip warn">Watchpoint</span></td><td>Headcount fell from 178 (Mar 2025) to 142 (Mar 2026) — a 20% reduction during a period of 31% revenue growth.</td><td>Unusual combination. May reflect operational restructuring or contractor shift. Re-verify at 6 months.</td></tr>
+    <tr><td><strong>EPFO challan defaults</strong></td><td><span class="chip pass">Strength</span></td><td>No challan defaults in trailing 12 months. ECR filings current.</td><td>No workforce payment stress visible. Payroll obligations being met.</td></tr>
+    <tr><td><strong>Charge register quality</strong></td><td><span class="chip warn">Watchpoint</span></td><td>No charges registered on MCA21. Entity has not accessed institutional credit.</td><td>Removes third-party credit discipline layer. Factor into any exposure above ₹20L.</td></tr>
+    <tr><td><strong>Director stability</strong></td><td><span class="chip pass">Strength</span></td><td>No director changes or additions in 24 months. Both founding directors active.</td><td>Stable governance. No succession or control risk at current assessment.</td></tr>
+  </table>
+</div>
+
+<!-- ═══════════════════════ 7. GST, MCA & EPFO COMPLIANCE ═══════════════════════ -->
+<div class="sec">
+  <div class="sec-label">Compliance Intelligence</div>
+  <h2>GST · MCA · EPFO — verified compliance status</h2>
+  <table>
+    <tr><th>Check</th><th>Result</th><th>Status</th><th>Seller implication</th></tr>
+    <tr><td><strong>GSTIN status</strong></td><td>Active · Registered since March 2020</td><td><span class="chip pass">Active</span></td><td>ITC can be claimed on invoices raised to this buyer.</td></tr>
+    <tr><td><strong>GSTR-3B filing (12 months)</strong></td><td>12 of 12 filed on time — fully current</td><td><span class="chip pass">Compliant</span></td><td>No material ITC risk. Strong liability declaration behaviour.</td></tr>
+    <tr><td><strong>GSTR-1 filing (12 months)</strong></td><td>12 of 12 filed — fully current</td><td><span class="chip pass">Compliant</span></td><td>Sales declarations complete. No suppression of outward liability.</td></tr>
+    <tr><td><strong>GST turnover vs MCA financials</strong></td><td>₹28.4 Cr GST vs ₹28.1 Cr MCA · ₹30L variance</td><td><span class="chip pass">Reconciled</span></td><td>Variance within acceptable threshold — no under-reporting concern.</td></tr>
+    <tr><td><strong>EPFO / PF continuity</strong></td><td>12 consecutive months of challan payments</td><td><span class="chip pass">Compliant</span></td><td>Payroll obligations being met. No workforce payment defaults.</td></tr>
+    <tr><td><strong>EPFO headcount declared</strong></td><td>142 employees (March 2026)</td><td><span class="chip warn">Contracting</span></td><td>Down from 178 in March 2025. Watchpoint — not a default signal but requires monitoring.</td></tr>
+    <tr><td><strong>RBI defaulter list</strong></td><td>Not listed</td><td><span class="chip pass">Clear</span></td><td>No banking default on record.</td></tr>
+    <tr><td><strong>MCA annual filing pattern</strong></td><td>FY23, FY24, FY25 — all filed within due dates</td><td><span class="chip pass">Compliant</span></td><td>ROC-compliant. No strike-off risk visible at current assessment.</td></tr>
+  </table>
+</div>
+
+<!-- ═══════════════════════ 8. LEGAL & LITIGATION ═══════════════════════ -->
+<div class="sec">
+  <div class="sec-label">Legal &amp; Litigation Summary</div>
+  <h2>eCourts · DRT · NCLT · Criminal — verified litigation signals</h2>
+  <table>
+    <tr><th>Forum</th><th>Matter type</th><th>Count</th><th>Status</th><th>Seller implication</th></tr>
+    <tr><td><strong>High Court</strong></td><td>Civil / Commercial</td><td>0</td><td><span class="chip pass">Clear</span></td><td>No matter found across Delhi HC records.</td></tr>
+    <tr><td><strong>NCLT</strong></td><td>Insolvency / Company matter</td><td>0</td><td><span class="chip pass">Clear</span></td><td>No insolvency or oppression matter found.</td></tr>
+    <tr><td><strong>DRT / DRAT</strong></td><td>Debt recovery</td><td>0</td><td><span class="chip pass">Clear</span></td><td>No lender recovery proceeding found.</td></tr>
+    <tr><td><strong>Commercial Court</strong></td><td>B2B contract dispute</td><td>1</td><td><span class="chip warn">Active · Pre-decree</span></td><td>One matter at Commercial Court (Delhi) at pre-decree, pre-injunction stage. Minor at current stage — factored into Legal track PD contribution.</td></tr>
+    <tr><td><strong>Criminal Court</strong></td><td>Criminal proceedings</td><td>0</td><td><span class="chip pass">Clear</span></td><td>No criminal matter of material nature found.</td></tr>
+    <tr><td><strong>Director — personal litigation</strong></td><td>Any forum</td><td>0</td><td><span class="chip pass">Clear</span></td><td>Neither director has any personal litigation on record.</td></tr>
+  </table>
+  <p style="margin-top:14px">The one active commercial court matter appears to be a B2B contract dispute at a pre-decree stage with no injunction or execution visible on CNR search. This does not trigger ZeroPass™ at its current stage but contributes a modest upward pressure to the Blended PD via the Legal track. If this matter progresses to decree or execution, it must be treated as a material change requiring immediate re-evaluation.</p>
+</div>
+
+<!-- ═══════════════════════ 9. MCA CHARGES ═══════════════════════ -->
+<div class="sec">
+  <div class="sec-label">MCA Charge Register</div>
+  <h2>Lender charge signals</h2>
+  <table>
+    <tr><th>Charge ID</th><th>Lender</th><th>Amount</th><th>Created</th><th>Status</th><th>Risk note</th></tr>
+    <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:22px 0">
+      No charges registered on MCA21 charge register. Entity has no institutional lenders on record.
+    </td></tr>
+  </table>
+  <p style="margin-top:12px">Absence of charges is a neutral-to-watchpoint signal for an asset-light B2B tech entity at this revenue scale. It indicates no third-party lender has conducted credit appraisal or holds security over company assets — which removes a layer of external credit discipline. This is not unusual for a 6-year-old SaaS business, but should be factored into exposure structuring decisions.</p>
+</div>
+
+<!-- ═══════════════════════ 10. TRACELAYER ═══════════════════════ -->
+<div class="sec">
+  <div class="sec-label">TraceLayer™</div>
+  <h2>Every signal explained — what drove the BB output</h2>
+
+  <div class="trace">
+    <div class="ts">Signal 01 · Financial Track · Positive</div>
+    <h3>Revenue growth of 31% YoY is the primary financial strength signal</h3>
+    <p>GST-declared turnover grew from approximately ₹21.7 Cr (FY24) to ₹28.4 Cr (FY25). For a 6-year-old B2B verification platform, this growth rate is strong and positions the entity in the upper-BB financial scoring zone. Cross-verified with MCA-filed financials — variance under ₹30L, within acceptable threshold.</p>
+    <div class="wp">⚑ Watchpoint — Net margins at 7.2% remain thin relative to revenue growth. If growth decelerates while costs remain fixed, profitability could compress below sustainable levels within 2–3 quarters.</div>
+  </div>
+
+  <div class="trace">
+    <div class="ts">Signal 02 · Behavioural Track · Watchpoint</div>
+    <h3>EPFO headcount fell from 178 to 142 employees during a period of 31% revenue growth</h3>
+    <p>A 20% reduction in PF-registered employees while revenue is growing is an unusual combination for a verification technology company. This may reflect a deliberate shift to contractor-heavy or gig-based staffing. However, without third-party confirmation, it is treated as a conduct risk signal in BehaviourPrint™ and contributes to a lower Conduct & Behaviour dimension score.</p>
+    <div class="wp">⚑ Watchpoint — If headcount continues to fall below 120 employees in the next 6 months, re-run full assessment. Sustained contraction alongside flat revenue would be a material early-stress signal.</div>
+  </div>
+
+  <div class="trace">
+    <div class="ts">Signal 03 · Legal Track · Watchpoint</div>
+    <h3>One active commercial court matter — pre-decree, no injunction</h3>
+    <p>CNR search identified one matter at a Commercial Court (Delhi jurisdiction) at a pre-decree stage. No injunction, attachment, or execution proceedings are visible. Assessed as a B2B contract dispute. Does not meet ZeroPass™ threshold at current stage, but adds approximately 0.6% to Blended PD through the Legal track of Tri-Core™.</p>
+    <div class="wp">⚑ Watchpoint — If this matter progresses to decree, execution, or attachment before next assessment cycle, it must be treated as a ZeroPass™ re-evaluation trigger. Monitor via Service 3 if exposure is active.</div>
+  </div>
+
+  <div class="trace">
+    <div class="ts">Signal 04 · Behavioural Track · Watchpoint</div>
+    <h3>No institutional lenders on charge register — no third-party credit discipline layer</h3>
+    <p>MCA21 charge register shows no charges registered by any bank, NBFC, or financial institution. For a company with ₹28.4 Cr in revenue, this means no external lender has conducted credit appraisal or holds a security interest. While not negative in isolation for an asset-light SaaS business, it removes a validation layer that sellers often rely on as an indirect signal of creditworthiness.</p>
+    <div class="wp">⚑ Watchpoint — For exposures above ₹20L, the absence of institutional lenders should be factored into collateral and advance-payment structuring. Upgrade to Service 2 for a computed safe exposure limit calibrated to this entity's specific financial position.</div>
+  </div>
+
+  <div class="trace">
+    <div class="ts">Signal 05 · Financial Track · Watchpoint</div>
+    <h3>DSO of 54 days — elevated for a SaaS-plus-verification platform</h3>
+    <p>Debtor collection cycle of 54 days is above the expected norm for a SaaS or B2B API-led business, where payment cycles are typically tighter. Combined with thin net margins, an elevated DSO creates a mild working capital sensitivity. This has been factored into the Financial track and contributes a modest downward pressure on the financial dimension score.</p>
+    <div class="wp">⚑ Watchpoint — Extended payment terms should not be offered until DSO shows improvement across two consecutive assessment cycles. Service 2 computes the safe exposure limit and recommended tenor based on this entity's specific CCC profile.</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ 11. MONITORING CONDITIONS ═══════════════════════ -->
+<div class="sec">
+  <div class="sec-label">Monitoring Conditions</div>
+  <h2>Active conditions on continued exposure</h2>
+  <p>These conditions apply for the validity period of this report (30 days from 19 May 2026). If any trigger is met, exposure must be paused and re-assessment initiated before new orders are approved.</p>
+  <table>
+    <tr><th>Trigger</th><th>Event</th><th>Automatic response (if Service 3 active)</th><th>Required action</th></tr>
+    <tr><td><strong>RiskBand™ drift</strong></td><td>Band falls from BB to B or below</td><td>Alert · Tri-Core™ rerun</td><td>Reassess limit within 5 days</td></tr>
+    <tr><td><strong>EPFO headcount</strong></td><td>Falls below 120 employees in next assessment</td><td>Alert · BehaviourPrint™ flag</td><td>Re-run full assessment · consider limit reduction</td></tr>
+    <tr><td><strong>Commercial court matter</strong></td><td>Progresses to decree, execution, or attachment</td><td>Critical alert · ZeroPass™ re-evaluation</td><td>Pause new orders · immediate legal review</td></tr>
+    <tr><td><strong>GST filing gap</strong></td><td>Any GSTR-3B month missed or GSTR mismatch &gt; 15%</td><td>Alert · compliance flag</td><td>Flag for limit review · do not extend new credit</td></tr>
+    <tr><td><strong>Revenue trend</strong></td><td>GST turnover drops &gt; 20% YoY in next assessment</td><td>Alert · financial track recompute</td><td>Re-run full assessment · do not auto-renew exposure</td></tr>
+    <tr><td><strong>New DRT case</strong></td><td>Lender recovery filing against entity or director</td><td>Critical alert · halt new orders</td><td>Immediate review · pause shipments · legal counsel</td></tr>
+    <tr><td><strong>Director change</strong></td><td>Any director resignation or new DIN added</td><td>Alert · governance flag</td><td>Run fresh DIN screen within 30 days</td></tr>
+    <tr><td><strong>NCLT / CIRP</strong></td><td>Insolvency admitted against entity</td><td>ZeroPass™ G-01 breach · auto halt</td><td>Recover exposure immediately · legal counsel</td></tr>
+    <tr><td><strong>Report expiry</strong></td><td>30 days from generation — 18 June 2026</td><td>Expiry alert</td><td>Re-run report before next shipment or order approval</td></tr>
+  </table>
+
+  <div class="upsell">
+    <h3>Credit limit and tenor are not computed in this report — upgrade to Service 2</h3>
+    <p>The Buyer Risk Assessment is intentionally complete on buyer intelligence and intentionally silent on credit limit and tenor. To receive an AnchorEngine™-computed safe exposure limit, ShockFrame™ stress scenarios across six shock conditions, and a calibrated tenor recommendation for Honest Digital Private Limited, upgrade to the <strong>Operational Limit Assessment (Service 2)</strong>. For ongoing automated surveillance across your active buyer portfolio, activate the <strong>Portfolio &amp; Counterparty Monitor (Service 3)</strong>.</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════ CLOSING ═══════════════════════ -->
+<div class="closing">
+  <h2>Know your buyer. Completely. Before you commit.</h2>
+  <p>Powered by Pralyon™ AI · RyskNode Intelligence Platform</p>
+  <div class="e-tags">
+    <span>RiskDNA™</span><span>ZeroPass™</span><span>BehaviourPrint™</span>
+    <span>Tri-Core™</span><span>RiskBand™</span><span>TraceLayer™</span>
+  </div>
+</div>
+
+<!-- ═══════════════════════ FOOTER ═══════════════════════ -->
+<div class="footer">
+  <span>RyskNode · Pralyon Intelligence Suite</span>
+  <span>Service 1 · Buyer Risk Assessment · Honest Digital Pvt Ltd · PRY-S1-2026-0519-0047</span>
+  <span>Confidential · Internal use only · Not for redistribution</span>
+</div>
+
+</body>
+</html>
