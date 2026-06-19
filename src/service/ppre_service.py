@@ -201,7 +201,8 @@ class PPREService:
         
         gst_raw = {
             "taxpayerInfo": {"gstin": gstin_val or overview.get("IT_PAN_OF_COMPNY"), "gstStatus": "active"},
-            "returnFilingHistory": payload.get("annexureGST", [])
+            "returnFilingHistory": payload.get("annexureGST", []),
+            "gst_filing_consistency": "regular" if gst_consistency >= 0.9 else "irregular" if gst_consistency >= 0.5 else "non-filer"
         }
         gst_signals = derive_gst_conduct_signals(gst_raw)
         
@@ -259,7 +260,7 @@ class PPREService:
             
             "gst_turnover": gst_turnover,
             "gst_sector_bucket": overview.get("businessState"),
-            "gst_filing_consistency": gst_signals["gst_filing_consistency"],
+            "gst_filing_consistency": "REGULAR" if gst_consistency >= 0.9 else "MINOR_GAPS" if gst_consistency >= 0.7 else "MAJOR_GAPS" if gst_consistency >= 0.3 else "NON_FILER",
             
             "epfo_headcount": epfo_signals.get("epfo_headcount"),
             "pf_filing_regular": epfo_signals.get("pf_filing_regular"),
@@ -474,10 +475,10 @@ class PPREService:
         charges_list = []
         for ch in payload.get("charges", []):
             charges_list.append({
-                "lender": ch.get("LENDER_NAME") or ch.get("bankName") or "Unknown",
-                "amount": float(ch.get("CHARGE_AMOUNT") or ch.get("amount") or 0.0),
-                "created": ch.get("CREATION_DATE") or ch.get("creationDate") or "N/A",
-                "status": ch.get("STATUS") or ch.get("status") or "Active"
+                "lender": ch.get("chName") or ch.get("chargeHolder") or ch.get("bankName") or ch.get("LENDER_NAME") or "Unknown",
+                "amount": float(ch.get("amount") or ch.get("CHARGE_AMOUNT") or 0.0),
+                "created": ch.get("dateOfCreation") or ch.get("creationDate") or ch.get("CREATION_DATE") or "N/A",
+                "status": ch.get("chargeStatus") or ch.get("status") or ch.get("STATUS") or "Active"
             })
             
         # ZeroPass mock checks mapping actual raw flags if present
