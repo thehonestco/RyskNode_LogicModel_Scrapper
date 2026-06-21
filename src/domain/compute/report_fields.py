@@ -24,6 +24,7 @@ Design note:
   In Phase 2 (CreditPy), DPO may become a scored feature once
   sector-level DPO benchmarks are established from portfolio data.
 """
+
 from __future__ import annotations
 
 from typing import Any, Optional

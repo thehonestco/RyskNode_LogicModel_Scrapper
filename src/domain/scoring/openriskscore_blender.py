@@ -52,20 +52,25 @@ BLEND_WEIGHTS = {"expert": 0.40, "lgbm": 0.35, "xgb": 0.25}
 
 MASTER_SCALE = [
     ("AAA", 0.002),
-    ("AA",  0.005),
-    ("A",   0.010),
+    ("AA", 0.005),
+    ("A", 0.010),
     ("BBB", 0.020),
-    ("BB",  0.050),
-    ("B",   0.100),
+    ("BB", 0.050),
+    ("B", 0.100),
     ("CCC", 0.200),
-    ("D",   1.000),
+    ("D", 1.000),
 ]
 
 # Credit score: PD band → 300–850
 BAND_SCORE = {
-    "AAA": 820, "AA": 780, "A":   740,
-    "BBB": 680, "BB": 620, "B":   560,
-    "CCC": 480, "D":  300,
+    "AAA": 820,
+    "AA": 780,
+    "A": 740,
+    "BBB": 680,
+    "BB": 620,
+    "B": 560,
+    "CCC": 480,
+    "D": 300,
 }
 
 
@@ -73,19 +78,16 @@ BAND_SCORE = {
 # Low-level helpers (backward compatible)
 # ---------------------------------------------------------------------------
 
+
 def blend_pd(
     expert_pd: float,
-    lgbm_pd:   float,
-    xgb_pd:    float,
-    weights:   dict = None,
+    lgbm_pd: float,
+    xgb_pd: float,
+    weights: dict = None,
 ) -> float:
     """Return weighted ensemble PD for the Buyer from three model sources."""
     w = weights or BLEND_WEIGHTS
-    return (
-        expert_pd * w["expert"] +
-        lgbm_pd   * w["lgbm"]   +
-        xgb_pd    * w["xgb"]
-    )
+    return expert_pd * w["expert"] + lgbm_pd * w["lgbm"] + xgb_pd * w["xgb"]
 
 
 def pd_to_band(pd: float) -> str:
@@ -106,16 +108,17 @@ def pd_to_score(pd: float) -> int:
 # Primary entry-point: blend + explain in one call
 # ---------------------------------------------------------------------------
 
+
 def blend_and_explain(
-    expert_pd:     float,
-    lgbm_pd:       float,
-    xgb_pd:        float,
-    buyer_id:      str            = "UNKNOWN",
-    x_instance:    Any            = None,
-    explainer:     Any            = None,     # CreditExplainer instance
-    weights:       dict           = None,
-    advised_limit: float          = 0.0,
-    decision:      str            = "pending",
+    expert_pd: float,
+    lgbm_pd: float,
+    xgb_pd: float,
+    buyer_id: str = "UNKNOWN",
+    x_instance: Any = None,
+    explainer: Any = None,  # CreditExplainer instance
+    weights: dict = None,
+    advised_limit: float = 0.0,
+    decision: str = "pending",
 ) -> Dict:
     """
     Blend Buyer PDs, map to band + score, and generate XAI explanation.
@@ -177,54 +180,46 @@ def blend_and_explain(
         print(result["credit_score"])                  # → 620
         print(result["explanation"]["narrative"])      # → plain-English memo for Seller
     """
-    w         = weights or BLEND_WEIGHTS
-    blended   = blend_pd(expert_pd, lgbm_pd, xgb_pd, w)
-    band      = pd_to_band(blended)
-    score     = pd_to_score(blended)
+    w = weights or BLEND_WEIGHTS
+    blended = blend_pd(expert_pd, lgbm_pd, xgb_pd, w)
+    band = pd_to_band(blended)
+    score = pd_to_score(blended)
 
     result: Dict = {
-        "buyer_id":     buyer_id,
-        "blended_pd":   round(blended, 6),
-        "band":         band,
+        "buyer_id": buyer_id,
+        "blended_pd": round(blended, 6),
+        "band": band,
         "credit_score": score,
-        "expert_pd":    expert_pd,
-        "lgbm_pd":      lgbm_pd,
-        "xgb_pd":       xgb_pd,
+        "expert_pd": expert_pd,
+        "lgbm_pd": lgbm_pd,
+        "xgb_pd": xgb_pd,
         "weights_used": w,
-        "explanation":  None,
+        "explanation": None,
     }
 
     # Fire explainer if wired up
     if explainer is not None and x_instance is not None:
         try:
             explanation = explainer.explain_buyer(
-                buyer_id      = buyer_id,
-                x_instance    = np.array(x_instance).flatten(),
-                blended_pd    = blended,
-                band          = band,
-                decision      = decision,
-                advised_limit = advised_limit,
-                save          = True,
+                buyer_id=buyer_id,
+                x_instance=np.array(x_instance).flatten(),
+                blended_pd=blended,
+                band=band,
+                decision=decision,
+                advised_limit=advised_limit,
+                save=True,
             )
             result["explanation"] = explanation
-            logger.info(
-                "Buyer explanation generated for %s | Band: %s | PD: %.4f",
-                buyer_id, band, blended
-            )
+            logger.info("Buyer explanation generated for %s | Band: %s | PD: %.4f", buyer_id, band, blended)
         except Exception as e:
-            logger.warning(
-                "CreditExplainer failed for Buyer %s (non-fatal): %s", buyer_id, e
-            )
+            logger.warning("CreditExplainer failed for Buyer %s (non-fatal): %s", buyer_id, e)
     else:
         if explainer is None:
             logger.debug(
-                "No explainer provided for Buyer %s — skipping XAI. "
-                "Pass a fitted CreditExplainer instance to enable.",
-                buyer_id
+                "No explainer provided for Buyer %s — skipping XAI. Pass a fitted CreditExplainer instance to enable.",
+                buyer_id,
             )
         if x_instance is None:
-            logger.debug(
-                "No x_instance provided for Buyer %s — skipping XAI.", buyer_id
-            )
+            logger.debug("No x_instance provided for Buyer %s — skipping XAI.", buyer_id)
 
     return result

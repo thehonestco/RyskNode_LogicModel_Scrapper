@@ -76,17 +76,17 @@ from typing import Optional
 # Sector group label constants
 # ---------------------------------------------------------------------------
 
-AUTO_COMPONENTS        = "AUTO_COMPONENTS"
-CAPITAL_GOODS          = "CAPITAL_GOODS"
+AUTO_COMPONENTS = "AUTO_COMPONENTS"
+CAPITAL_GOODS = "CAPITAL_GOODS"
 ELECTRONICS_ELECTRICAL = "ELECTRONICS_ELECTRICAL"
-FMCG_CONSUMER          = "FMCG_CONSUMER"
-PHARMA_CHEM            = "PHARMA_CHEM"
-RUBBER_PLASTIC_PAPER   = "RUBBER_PLASTIC_PAPER"
-TEXTILE_APPAREL        = "TEXTILE_APPAREL"
-INFRA_CONSTRUCTION     = "INFRA_CONSTRUCTION"
-TRADE_WHOLESALE        = "TRADE_WHOLESALE"
-SERVICES_IT            = "SERVICES_IT"
-GENERAL                = "GENERAL"
+FMCG_CONSUMER = "FMCG_CONSUMER"
+PHARMA_CHEM = "PHARMA_CHEM"
+RUBBER_PLASTIC_PAPER = "RUBBER_PLASTIC_PAPER"
+TEXTILE_APPAREL = "TEXTILE_APPAREL"
+INFRA_CONSTRUCTION = "INFRA_CONSTRUCTION"
+TRADE_WHOLESALE = "TRADE_WHOLESALE"
+SERVICES_IT = "SERVICES_IT"
+GENERAL = "GENERAL"
 
 # ---------------------------------------------------------------------------
 # Division 29 sub-class router
@@ -94,6 +94,7 @@ GENERAL                = "GENERAL"
 # ---------------------------------------------------------------------------
 
 _DIV29_AUTO_PREFIXES = {"291", "292", "293"}
+
 
 def _resolve_div29(digits: str) -> str:
     """
@@ -114,108 +115,130 @@ def _resolve_div29(digits: str) -> str:
 
 _DIVISION_MAP: dict[str, str] = {
     # ── Agriculture, forestry, fishing (01–03) ────────────────────────────
-    "01": GENERAL, "02": GENERAL, "03": GENERAL,
-
+    "01": GENERAL,
+    "02": GENERAL,
+    "03": GENERAL,
     # ── Mining & quarrying (05–09) ────────────────────────────────────────
-    "05": GENERAL, "06": GENERAL, "07": GENERAL, "08": GENERAL, "09": GENERAL,
-
+    "05": GENERAL,
+    "06": GENERAL,
+    "07": GENERAL,
+    "08": GENERAL,
+    "09": GENERAL,
     # ── Manufacturing — Food, beverages, tobacco (10–12) ─────────────────
-    "10": FMCG_CONSUMER, "11": FMCG_CONSUMER, "12": FMCG_CONSUMER,
-
+    "10": FMCG_CONSUMER,
+    "11": FMCG_CONSUMER,
+    "12": FMCG_CONSUMER,
     # ── Manufacturing — Textiles, apparel, leather (13–15) ────────────────
-    "13": TEXTILE_APPAREL, "14": TEXTILE_APPAREL, "15": TEXTILE_APPAREL,
-
+    "13": TEXTILE_APPAREL,
+    "14": TEXTILE_APPAREL,
+    "15": TEXTILE_APPAREL,
     # ── Manufacturing — Wood (16) ──────────────────────────────────────────
     "16": GENERAL,
-
     # ── Manufacturing — Paper products (17) ────────────────────────────────
     "17": RUBBER_PLASTIC_PAPER,
-
     # ── Manufacturing — Printing (18) ─────────────────────────────────────
     "18": GENERAL,
-
     # ── Manufacturing — Coke, refined petroleum (19) ──────────────────────
     "19": GENERAL,
-
     # ── Manufacturing — Chemicals & pharma (20–21) ────────────────────────
-    "20": PHARMA_CHEM, "21": PHARMA_CHEM,
-
+    "20": PHARMA_CHEM,
+    "21": PHARMA_CHEM,
     # ── Manufacturing — Rubber & plastics (22) ────────────────────────────
     "22": RUBBER_PLASTIC_PAPER,
-
     # ── Manufacturing — Non-metallic minerals (23) ────────────────────────
     "23": GENERAL,
-
     # ── Manufacturing — Basic metals (24) ─────────────────────────────────
     "24": CAPITAL_GOODS,
-
     # ── Manufacturing — Fabricated metals (25) ────────────────────────────
     "25": CAPITAL_GOODS,
-
     # ── Manufacturing — Computer, electronic, optical (26) ────────────────
     "26": ELECTRONICS_ELECTRICAL,
-
     # ── Manufacturing — Electrical equipment (27) ─────────────────────────
     "27": ELECTRONICS_ELECTRICAL,
-
     # ── Manufacturing — Machinery & equipment NEC (28) ────────────────────
     "28": CAPITAL_GOODS,
-
     # Division 29 intentionally absent — handled by _resolve_div29()
-
     # ── Manufacturing — Other transport equipment (30) ────────────────────
     "30": CAPITAL_GOODS,
-
     # ── Manufacturing — Furniture, other mfg, repair (31–33) ─────────────
-    "31": GENERAL, "32": GENERAL, "33": GENERAL,
-
+    "31": GENERAL,
+    "32": GENERAL,
+    "33": GENERAL,
     # ── Utilities (35–39) ───────────────────────────────────────────────
-    "35": GENERAL, "36": GENERAL, "37": GENERAL, "38": GENERAL, "39": GENERAL,
-
+    "35": GENERAL,
+    "36": GENERAL,
+    "37": GENERAL,
+    "38": GENERAL,
+    "39": GENERAL,
     # ── Construction (41–43) ──────────────────────────────────────────────
-    "41": INFRA_CONSTRUCTION, "42": INFRA_CONSTRUCTION, "43": INFRA_CONSTRUCTION,
-
+    "41": INFRA_CONSTRUCTION,
+    "42": INFRA_CONSTRUCTION,
+    "43": INFRA_CONSTRUCTION,
     # ── Wholesale & retail trade (45–47) ──────────────────────────────────
-    "45": TRADE_WHOLESALE, "46": TRADE_WHOLESALE, "47": TRADE_WHOLESALE,
-
+    "45": TRADE_WHOLESALE,
+    "46": TRADE_WHOLESALE,
+    "47": TRADE_WHOLESALE,
     # ── Transportation & storage (49–53) ──────────────────────────────────
-    "49": GENERAL, "50": GENERAL, "51": GENERAL, "52": GENERAL, "53": GENERAL,
-
+    "49": GENERAL,
+    "50": GENERAL,
+    "51": GENERAL,
+    "52": GENERAL,
+    "53": GENERAL,
     # ── Accommodation & food services (55–56) ─────────────────────────────
-    "55": GENERAL, "56": GENERAL,
-
+    "55": GENERAL,
+    "56": GENERAL,
     # ── IT / Information & communication (58–63) ─────────────────────────
-    "58": SERVICES_IT, "59": SERVICES_IT, "60": SERVICES_IT,
-    "61": SERVICES_IT, "62": SERVICES_IT, "63": SERVICES_IT,
-
+    "58": SERVICES_IT,
+    "59": SERVICES_IT,
+    "60": SERVICES_IT,
+    "61": SERVICES_IT,
+    "62": SERVICES_IT,
+    "63": SERVICES_IT,
     # ── Financial & insurance (64–66) ─────────────────────────────────────
-    "64": GENERAL, "65": GENERAL, "66": GENERAL,
-
+    "64": GENERAL,
+    "65": GENERAL,
+    "66": GENERAL,
     # ── Real estate (68) ──────────────────────────────────────────────────
     "68": GENERAL,
-
     # ── Professional & technical (69–75) ──────────────────────────────────
-    "69": GENERAL, "70": GENERAL, "71": GENERAL,
-    "72": GENERAL, "73": GENERAL, "74": GENERAL, "75": GENERAL,
-
+    "69": GENERAL,
+    "70": GENERAL,
+    "71": GENERAL,
+    "72": GENERAL,
+    "73": GENERAL,
+    "74": GENERAL,
+    "75": GENERAL,
     # ── Administrative & support (77–82) ──────────────────────────────────
-    "77": GENERAL, "78": GENERAL, "79": GENERAL,
-    "80": GENERAL, "81": GENERAL, "82": GENERAL,
-
+    "77": GENERAL,
+    "78": GENERAL,
+    "79": GENERAL,
+    "80": GENERAL,
+    "81": GENERAL,
+    "82": GENERAL,
     # ── Public admin, education, health (84–88) ───────────────────────────
-    "84": GENERAL, "85": GENERAL,
-    "86": GENERAL, "87": GENERAL, "88": GENERAL,
-
+    "84": GENERAL,
+    "85": GENERAL,
+    "86": GENERAL,
+    "87": GENERAL,
+    "88": GENERAL,
     # ── Arts, recreation, other services (90–98) ──────────────────────────
-    "90": GENERAL, "91": GENERAL, "92": GENERAL, "93": GENERAL,
-    "94": GENERAL, "95": GENERAL, "96": GENERAL,
-    "97": GENERAL, "98": GENERAL, "99": GENERAL,
+    "90": GENERAL,
+    "91": GENERAL,
+    "92": GENERAL,
+    "93": GENERAL,
+    "94": GENERAL,
+    "95": GENERAL,
+    "96": GENERAL,
+    "97": GENERAL,
+    "98": GENERAL,
+    "99": GENERAL,
 }
 
 
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def normalize_nic(raw_nic: Optional[str]) -> Optional[str]:
     """
@@ -278,16 +301,16 @@ def resolve_sector(raw_nic: Optional[str]) -> str:
 def describe_sector(sector_group: str) -> str:
     """Human-readable label for a sector group (for report/UI output)."""
     _LABELS = {
-        AUTO_COMPONENTS:        "Auto Components & OEM Supply",
-        CAPITAL_GOODS:          "Capital Goods & Manufacturing",
+        AUTO_COMPONENTS: "Auto Components & OEM Supply",
+        CAPITAL_GOODS: "Capital Goods & Manufacturing",
         ELECTRONICS_ELECTRICAL: "Electronics & Electrical Equipment",
-        FMCG_CONSUMER:          "FMCG & Consumer Goods",
-        PHARMA_CHEM:            "Pharmaceuticals & Chemicals",
-        RUBBER_PLASTIC_PAPER:   "Rubber, Plastics & Paper",
-        TEXTILE_APPAREL:        "Textiles & Apparel",
-        INFRA_CONSTRUCTION:     "Infrastructure & Construction",
-        TRADE_WHOLESALE:        "Wholesale & Retail Trade",
-        SERVICES_IT:            "IT & Services",
-        GENERAL:                "General / Diversified",
+        FMCG_CONSUMER: "FMCG & Consumer Goods",
+        PHARMA_CHEM: "Pharmaceuticals & Chemicals",
+        RUBBER_PLASTIC_PAPER: "Rubber, Plastics & Paper",
+        TEXTILE_APPAREL: "Textiles & Apparel",
+        INFRA_CONSTRUCTION: "Infrastructure & Construction",
+        TRADE_WHOLESALE: "Wholesale & Retail Trade",
+        SERVICES_IT: "IT & Services",
+        GENERAL: "General / Diversified",
     }
     return _LABELS.get(sector_group, "General / Diversified")

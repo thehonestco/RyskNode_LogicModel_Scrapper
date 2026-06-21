@@ -1,4 +1,5 @@
 """Canonical normalized entity record after source extraction and standardization."""
+
 from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import date
@@ -12,17 +13,17 @@ class NormalizedRecord(BaseModel):
     cin: Optional[str] = None
     udyam_no: Optional[str] = None
     pan: Optional[str] = None
-    entity_type: Optional[str] = None          # company | llp | proprietor | partnership
+    entity_type: Optional[str] = None  # company | llp | proprietor | partnership
     incorporation_date: Optional[date] = None
     registered_address: Optional[str] = None
     state: Optional[str] = None
-    msme_category: Optional[str] = None        # micro | small | medium
+    msme_category: Optional[str] = None  # micro | small | medium
 
     # --- Sector ---
-    nic_code: Optional[str] = None             # NIC 2008 activity code (from MCA/GST)
+    nic_code: Optional[str] = None  # NIC 2008 activity code (from MCA/GST)
 
     # --- GST ---
-    gst_status: Optional[str] = None           # active | cancelled | suspended
+    gst_status: Optional[str] = None  # active | cancelled | suspended
     gst_registration_date: Optional[date] = None
     gst_filing_periods_total: Optional[int] = None
     gst_filing_periods_filed: Optional[int] = None

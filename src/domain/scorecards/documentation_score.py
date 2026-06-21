@@ -36,13 +36,14 @@ from domain.schemas.score_components import ComponentScore, DomainScore
 from domain.scorecards.weighted_average import build_domain_score
 
 # Official/verified source tiers for quality scoring
-OFFICIAL_SOURCES  = {"mca", "gst", "ecourts", "cbdt"}
-VERIFIED_SOURCES  = {"udyam", "epfo", "gstn", "roc"}
+OFFICIAL_SOURCES = {"mca", "gst", "ecourts", "cbdt"}
+VERIFIED_SOURCES = {"udyam", "epfo", "gstn", "roc"}
 
 
 # ---------------------------------------------------------------------------
 # Component scorers
 # ---------------------------------------------------------------------------
+
 
 def _score_official_source_availability(sources: list[str]) -> tuple[float, str]:
     """
@@ -52,16 +53,16 @@ def _score_official_source_availability(sources: list[str]) -> tuple[float, str]
     0   if no official sources.
     """
     sources_lower = {s.lower() for s in sources}
-    n_official  = len(sources_lower & OFFICIAL_SOURCES)
-    n_verified  = len(sources_lower & VERIFIED_SOURCES)
-    n_quality   = n_official + n_verified
+    n_official = len(sources_lower & OFFICIAL_SOURCES)
+    n_verified = len(sources_lower & VERIFIED_SOURCES)
+    n_quality = n_official + n_verified
 
     if n_official >= 3:
         return 100.0, "ALL_KEY_SOURCES_OFFICIAL"
     if n_official >= 2 or n_quality >= 3:
-        return 70.0,  "MOSTLY_OFFICIAL_SOURCES"
+        return 70.0, "MOSTLY_OFFICIAL_SOURCES"
     if n_official >= 1:
-        return 40.0,  "MIXED_SOURCE_QUALITY"
+        return 40.0, "MIXED_SOURCE_QUALITY"
     return 0.0, "OFFICIAL_SOURCE_WEAK"
 
 
@@ -82,9 +83,9 @@ def _score_filing_regularity(
     if ratio >= 0.90:
         return 100.0, "FILING_REGULAR"
     if ratio >= 0.70:
-        return 70.0,  "FILING_MINOR_GAPS"
+        return 70.0, "FILING_MINOR_GAPS"
     if ratio >= 0.50:
-        return 40.0,  "FILING_REGULARITY_WEAK"
+        return 40.0, "FILING_REGULARITY_WEAK"
     return 0.0, "FILING_REGULARITY_WEAK"
 
 
@@ -95,11 +96,11 @@ def _score_freshness(freshness_days: Optional[float]) -> tuple[float, str]:
     if freshness_days <= 7:
         return 100.0, "DATA_FRESH"
     if freshness_days <= 30:
-        return 75.0,  "DATA_RECENT"
+        return 75.0, "DATA_RECENT"
     if freshness_days <= 90:
-        return 50.0,  "DOCUMENTATION_NOT_FRESH"
+        return 50.0, "DOCUMENTATION_NOT_FRESH"
     if freshness_days <= 180:
-        return 25.0,  "DOCUMENTATION_NOT_FRESH"
+        return 25.0, "DOCUMENTATION_NOT_FRESH"
     return 0.0, "DOCUMENTATION_NOT_FRESH"
 
 
@@ -114,9 +115,9 @@ def _score_cross_source_consistency(conflict_flags: list[str]) -> tuple[float, s
     if n == 0:
         return 100.0, "NO_SOURCE_CONFLICTS"
     if n == 1:
-        return 70.0,  "MINOR_SOURCE_CONFLICT"
+        return 70.0, "MINOR_SOURCE_CONFLICT"
     if n == 2:
-        return 40.0,  "CROSS_SOURCE_MISMATCH"
+        return 40.0, "CROSS_SOURCE_MISMATCH"
     return 0.0, "CROSS_SOURCE_MISMATCH"
 
 
@@ -125,27 +126,30 @@ def _score_historical_depth(record: NormalizedRecord) -> tuple[float, str]:
     Count years of usable financial data from the turnover series.
     5yr=100, 4yr=80, 3yr=60, 2yr=30, <2yr=0.
     """
-    years = sum([
-        1 if record.turnover_y1 is not None else 0,
-        1 if record.turnover_y2 is not None else 0,
-        1 if record.turnover_y3 is not None else 0,
-        1 if record.turnover_y4 is not None else 0,
-        1 if record.turnover_y5 is not None else 0,
-    ])
+    years = sum(
+        [
+            1 if record.turnover_y1 is not None else 0,
+            1 if record.turnover_y2 is not None else 0,
+            1 if record.turnover_y3 is not None else 0,
+            1 if record.turnover_y4 is not None else 0,
+            1 if record.turnover_y5 is not None else 0,
+        ]
+    )
     if years >= 5:
         return 100.0, "HISTORICAL_DEPTH_STRONG"
     if years == 4:
-        return 80.0,  "HISTORICAL_DEPTH_GOOD"
+        return 80.0, "HISTORICAL_DEPTH_GOOD"
     if years == 3:
-        return 60.0,  "HISTORICAL_DEPTH_ADEQUATE"
+        return 60.0, "HISTORICAL_DEPTH_ADEQUATE"
     if years == 2:
-        return 30.0,  "HISTORICAL_DEPTH_LIMITED"
+        return 30.0, "HISTORICAL_DEPTH_LIMITED"
     return 0.0, "HISTORICAL_DEPTH_LIMITED"
 
 
 # ---------------------------------------------------------------------------
 # Public entry-point
 # ---------------------------------------------------------------------------
+
 
 def compute_documentation_score(
     record: NormalizedRecord,
@@ -167,66 +171,79 @@ def compute_documentation_score(
 
     # 1. Official-source availability (weight 20)
     s, r = _score_official_source_availability(record.sources_available)
-    components.append(ComponentScore(
-        component_name  = "official_source_availability",
-        raw_value       = float(len(record.sources_available)),
-        normalized_score= s,
-        weight          = 20.0,
-        reason_code     = r,
-    ))
+    components.append(
+        ComponentScore(
+            component_name="official_source_availability",
+            raw_value=float(len(record.sources_available)),
+            normalized_score=s,
+            weight=20.0,
+            reason_code=r,
+        )
+    )
 
     # 2. Filing regularity (weight 20)
     s, r = _score_filing_regularity(
         record.gst_filing_periods_filed,
         record.gst_filing_periods_total,
     )
-    components.append(ComponentScore(
-        component_name  = "filing_regularity",
-        raw_value       = (
-            round(record.gst_filing_periods_filed / record.gst_filing_periods_total, 3)
-            if record.gst_filing_periods_filed is not None
-            and record.gst_filing_periods_total
-            else None
-        ),
-        normalized_score= s,
-        weight          = 20.0,
-        reason_code     = r,
-    ))
+    components.append(
+        ComponentScore(
+            component_name="filing_regularity",
+            raw_value=(
+                round(record.gst_filing_periods_filed / record.gst_filing_periods_total, 3)
+                if record.gst_filing_periods_filed is not None and record.gst_filing_periods_total
+                else None
+            ),
+            normalized_score=s,
+            weight=20.0,
+            reason_code=r,
+        )
+    )
 
     # 3. Freshness (weight 20)
     s, r = _score_freshness(source_freshness_days)
-    components.append(ComponentScore(
-        component_name  = "freshness",
-        raw_value       = source_freshness_days,
-        normalized_score= s,
-        weight          = 20.0,
-        reason_code     = r,
-    ))
+    components.append(
+        ComponentScore(
+            component_name="freshness",
+            raw_value=source_freshness_days,
+            normalized_score=s,
+            weight=20.0,
+            reason_code=r,
+        )
+    )
 
     # 4. Cross-source consistency (weight 25  — raised from 10%)
     s, r = _score_cross_source_consistency(record.conflict_flags)
-    components.append(ComponentScore(
-        component_name  = "cross_source_consistency",
-        raw_value       = float(len(record.conflict_flags)),
-        normalized_score= s,
-        weight          = 25.0,
-        reason_code     = r,
-    ))
+    components.append(
+        ComponentScore(
+            component_name="cross_source_consistency",
+            raw_value=float(len(record.conflict_flags)),
+            normalized_score=s,
+            weight=25.0,
+            reason_code=r,
+        )
+    )
 
     # 5. Historical depth (weight 15)
     s, r = _score_historical_depth(record)
-    components.append(ComponentScore(
-        component_name  = "historical_depth",
-        raw_value       = float(sum([
-            1 if record.turnover_y1 is not None else 0,
-            1 if record.turnover_y2 is not None else 0,
-            1 if record.turnover_y3 is not None else 0,
-            1 if record.turnover_y4 is not None else 0,
-            1 if record.turnover_y5 is not None else 0,
-        ])),
-        normalized_score= s,
-        weight          = 15.0,
-        reason_code     = r,
-    ))
+    components.append(
+        ComponentScore(
+            component_name="historical_depth",
+            raw_value=float(
+                sum(
+                    [
+                        1 if record.turnover_y1 is not None else 0,
+                        1 if record.turnover_y2 is not None else 0,
+                        1 if record.turnover_y3 is not None else 0,
+                        1 if record.turnover_y4 is not None else 0,
+                        1 if record.turnover_y5 is not None else 0,
+                    ]
+                )
+            ),
+            normalized_score=s,
+            weight=15.0,
+            reason_code=r,
+        )
+    )
 
     return build_domain_score("documentation", components)

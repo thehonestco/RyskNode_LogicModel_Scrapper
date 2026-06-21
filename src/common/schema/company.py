@@ -33,12 +33,15 @@ class CompanyBase(BaseModel):
     raw_data: Optional[dict] = None
     is_active: bool = True
 
+
 class CompanyCreate(CompanyBase):
     pass
+
 
 class CompanyUpdate(CompanyBase):
     company_name: Optional[str] = None
     cin: Optional[str] = None
+
 
 class CompanyResponse(CompanyBase):
     id: int

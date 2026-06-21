@@ -4,11 +4,11 @@ from typing import Any
 
 
 SECTOR_REVENUE_PER_EMPLOYEE_NORM: dict[str, float] = {
-    "TRADING":       500.0,   # ₹L per employee
+    "TRADING": 500.0,  # ₹L per employee
     "MANUFACTURING": 200.0,
-    "SERVICES":      150.0,
-    "CONSTRUCTION":  180.0,
-    "DEFAULT":       200.0,
+    "SERVICES": 150.0,
+    "CONSTRUCTION": 180.0,
+    "DEFAULT": 200.0,
 }
 
 

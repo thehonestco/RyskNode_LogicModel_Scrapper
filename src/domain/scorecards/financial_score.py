@@ -37,6 +37,7 @@ Data flow
               └─ _score_*() functions use thresholds
                   └─ build_domain_score()  →  DomainScore
 """
+
 from __future__ import annotations
 
 from typing import Optional
@@ -51,6 +52,7 @@ from domain.compute.safe_math import clamp
 # ---------------------------------------------------------------------------
 # Sub-scoring functions — all sector-aware via get_benchmarks(sector)
 # ---------------------------------------------------------------------------
+
 
 def _score_current_ratio(val: Optional[float], sector: str = GENERAL) -> tuple[float, str]:
     if val is None:
@@ -119,6 +121,7 @@ def _score_dso(val: Optional[float], sector: str = GENERAL) -> tuple[float, str]
 # Primary entry-point
 # ---------------------------------------------------------------------------
 
+
 def compute_financial_score(
     current_ratio: Optional[float],
     quick_ratio: Optional[float],
@@ -162,83 +165,88 @@ def compute_financial_score(
 
     # Current ratio (weight 20)
     s, r = _score_current_ratio(current_ratio, sector)
-    components.append(ComponentScore(
-        component_name="current_ratio",
-        raw_value=current_ratio,
-        normalized_score=s,
-        weight=20.0,
-        reason_code=r,
-    ))
+    components.append(
+        ComponentScore(
+            component_name="current_ratio",
+            raw_value=current_ratio,
+            normalized_score=s,
+            weight=20.0,
+            reason_code=r,
+        )
+    )
 
     # Quick ratio (weight 15)
     s, r = _score_quick_ratio(quick_ratio, sector)
-    components.append(ComponentScore(
-        component_name="quick_ratio",
-        raw_value=quick_ratio,
-        normalized_score=s,
-        weight=15.0,
-        reason_code=r,
-    ))
+    components.append(
+        ComponentScore(
+            component_name="quick_ratio",
+            raw_value=quick_ratio,
+            normalized_score=s,
+            weight=15.0,
+            reason_code=r,
+        )
+    )
 
     # Debt-to-equity (weight 20)
     s, r = _score_debt_to_equity(debt_to_equity, sector)
-    components.append(ComponentScore(
-        component_name="debt_to_equity",
-        raw_value=debt_to_equity,
-        normalized_score=s,
-        weight=20.0,
-        reason_code=r,
-    ))
+    components.append(
+        ComponentScore(
+            component_name="debt_to_equity",
+            raw_value=debt_to_equity,
+            normalized_score=s,
+            weight=20.0,
+            reason_code=r,
+        )
+    )
 
     # Revenue CAGR (weight 20)
     s, r = _score_cagr(net_revenue_cagr_5y, sector)
-    components.append(ComponentScore(
-        component_name="net_revenue_cagr_5y",
-        raw_value=net_revenue_cagr_5y,
-        normalized_score=s,
-        weight=20.0,
-        reason_code=r,
-    ))
+    components.append(
+        ComponentScore(
+            component_name="net_revenue_cagr_5y",
+            raw_value=net_revenue_cagr_5y,
+            normalized_score=s,
+            weight=20.0,
+            reason_code=r,
+        )
+    )
 
     # DSO (weight 10)
     s, r = _score_dso(dso, sector)
-    components.append(ComponentScore(
-        component_name="dso",
-        raw_value=dso,
-        normalized_score=s,
-        weight=10.0,
-        reason_code=r,
-    ))
+    components.append(
+        ComponentScore(
+            component_name="dso",
+            raw_value=dso,
+            normalized_score=s,
+            weight=10.0,
+            reason_code=r,
+        )
+    )
 
     # Working capital presence (weight 10)
     wc = working_capital
     wc_score = 100.0 if (wc is not None and wc > 0) else 30.0 if wc is not None else 0.0
-    components.append(ComponentScore(
-        component_name="working_capital",
-        raw_value=wc,
-        normalized_score=wc_score,
-        weight=10.0,
-        reason_code=(
-            "WORKING_CAPITAL_POSITIVE"
-            if wc_score == 100
-            else "WORKING_CAPITAL_NEGATIVE_OR_MISSING"
-        ),
-    ))
+    components.append(
+        ComponentScore(
+            component_name="working_capital",
+            raw_value=wc,
+            normalized_score=wc_score,
+            weight=10.0,
+            reason_code=("WORKING_CAPITAL_POSITIVE" if wc_score == 100 else "WORKING_CAPITAL_NEGATIVE_OR_MISSING"),
+        )
+    )
 
     # Business vintage (weight 5)
     v = business_vintage_years
-    v_score = (
-        100.0 if v and v >= 5
-        else 70.0 if v and v >= 3
-        else 40.0 if v and v >= 1
-        else 0.0
+    v_score = 100.0 if v and v >= 5 else 70.0 if v and v >= 3 else 40.0 if v and v >= 1 else 0.0
+    components.append(
+        ComponentScore(
+            component_name="business_vintage",
+            raw_value=v,
+            normalized_score=v_score,
+            weight=5.0,
+            reason_code="VINTAGE_STRONG" if v_score == 100 else "VINTAGE_EARLY",
+        )
     )
-    components.append(ComponentScore(
-        component_name="business_vintage",
-        raw_value=v,
-        normalized_score=v_score,
-        weight=5.0,
-        reason_code="VINTAGE_STRONG" if v_score == 100 else "VINTAGE_EARLY",
-    ))
 
     return build_domain_score("financial", components)

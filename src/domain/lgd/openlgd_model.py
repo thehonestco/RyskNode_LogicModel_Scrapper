@@ -30,6 +30,7 @@ Outputs
   el_pct    : EL% = PD% × LGD%
   el_amount : EL in INR = EL% × EAD
 """
+
 from __future__ import annotations
 
 import logging
@@ -91,19 +92,21 @@ def train_lgd_model(
     X = df[feat].fillna(-999).values
     y = _beta_clip(df[target_col].clip(0, 1).values)
 
-    X_tr, X_te, y_tr, y_te = train_test_split(
-        X, y, test_size=test_size, random_state=42
-    )
+    X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=test_size, random_state=42)
 
     try:
         import openLGD
+
         model = openLGD.BetaRegression()
         logger.info("Using openLGD BetaRegression")
     except ImportError:
         from sklearn.ensemble import GradientBoostingRegressor
+
         model = GradientBoostingRegressor(
-            n_estimators=200, learning_rate=0.05,
-            max_depth=3, random_state=42,
+            n_estimators=200,
+            learning_rate=0.05,
+            max_depth=3,
+            random_state=42,
         )
         logger.warning(
             "openLGD not installed — falling back to GradientBoostingRegressor. "
@@ -114,14 +117,14 @@ def train_lgd_model(
     y_pred = np.clip(model.predict(X_te), 0, 1)
 
     mae = mean_absolute_error(y_te, y_pred)
-    r2  = r2_score(y_te, y_pred)
+    r2 = r2_score(y_te, y_pred)
     logger.info("LGD model | MAE: %.4f | R2: %.4f", mae, r2)
 
     result = {
-        "model":        model,
+        "model": model,
         "feature_cols": feat,
-        "mae":          round(mae, 6),
-        "r2":           round(r2, 6),
+        "mae": round(mae, 6),
+        "r2": round(r2, 6),
     }
 
     if artifact_path:
@@ -142,16 +145,16 @@ def predict_lgd(
     Returns DataFrame with columns:
       lgd_pred, el_pct, el_amount (if ead column present)
     """
-    feat  = model_artifact["feature_cols"]
+    feat = model_artifact["feature_cols"]
     model = model_artifact["model"]
 
-    feat  = [f for f in feat if f in df.columns]
-    X     = df[feat].fillna(-999).values
-    out   = df.copy()
+    feat = [f for f in feat if f in df.columns]
+    X = df[feat].fillna(-999).values
+    out = df.copy()
     out["lgd_pred"] = np.clip(model.predict(X), 0, 1)
 
     if "pd_blended" in df.columns and "ead" in df.columns:
-        out["el_pct"]    = out["pd_blended"] * out["lgd_pred"]
+        out["el_pct"] = out["pd_blended"] * out["lgd_pred"]
         out["el_amount"] = out["el_pct"] * out["ead"]
 
     return out

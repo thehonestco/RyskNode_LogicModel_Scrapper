@@ -15,6 +15,7 @@ Design note:
   in run_part1.py BEFORE scoring. This module only handles non-hard-gate
   conduct adjustments.
 """
+
 from __future__ import annotations
 
 from typing import Any

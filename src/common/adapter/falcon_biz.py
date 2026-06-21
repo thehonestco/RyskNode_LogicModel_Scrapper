@@ -14,6 +14,7 @@ from .scraper_base import BaseScraper
 
 logger = logging.getLogger(__name__)
 
+
 class FalconBizScraper(BaseScraper):
     BASE_URL = "https://www.falconebiz.com/company"
 
@@ -69,11 +70,15 @@ class FalconBizScraper(BaseScraper):
                                 data["address"] = org.get("address", {}).get("streetAddress")
                                 data["incorporation_date"] = self._parse_date(org.get("foundingDate"))
                                 if "founders" in org:
-                                    data["director_names"] = ", ".join([f.get("name") for f in org["founders"] if f.get("name")])
+                                    data["director_names"] = ", ".join(
+                                        [f.get("name") for f in org["founders"] if f.get("name")]
+                                    )
                                 # Description usually contains activity
                                 desc = org.get("description", "")
                                 if "involved in activities such as" in desc:
-                                    data["description_of_main_activity"] = desc.split("involved in activities such as")[-1].split(".")[0].strip()
+                                    data["description_of_main_activity"] = (
+                                        desc.split("involved in activities such as")[-1].split(".")[0].strip()
+                                    )
                     except Exception as e:
                         logger.warning(f"Error parsing JSON-LD for {query}: {e}")
 
@@ -88,11 +93,15 @@ class FalconBizScraper(BaseScraper):
                             info_map[key] = val
 
                     # Fallback/Supplemental fields
-                    data["company_name"] = data.get("company_name") or self._get_text(tree, "//h1//text()").split("/")[0].strip()
+                    data["company_name"] = (
+                        data.get("company_name") or self._get_text(tree, "//h1//text()").split("/")[0].strip()
+                    )
                     data["cin"] = data.get("cin") or info_map.get("CIN") or query
                     data["registration_number"] = info_map.get("Registration Number")
                     data["current_status"] = info_map.get("Company Status")
-                    data["incorporation_date"] = data.get("incorporation_date") or self._parse_date(info_map.get("Date of Incorporation"))
+                    data["incorporation_date"] = data.get("incorporation_date") or self._parse_date(
+                        info_map.get("Date of Incorporation")
+                    )
                     data["authorized_capital"] = self._parse_int(info_map.get("Authorized Capital"))
                     data["paid_up_capital"] = self._parse_int(info_map.get("Paid-up capital"))
                     data["entity_type"] = info_map.get("Class of company")
@@ -111,9 +120,12 @@ class FalconBizScraper(BaseScraper):
                         din = "".join(row.xpath("./td[1]//text()")).strip()
                         name = "".join(row.xpath("./td[2]//text()")).strip()
                         app_date = "".join(row.xpath("./td[4]//text()")).strip()
-                        if name: d_names.append(name)
-                        if din: d_dins.append(din)
-                        if app_date: d_dates.append(app_date)
+                        if name:
+                            d_names.append(name)
+                        if din:
+                            d_dins.append(din)
+                        if app_date:
+                            d_dates.append(app_date)
 
                     if d_names:
                         data["director_names"] = ", ".join(d_names)
@@ -122,8 +134,11 @@ class FalconBizScraper(BaseScraper):
 
                     # 4. Address Fallback
                     if not data.get("address"):
-                        addr = self._get_text(tree, "//td[strong[contains(text(), 'Address')]]/following-sibling::td//text()")
-                        if addr: data["address"] = addr
+                        addr = self._get_text(
+                            tree, "//td[strong[contains(text(), 'Address')]]/following-sibling::td//text()"
+                        )
+                        if addr:
+                            data["address"] = addr
 
                     return data
         except ApplicationError:
@@ -134,25 +149,33 @@ class FalconBizScraper(BaseScraper):
 
     def _get_text(self, tree, xpath):
         results = tree.xpath(xpath)
-        if not results: return None
+        if not results:
+            return None
         return " ".join([r.strip() for r in results if r.strip()]).strip()
 
     def _parse_date(self, date_str: Optional[str]) -> Optional[datetime.date]:
-        if not date_str or not date_str.strip(): return None
+        if not date_str or not date_str.strip():
+            return None
         date_str = date_str.strip()
         date_str = re.sub(r"(\d+)(st|nd|rd|th)", r"\1", date_str)
         for fmt in ("%Y-%m-%d", "%d %B %Y", "%d %b %Y", "%d/%m/%Y", "%d %b, %Y"):
-            try: return datetime.datetime.strptime(date_str, fmt).date()
-            except ValueError: continue
+            try:
+                return datetime.datetime.strptime(date_str, fmt).date()
+            except ValueError:
+                continue
         date_str = date_str.replace(",", "")
         for fmt in ("%d %B %Y", "%d %b %Y"):
-            try: return datetime.datetime.strptime(date_str, fmt).date()
-            except ValueError: continue
+            try:
+                return datetime.datetime.strptime(date_str, fmt).date()
+            except ValueError:
+                continue
         return None
 
     def _parse_int(self, int_str: Optional[str]) -> Optional[int]:
-        if not int_str: return None
+        if not int_str:
+            return None
         try:
             clean_str = "".join(filter(str.isdigit, int_str))
             return int(clean_str) if clean_str else None
-        except: return None
+        except:
+            return None

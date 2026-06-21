@@ -129,36 +129,36 @@ logger = logging.getLogger(__name__)
 
 BAND_LIMIT_PCT: Dict[str, float] = {
     "AAA": 0.35,
-    "AA":  0.28,
-    "A":   0.20,
+    "AA": 0.28,
+    "A": 0.20,
     "BBB": 0.12,
-    "BB":  0.06,
-    "B":   0.03,
+    "BB": 0.06,
+    "B": 0.03,
     "CCC": 0.00,
-    "D":   0.00,
+    "D": 0.00,
 }
 
 TNW_LIMIT_PCT: Dict[str, float] = {
     "AAA": 0.25,
-    "AA":  0.20,
-    "A":   0.15,
+    "AA": 0.20,
+    "A": 0.15,
     "BBB": 0.10,
-    "BB":  0.08,
-    "B":   0.05,
+    "BB": 0.08,
+    "B": 0.05,
     "CCC": 0.00,
-    "D":   0.00,
+    "D": 0.00,
 }
 
 # BILLING_CYCLES — AUDIT/REFERENCE ONLY.
 # Shows how many invoice cycles are outstanding at each tenor.
 # NOT used in any limit computation. Retained for UI display and audit trail.
 BILLING_CYCLES: Dict[int, float] = {
-    15:  0.5,
-    30:  1.0,
-    45:  1.5,
-    60:  2.0,
-    75:  2.5,
-    90:  3.0,
+    15: 0.5,
+    30: 1.0,
+    45: 1.5,
+    60: 2.0,
+    75: 2.5,
+    90: 3.0,
     120: 4.0,
     150: 5.0,
 }
@@ -166,47 +166,48 @@ BILLING_CYCLES: Dict[int, float] = {
 # Tenor multipliers — longer tenor = more risk = lower safe exposure.
 # Applied to MIN(anchors) at Step 3.
 TENOR_MULTIPLIER: Dict[int, float] = {
-    15:  1.00,
-    30:  0.95,
-    45:  0.88,
-    60:  0.80,
-    75:  0.72,
-    90:  0.65,
+    15: 1.00,
+    30: 0.95,
+    45: 0.88,
+    60: 0.80,
+    75: 0.72,
+    90: 0.65,
     120: 0.55,
     150: 0.45,
 }
 
 DECLINING_TURNOVER_HAIRCUT = 0.75
-VOLATILITY_HAIRCUT         = 0.85
-VOLATILITY_CV_THRESHOLD    = 0.30
+VOLATILITY_HAIRCUT = 0.85
+VOLATILITY_CV_THRESHOLD = 0.30
 
 # ---------------------------------------------------------------------------
 # Tenor advisory remark labels + classification thresholds
 # ---------------------------------------------------------------------------
 
 TENOR_REMARK_LABELS = {
-    "RECOMMENDED":     "Recommended",
-    "MODERATE":        "Moderate",
-    "WITH_CAUTION":    "With caution",
+    "RECOMMENDED": "Recommended",
+    "MODERATE": "Moderate",
+    "WITH_CAUTION": "With caution",
     "NOT_RECOMMENDED": "Not recommended",
 }
 
-_HEADROOM_RECOMMENDED  = 0.25
-_HEADROOM_MODERATE     = 0.10
+_HEADROOM_RECOMMENDED = 0.25
+_HEADROOM_MODERATE = 0.10
 
-_DROP_RECOMMENDED  = 0.20
-_DROP_MODERATE     = 0.40
-_DROP_CAUTION      = 0.60
+_DROP_RECOMMENDED = 0.20
+_DROP_MODERATE = 0.40
+_DROP_CAUTION = 0.60
 
 
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
 
+
 def _classify_tenor_remark(
-    evaluated_limit:  float,
+    evaluated_limit: float,
     requested_amount: Optional[float],
-    limit_at_15d:     Optional[float],
+    limit_at_15d: Optional[float],
 ) -> str:
     """
     Classify a single tenor bucket into one of four advisory labels.
@@ -255,18 +256,18 @@ def _tenor_bucket(requested_tenor_days: int) -> int:
 
 
 def _compute_anchors(
-    net_revenue_latest:          float,
-    pd_band:                     str,
-    tangible_net_worth:          Optional[float],
+    net_revenue_latest: float,
+    pd_band: str,
+    tangible_net_worth: Optional[float],
     avg_monthly_purchase_volume: Optional[float],
-    bucket:                      int,
+    bucket: int,
 ) -> Tuple[float, Optional[float], Optional[float]]:
     """
     Compute all three anchors for a given tenor bucket.
     Returns (anchor_revenue, anchor_tnw_or_None, anchor_purchase_or_None).
     """
     band_pct = BAND_LIMIT_PCT.get(pd_band, 0.0)
-    tnw_pct  = TNW_LIMIT_PCT.get(pd_band, 0.0)
+    tnw_pct = TNW_LIMIT_PCT.get(pd_band, 0.0)
 
     anchor_revenue = float(net_revenue_latest or 0) * band_pct
 
@@ -293,22 +294,22 @@ def _apply_haircuts(
     Apply declining-CAGR, volatility, and data-penalty haircuts.
     Returns (adjusted_limit, haircut_applied, volatility_haircut).
     """
-    haircut_applied    = False
+    haircut_applied = False
     volatility_haircut = False
-    adjusted           = base
+    adjusted = base
 
     if turnover_cagr_5y is not None and float(turnover_cagr_5y) < 0:
-        adjusted        *= DECLINING_TURNOVER_HAIRCUT
-        haircut_applied  = True
+        adjusted *= DECLINING_TURNOVER_HAIRCUT
+        haircut_applied = True
 
     t_vals = [v for v in [turnover_y1, turnover_y2, turnover_y3] if v is not None]
     if len(t_vals) >= 2:
-        mean_t  = statistics.mean(t_vals)
+        mean_t = statistics.mean(t_vals)
         stdev_t = statistics.stdev(t_vals)
-        cv      = stdev_t / mean_t if mean_t > 0 else 0
+        cv = stdev_t / mean_t if mean_t > 0 else 0
         if cv > VOLATILITY_CV_THRESHOLD:
-            adjusted           *= VOLATILITY_HAIRCUT
-            volatility_haircut  = True
+            adjusted *= VOLATILITY_HAIRCUT
+            volatility_haircut = True
 
     adjusted *= data_penalty
 
@@ -316,31 +317,39 @@ def _apply_haircuts(
 
 
 def _advised_at_bucket(
-    bucket:                      int,
-    net_revenue_latest:          float,
-    pd_band:                     str,
-    tangible_net_worth:          Optional[float],
+    bucket: int,
+    net_revenue_latest: float,
+    pd_band: str,
+    tangible_net_worth: Optional[float],
     avg_monthly_purchase_volume: Optional[float],
-    turnover_cagr_5y:            Optional[float],
-    turnover_y1:                 Optional[float],
-    turnover_y2:                 Optional[float],
-    turnover_y3:                 Optional[float],
-    data_penalty:                float = 1.0,
+    turnover_cagr_5y: Optional[float],
+    turnover_y1: Optional[float],
+    turnover_y2: Optional[float],
+    turnover_y3: Optional[float],
+    data_penalty: float = 1.0,
 ) -> float:
     """Compute evaluated_limit for a specific tenor bucket."""
     a_rev, a_tnw, a_purch = _compute_anchors(
-        net_revenue_latest, pd_band, tangible_net_worth,
-        avg_monthly_purchase_volume, bucket,
+        net_revenue_latest,
+        pd_band,
+        tangible_net_worth,
+        avg_monthly_purchase_volume,
+        bucket,
     )
     candidates = {"revenue": a_rev}
-    if a_tnw   is not None: candidates["tnw"]             = a_tnw
-    if a_purch is not None: candidates["purchase_volume"] = a_purch
+    if a_tnw is not None:
+        candidates["tnw"] = a_tnw
+    if a_purch is not None:
+        candidates["purchase_volume"] = a_purch
 
-    base       = min(candidates.values())
+    base = min(candidates.values())
     tenor_mult = TENOR_MULTIPLIER[bucket]
     adjusted, _, _ = _apply_haircuts(
         base * tenor_mult,
-        turnover_cagr_5y, turnover_y1, turnover_y2, turnover_y3,
+        turnover_cagr_5y,
+        turnover_y1,
+        turnover_y2,
+        turnover_y3,
         data_penalty=data_penalty,
     )
     return adjusted
@@ -350,25 +359,26 @@ def _advised_at_bucket(
 # Primary entry-point
 # ---------------------------------------------------------------------------
 
+
 def advise_limit(
     # Pipeline-injected from Part 1 FinalFeatureRow + pd_mapper
-    net_revenue_latest:              float,
-    pd_band:                         str,
-    tangible_net_worth:              Optional[float] = None,
-    turnover_cagr_5y:                Optional[float] = None,
-    turnover_y1:                     Optional[float] = None,
-    turnover_y2:                     Optional[float] = None,
-    turnover_y3:                     Optional[float] = None,
-    data_penalty:                    float           = 1.0,
+    net_revenue_latest: float,
+    pd_band: str,
+    tangible_net_worth: Optional[float] = None,
+    turnover_cagr_5y: Optional[float] = None,
+    turnover_y1: Optional[float] = None,
+    turnover_y2: Optional[float] = None,
+    turnover_y3: Optional[float] = None,
+    data_penalty: float = 1.0,
     # Seller-provided at query time
-    credit_period_days:              int             = 30,
-    requested_amount:                Optional[float] = None,
-    avg_monthly_purchase_volume:     Optional[float] = None,
+    credit_period_days: int = 30,
+    requested_amount: Optional[float] = None,
+    avg_monthly_purchase_volume: Optional[float] = None,
     # XAI integration
-    buyer_id:                        str             = "UNKNOWN",
-    blended_pd:                      float           = 0.0,
-    x_instance:                      Any             = None,
-    explainer:                       Any             = None,
+    buyer_id: str = "UNKNOWN",
+    blended_pd: float = 0.0,
+    x_instance: Any = None,
+    explainer: Any = None,
 ) -> dict:
     """
     Compute safe credit exposure limit for Seller on this Buyer.
@@ -384,50 +394,53 @@ def advise_limit(
     # -------------------------------------------------------------------------
     if pd_band == "UNSCOREABLE":
         return {
-            "advised_limit":              0.0,
-            "base_limit":                 0.0,
-            "binding_anchor":             None,
-            "all_anchors":                {},
-            "tenor_multiplier":           None,
-            "tenor_bucket_days":          None,
-            "haircut_applied":            False,
-            "volatility_haircut":         False,
-            "terms_vs_profile":           "unscoreable",
-            "requested_amount":           requested_amount,
-            "credit_period_days":         int(credit_period_days or 30),
-            "explanation":                None,
-            "recommended_tenor_days":     None,
-            "tenor_recommendation_note":  "Entity could not be reliably identified. No credit limit evaluated.",
-            "evaluated_clean_limit":      0.0,
-            "advance_required":           float(requested_amount or 0),
-            "advance_pct_of_request":     100.0 if requested_amount else 0.0,
-            "advance_recommendation":     None,
-            "tenor_schedule":             [],
-            "tenor_best_evaluated_days":  None,
+            "advised_limit": 0.0,
+            "base_limit": 0.0,
+            "binding_anchor": None,
+            "all_anchors": {},
+            "tenor_multiplier": None,
+            "tenor_bucket_days": None,
+            "haircut_applied": False,
+            "volatility_haircut": False,
+            "terms_vs_profile": "unscoreable",
+            "requested_amount": requested_amount,
+            "credit_period_days": int(credit_period_days or 30),
+            "explanation": None,
+            "recommended_tenor_days": None,
+            "tenor_recommendation_note": "Entity could not be reliably identified. No credit limit evaluated.",
+            "evaluated_clean_limit": 0.0,
+            "advance_required": float(requested_amount or 0),
+            "advance_pct_of_request": 100.0 if requested_amount else 0.0,
+            "advance_recommendation": None,
+            "tenor_schedule": [],
+            "tenor_best_evaluated_days": None,
         }
 
     # -------------------------------------------------------------------------
     # Step 1: Evaluate at Seller's preferred tenor
     # -------------------------------------------------------------------------
-    bucket     = _tenor_bucket(int(credit_period_days or 30))
+    bucket = _tenor_bucket(int(credit_period_days or 30))
     tenor_mult = TENOR_MULTIPLIER[bucket]
 
     anchor_revenue, anchor_tnw, anchor_purchase = _compute_anchors(
-        net_revenue_latest, pd_band, tangible_net_worth,
-        avg_monthly_purchase_volume, bucket,
+        net_revenue_latest,
+        pd_band,
+        tangible_net_worth,
+        avg_monthly_purchase_volume,
+        bucket,
     )
 
     # -------------------------------------------------------------------------
     # Step 2: Binding anchor
     # -------------------------------------------------------------------------
     anchor_candidates = {
-        "revenue":         anchor_revenue,
-        "tnw":             anchor_tnw,
+        "revenue": anchor_revenue,
+        "tnw": anchor_tnw,
         "purchase_volume": anchor_purchase,
     }
     active_anchors = {k: v for k, v in anchor_candidates.items() if v is not None}
     binding_anchor = min(active_anchors, key=lambda k: active_anchors[k])
-    base_limit     = active_anchors[binding_anchor]
+    base_limit = active_anchors[binding_anchor]
 
     # -------------------------------------------------------------------------
     # Step 3: Tenor multiplier + haircuts
@@ -435,7 +448,10 @@ def advise_limit(
     pre_haircut = base_limit * tenor_mult
     advised_limit, haircut_applied, volatility_haircut = _apply_haircuts(
         pre_haircut,
-        turnover_cagr_5y, turnover_y1, turnover_y2, turnover_y3,
+        turnover_cagr_5y,
+        turnover_y1,
+        turnover_y2,
+        turnover_y3,
         data_penalty=data_penalty,
     )
 
@@ -454,9 +470,14 @@ def advise_limit(
     # -------------------------------------------------------------------------
     limit_at_15d: float = _advised_at_bucket(
         15,
-        net_revenue_latest, pd_band, tangible_net_worth,
+        net_revenue_latest,
+        pd_band,
+        tangible_net_worth,
         avg_monthly_purchase_volume,
-        turnover_cagr_5y, turnover_y1, turnover_y2, turnover_y3,
+        turnover_cagr_5y,
+        turnover_y1,
+        turnover_y2,
+        turnover_y3,
         data_penalty=data_penalty,
     )
 
@@ -464,26 +485,33 @@ def advise_limit(
     for t_bucket in sorted(TENOR_MULTIPLIER.keys()):
         lim = _advised_at_bucket(
             t_bucket,
-            net_revenue_latest, pd_band, tangible_net_worth,
+            net_revenue_latest,
+            pd_band,
+            tangible_net_worth,
             avg_monthly_purchase_volume,
-            turnover_cagr_5y, turnover_y1, turnover_y2, turnover_y3,
+            turnover_cagr_5y,
+            turnover_y1,
+            turnover_y2,
+            turnover_y3,
             data_penalty=data_penalty,
         )
         clears = (requested_amount is not None) and (lim >= float(requested_amount))
-        adv    = round(max(0.0, float(requested_amount or 0) - lim), 2)
+        adv = round(max(0.0, float(requested_amount or 0) - lim), 2)
 
-        remark_key   = _classify_tenor_remark(lim, requested_amount, limit_at_15d)
+        remark_key = _classify_tenor_remark(lim, requested_amount, limit_at_15d)
         remark_label = TENOR_REMARK_LABELS[remark_key]
 
-        tenor_schedule.append({
-            "tenor_days":           t_bucket,
-            "advised_limit":        lim,
-            "billing_cycles_ref":   BILLING_CYCLES[t_bucket],
-            "clears_request":       clears,
-            "advance_to_collect":   adv,
-            "tenor_remark":         remark_key,
-            "tenor_remark_label":   remark_label,
-        })
+        tenor_schedule.append(
+            {
+                "tenor_days": t_bucket,
+                "advised_limit": lim,
+                "billing_cycles_ref": BILLING_CYCLES[t_bucket],
+                "clears_request": clears,
+                "advance_to_collect": adv,
+                "tenor_remark": remark_key,
+                "tenor_remark_label": remark_label,
+            }
+        )
 
     # -------------------------------------------------------------------------
     # Step 5b: Best evaluated tenor
@@ -501,18 +529,18 @@ def advise_limit(
     # Step 6: Evaluated clean limit
     # Formerly 'approved_clean_credit' — renamed to evaluated_clean_limit (v1.2)
     # -------------------------------------------------------------------------
-    recommended_tenor_days:  Optional[int] = None
-    evaluated_clean_limit:   float         = advised_limit
+    recommended_tenor_days: Optional[int] = None
+    evaluated_clean_limit: float = advised_limit
 
     if terms_vs_profile == "within_limit":
         recommended_tenor_days = bucket
-        evaluated_clean_limit  = advised_limit
+        evaluated_clean_limit = advised_limit
 
     elif terms_vs_profile == "exceeds_advised":
         for row in tenor_schedule:
             if row["clears_request"]:
                 recommended_tenor_days = row["tenor_days"]
-                evaluated_clean_limit  = row["advised_limit"]
+                evaluated_clean_limit = row["advised_limit"]
                 break
         if recommended_tenor_days is None:
             evaluated_clean_limit = tenor_schedule[0]["advised_limit"]
@@ -520,18 +548,18 @@ def advise_limit(
     # -------------------------------------------------------------------------
     # Step 7: Advance + recommendation notes
     # -------------------------------------------------------------------------
-    advance_required       = 0.0
+    advance_required = 0.0
     advance_pct_of_request = 0.0
     advance_recommendation: Optional[str] = None
-    tenor_recommendation_note: str        = ""
+    tenor_recommendation_note: str = ""
 
     if requested_amount is not None:
         req = float(requested_amount)
 
         if terms_vs_profile == "within_limit":
             tenor_recommendation_note = (
-                f"The evaluation indicates the requested \u20b9{req/1e5:.2f}L sits within "
-                f"the evaluated safe limit of \u20b9{advised_limit/1e5:.2f}L at {bucket}-day terms. "
+                f"The evaluation indicates the requested \u20b9{req / 1e5:.2f}L sits within "
+                f"the evaluated safe limit of \u20b9{advised_limit / 1e5:.2f}L at {bucket}-day terms. "
                 f"The Seller may consider extending credit under these terms at their sole discretion. "
                 f"No advance collection is suggested."
             )
@@ -541,42 +569,42 @@ def advise_limit(
                 advance_required = 0.0
                 if recommended_tenor_days < bucket:
                     tenor_recommendation_note = (
-                        f"The evaluation indicates the requested \u20b9{req/1e5:.2f}L exceeds the "
-                        f"evaluated safe limit of \u20b9{advised_limit/1e5:.2f}L at the preferred "
+                        f"The evaluation indicates the requested \u20b9{req / 1e5:.2f}L exceeds the "
+                        f"evaluated safe limit of \u20b9{advised_limit / 1e5:.2f}L at the preferred "
                         f"{bucket}-day terms. Evaluation suggests tightening to "
                         f"{recommended_tenor_days}-day terms — at that tenor the evaluated "
-                        f"safe limit is \u20b9{evaluated_clean_limit/1e5:.2f}L, which covers the full "
+                        f"safe limit is \u20b9{evaluated_clean_limit / 1e5:.2f}L, which covers the full "
                         f"request. The Seller may consider extending credit at "
                         f"{recommended_tenor_days}-day terms at their sole discretion. "
                         f"No advance collection is suggested at that tenor."
                     )
                 else:
                     tenor_recommendation_note = (
-                        f"The evaluation indicates the requested \u20b9{req/1e5:.2f}L sits within "
+                        f"The evaluation indicates the requested \u20b9{req / 1e5:.2f}L sits within "
                         f"the evaluated safe limit at {recommended_tenor_days}-day terms "
-                        f"(evaluated limit: \u20b9{evaluated_clean_limit/1e5:.2f}L). "
+                        f"(evaluated limit: \u20b9{evaluated_clean_limit / 1e5:.2f}L). "
                         f"The Seller may consider extending credit at their sole discretion. "
                         f"No advance collection is suggested."
                     )
             else:
-                advance_required       = round(req - evaluated_clean_limit, 2)
+                advance_required = round(req - evaluated_clean_limit, 2)
                 advance_pct_of_request = round(advance_required / req * 100, 2)
                 advance_recommendation = (
                     f"The evaluation indicates a maximum evaluated safe limit of "
-                    f"\u20b9{evaluated_clean_limit/1e5:.2f}L on 15-day terms. "
+                    f"\u20b9{evaluated_clean_limit / 1e5:.2f}L on 15-day terms. "
                     f"It is recommended that the Seller consider extending "
-                    f"\u20b9{evaluated_clean_limit/1e5:.2f}L as clean trade credit "
-                    f"and collecting \u20b9{advance_required/1e5:.2f}L "
+                    f"\u20b9{evaluated_clean_limit / 1e5:.2f}L as clean trade credit "
+                    f"and collecting \u20b9{advance_required / 1e5:.2f}L "
                     f"({advance_pct_of_request:.1f}% of order value) as an advance "
                     f"payment, post-dated cheque, or security deposit from the Buyer "
                     f"prior to dispatch. The Seller retains full discretion. "
-                    f"Total coverage: \u20b9{req/1e5:.2f}L."
+                    f"Total coverage: \u20b9{req / 1e5:.2f}L."
                 )
                 tenor_recommendation_note = (
-                    f"The evaluation indicates the requested \u20b9{req/1e5:.2f}L exceeds the "
+                    f"The evaluation indicates the requested \u20b9{req / 1e5:.2f}L exceeds the "
                     f"evaluated safe capacity at all tenor buckets "
-                    f"(maximum evaluated limit: \u20b9{evaluated_clean_limit/1e5:.2f}L at 15-day terms). "
-                    f"Advance collection of \u20b9{advance_required/1e5:.2f}L is suggested. "
+                    f"(maximum evaluated limit: \u20b9{evaluated_clean_limit / 1e5:.2f}L at 15-day terms). "
+                    f"Advance collection of \u20b9{advance_required / 1e5:.2f}L is suggested. "
                     f"See advance_recommendation for details."
                 )
     else:
@@ -589,31 +617,31 @@ def advise_limit(
     # Step 8: Assemble result
     # -------------------------------------------------------------------------
     result = {
-        "advised_limit":              advised_limit,
-        "base_limit":                 round(base_limit, 2),
-        "binding_anchor":             binding_anchor,
+        "advised_limit": advised_limit,
+        "base_limit": round(base_limit, 2),
+        "binding_anchor": binding_anchor,
         "all_anchors": {
-            "revenue_anchor":          round(anchor_revenue, 2),
-            "tnw_anchor":              round(anchor_tnw, 2) if anchor_tnw is not None else None,
-            "purchase_volume_anchor":  round(anchor_purchase, 2) if anchor_purchase is not None else None,
+            "revenue_anchor": round(anchor_revenue, 2),
+            "tnw_anchor": round(anchor_tnw, 2) if anchor_tnw is not None else None,
+            "purchase_volume_anchor": round(anchor_purchase, 2) if anchor_purchase is not None else None,
         },
-        "tenor_multiplier":           tenor_mult,
-        "tenor_bucket_days":          bucket,
-        "haircut_applied":            haircut_applied,
-        "volatility_haircut":         volatility_haircut,
-        "data_penalty":               data_penalty,
-        "terms_vs_profile":           terms_vs_profile,
-        "requested_amount":           requested_amount,
-        "credit_period_days":         int(credit_period_days or 30),
-        "explanation":                None,
-        "recommended_tenor_days":     recommended_tenor_days,
-        "tenor_recommendation_note":  tenor_recommendation_note,
-        "evaluated_clean_limit":      round(evaluated_clean_limit, 2),
-        "advance_required":           round(advance_required, 2),
-        "advance_pct_of_request":     advance_pct_of_request,
-        "advance_recommendation":     advance_recommendation,
-        "tenor_schedule":             tenor_schedule,
-        "tenor_best_evaluated_days":  tenor_best_evaluated_days,
+        "tenor_multiplier": tenor_mult,
+        "tenor_bucket_days": bucket,
+        "haircut_applied": haircut_applied,
+        "volatility_haircut": volatility_haircut,
+        "data_penalty": data_penalty,
+        "terms_vs_profile": terms_vs_profile,
+        "requested_amount": requested_amount,
+        "credit_period_days": int(credit_period_days or 30),
+        "explanation": None,
+        "recommended_tenor_days": recommended_tenor_days,
+        "tenor_recommendation_note": tenor_recommendation_note,
+        "evaluated_clean_limit": round(evaluated_clean_limit, 2),
+        "advance_required": round(advance_required, 2),
+        "advance_pct_of_request": advance_pct_of_request,
+        "advance_recommendation": advance_recommendation,
+        "tenor_schedule": tenor_schedule,
+        "tenor_best_evaluated_days": tenor_best_evaluated_days,
     }
 
     # -------------------------------------------------------------------------
@@ -622,13 +650,13 @@ def advise_limit(
     if explainer is not None and x_instance is not None:
         try:
             explanation = explainer.explain_buyer(
-                buyer_id      = buyer_id,
-                x_instance    = np.array(x_instance).flatten(),
-                blended_pd    = blended_pd,
-                band          = pd_band,
-                assessment    = terms_vs_profile,
-                advised_limit = advised_limit,
-                save          = True,
+                buyer_id=buyer_id,
+                x_instance=np.array(x_instance).flatten(),
+                blended_pd=blended_pd,
+                band=pd_band,
+                assessment=terms_vs_profile,
+                advised_limit=advised_limit,
+                save=True,
             )
             result["explanation"] = explanation
         except Exception as e:

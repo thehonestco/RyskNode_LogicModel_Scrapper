@@ -44,7 +44,7 @@ class TracxnScraper(BaseScraper):
                 # Use a realistic context with a modern User-Agent
                 context = await browser.new_context(
                     user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-                    viewport={"width": 1280, "height": 720}
+                    viewport={"width": 1280, "height": 720},
                 )
                 page = await context.new_page()
 
@@ -57,11 +57,14 @@ class TracxnScraper(BaseScraper):
                         await route.abort()
                     else:
                         await route.continue_()
+
                 await page.route("**/*", block_resources)
 
                 # Navigate to the base search page (using domcontentloaded for speed)
                 logger.info("Navigating to Tracxn Search via Playwright Stealth")
-                await page.goto("https://tracxn.com/search/legal-entities", wait_until="domcontentloaded", timeout=30000)
+                await page.goto(
+                    "https://tracxn.com/search/legal-entities", wait_until="domcontentloaded", timeout=30000
+                )
 
                 # Type the query and search
                 logger.info(f"Typing query: {query}")
@@ -71,7 +74,9 @@ class TracxnScraper(BaseScraper):
 
                 # Wait for results
                 try:
-                    await page.wait_for_selector("a[href*='/d/legal-entities/india/'], img[alt='no-result-found']", timeout=10000)
+                    await page.wait_for_selector(
+                        "a[href*='/d/legal-entities/india/'], img[alt='no-result-found']", timeout=10000
+                    )
                 except Exception:
                     logger.debug("Timeout waiting for search results to load.")
 
@@ -165,4 +170,3 @@ class TracxnScraper(BaseScraper):
             return datetime.date(year, 3, 31)
 
         return None
-

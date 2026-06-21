@@ -6,14 +6,15 @@ Derives filing-consistency conduct signal from the GST API response.
 Separate from the existing GST revenue / sector extraction so that
 concerns stay isolated.
 """
+
 from __future__ import annotations
 
 from typing import Any
 
 # Valid filing consistency values expected from aggregator
-_FILING_REGULAR    = "regular"
-_FILING_IRREGULAR  = "irregular"
-_FILING_NON_FILER  = "non-filer"
+_FILING_REGULAR = "regular"
+_FILING_IRREGULAR = "irregular"
+_FILING_NON_FILER = "non-filer"
 
 
 def derive_gst_conduct_signals(gst_raw: dict[str, Any] | None) -> dict[str, Any]:

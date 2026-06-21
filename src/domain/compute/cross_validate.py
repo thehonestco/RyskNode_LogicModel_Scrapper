@@ -3,7 +3,9 @@ from __future__ import annotations
 from typing import Any
 
 
-def classify_mca_data_sufficiency(year1: dict[str, Any] | None, year2: dict[str, Any] | None, year3: dict[str, Any] | None) -> str:
+def classify_mca_data_sufficiency(
+    year1: dict[str, Any] | None, year2: dict[str, Any] | None, year3: dict[str, Any] | None
+) -> str:
     required = ["revenue", "ebit", "total_debt", "networth", "receivables"]
 
     def ok(y: dict[str, Any] | None) -> bool:
@@ -19,7 +21,9 @@ def classify_mca_data_sufficiency(year1: dict[str, Any] | None, year2: dict[str,
     return "insufficient"
 
 
-def maybe_switch_revenue_to_gst(mca_revenue: float | None, gst_turnover: float | None, threshold: float = 0.25) -> tuple[str, list[str]]:
+def maybe_switch_revenue_to_gst(
+    mca_revenue: float | None, gst_turnover: float | None, threshold: float = 0.25
+) -> tuple[str, list[str]]:
     notes: list[str] = []
     if mca_revenue is None or gst_turnover is None or gst_turnover == 0:
         return "mca", notes

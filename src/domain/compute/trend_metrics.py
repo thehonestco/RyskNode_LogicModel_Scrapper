@@ -1,4 +1,5 @@
 """Trend metric computation — CAGR, business vintage, GST consistency."""
+
 from typing import Optional
 from datetime import date
 from domain.schemas.normalized_record import NormalizedRecord

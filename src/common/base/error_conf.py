@@ -1,6 +1,7 @@
 """
 Error Configuration file to map error codes with messages
 """
+
 from typing import Any, Dict
 
 from common.base import constants

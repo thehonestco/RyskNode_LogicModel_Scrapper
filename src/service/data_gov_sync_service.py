@@ -70,8 +70,7 @@ class DataGovSyncService(BaseService):
             start_offset = offset
             if start_offset is None:
                 start_offset = self._load_last_offset_from_reports(
-                    state_key,
-                    resume_only_on_interruption=resume_only_on_interruption
+                    state_key, resume_only_on_interruption=resume_only_on_interruption
                 )
 
             offset = start_offset
@@ -113,7 +112,9 @@ class DataGovSyncService(BaseService):
 
                     # Stop if we hit user-specified max_records
                     if max_records and (stats["total_fetched"] - start_offset) >= max_records:
-                        logger.info(f"Reached configured limit of {max_records} records for state {state_clean or 'All States'}.")
+                        logger.info(
+                            f"Reached configured limit of {max_records} records for state {state_clean or 'All States'}."
+                        )
                         break
 
                     params = {
@@ -130,7 +131,9 @@ class DataGovSyncService(BaseService):
                         "Accept": "application/json",
                     }
 
-                    logger.info(f"Fetching page (offset={offset}, limit={limit}) for state: {state_clean or 'All States'}")
+                    logger.info(
+                        f"Fetching page (offset={offset}, limit={limit}) for state: {state_clean or 'All States'}"
+                    )
                     retry_delay = 5
                     res_json = None
 
@@ -172,7 +175,9 @@ class DataGovSyncService(BaseService):
                                 retry_delay = min(retry_delay * 2, 60)
                                 continue
                     except Exception as e:
-                        logger.error(f"Error fetching data from API for state {state_clean or 'All States'} at offset {offset}: {e}")
+                        logger.error(
+                            f"Error fetching data from API for state {state_clean or 'All States'} at offset {offset}: {e}"
+                        )
                         stats["status"] = "Failed"
                         stats["error"] = str(e)
                         break
@@ -189,7 +194,9 @@ class DataGovSyncService(BaseService):
 
                     records = res_json.get("records", [])
                     if not records:
-                        logger.info(f"No more records found for state: {state_clean or 'All States'}. Synchronization completed.")
+                        logger.info(
+                            f"No more records found for state: {state_clean or 'All States'}. Synchronization completed."
+                        )
                         break
 
                     stats["pages_processed"] += 1
@@ -261,11 +268,13 @@ class DataGovSyncService(BaseService):
                                     # If a database operation fails for a specific record, the savepoint
                                     # is rolled back, keeping the main page transaction healthy and active
                                     # to avoid InFailedSQLTransactionError for subsequent records.
-                                    async with active_uow.session.begin_nested():
+                                    async with active_uow.begin_nested():
                                         existing = await repo.get_single(cin=cin.strip())
                                         if existing:
                                             # Filter out None/Empty values to avoid overwriting existing valid DB data
-                                            update_data = {k: v for k, v in mapped_data.items() if v is not None and v != ""}
+                                            update_data = {
+                                                k: v for k, v in mapped_data.items() if v is not None and v != ""
+                                            }
                                             await repo.update_by(update_data, {"cin": cin.strip()})
                                             stats["updated"] += 1
                                         else:
@@ -273,13 +282,17 @@ class DataGovSyncService(BaseService):
                                             stats["added"] += 1
                                 except Exception as save_err:
                                     logger.error(f"Failed to save record with CIN {cin}: {save_err}")
-                                    stats["failed_records"].append({
-                                        "cin": cin,
-                                        "name": company_name or "N/A",
-                                        "reason": str(save_err),
-                                    })
+                                    stats["failed_records"].append(
+                                        {
+                                            "cin": cin,
+                                            "name": company_name or "N/A",
+                                            "reason": str(save_err),
+                                        }
+                                    )
                     except Exception as db_err:
-                        logger.error(f"Database transaction error for state {state_clean or 'All States'} page: {db_err}")
+                        logger.error(
+                            f"Database transaction error for state {state_clean or 'All States'} page: {db_err}"
+                        )
                         stats["status"] = "Failed"
                         stats["error"] = f"DB Transaction error: {db_err}"
                         break
@@ -419,6 +432,7 @@ The following records could not be saved to the database:
         and parse the 'Last Processed Offset' or 'Total Records Fetched' value from it.
         """
         import re
+
         report_dir = os.path.join(os.getcwd(), "reports")
         if not os.path.exists(report_dir):
             return 0
@@ -449,21 +463,27 @@ The following records could not be saved to the database:
                 if status_match:
                     status_val = status_match.group(1).strip()
                     if status_val == "Completed":
-                        logger.info(f"Latest report for '{state_key}' shows status is Completed. Starting fresh from offset 0 to update old records.")
+                        logger.info(
+                            f"Latest report for '{state_key}' shows status is Completed. Starting fresh from offset 0 to update old records."
+                        )
                         return 0
 
             # 1. First, search for Last Processed Offset
             match = re.search(r"-\s+\*\*Last Processed Offset:\*\*\s+(\d+)", content)
             if match:
                 offset_val = int(match.group(1))
-                logger.info(f"Resuming '{state_key}' from parsed Last Processed Offset: {offset_val} (report: {latest_file})")
+                logger.info(
+                    f"Resuming '{state_key}' from parsed Last Processed Offset: {offset_val} (report: {latest_file})"
+                )
                 return offset_val
 
             # 2. Second, search for Total Records Fetched (to support existing reports)
             match = re.search(r"-\s+\*\*Total Records Fetched:\*\*\s+(\d+)", content)
             if match:
                 offset_val = int(match.group(1))
-                logger.info(f"Resuming '{state_key}' from parsed Total Records Fetched: {offset_val} (report: {latest_file})")
+                logger.info(
+                    f"Resuming '{state_key}' from parsed Total Records Fetched: {offset_val} (report: {latest_file})"
+                )
                 return offset_val
 
         except Exception as e:

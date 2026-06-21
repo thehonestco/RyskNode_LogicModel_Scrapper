@@ -71,223 +71,214 @@ Rationale Notes
 from __future__ import annotations
 
 SECTOR_BENCHMARKS: dict[str, dict] = {
-
     # ------------------------------------------------------------------
     "AUTO_COMPONENTS": {
         "dso": {
             "excellent": 30,
-            "good":      45,
-            "high":      75,
+            "good": 45,
+            "high": 75,
         },
         "current_ratio": {
-            "strong":   1.8,
+            "strong": 1.8,
             "adequate": 1.3,
             "marginal": 1.0,
         },
         "quick_ratio": {
-            "strong":   1.00,
+            "strong": 1.00,
             "adequate": 0.70,
         },
         "debt_to_equity": {
-            "low":      1.5,
+            "low": 1.5,
             "moderate": 2.5,
-            "high":     3.5,
+            "high": 3.5,
         },
         "cagr": {
-            "strong":   0.12,
+            "strong": 0.12,
             "moderate": 0.06,
         },
     },
-
     # ------------------------------------------------------------------
     "CAPITAL_GOODS": {
         "dso": {
             "excellent": 60,
-            "good":      90,
-            "high":      120,
+            "good": 90,
+            "high": 120,
         },
         "current_ratio": {
-            "strong":   1.8,
+            "strong": 1.8,
             "adequate": 1.3,
             "marginal": 1.0,
         },
         "quick_ratio": {
-            "strong":   1.00,
+            "strong": 1.00,
             "adequate": 0.70,
         },
         "debt_to_equity": {
-            "low":      1.5,
+            "low": 1.5,
             "moderate": 2.5,
-            "high":     3.5,
+            "high": 3.5,
         },
         "cagr": {
-            "strong":   0.12,
+            "strong": 0.12,
             "moderate": 0.06,
         },
     },
-
     # ------------------------------------------------------------------
     "ELECTRONICS_ELECTRICAL": {
         "dso": {
             "excellent": 45,
-            "good":      75,
-            "high":      105,
+            "good": 75,
+            "high": 105,
         },
         "current_ratio": {
-            "strong":   1.8,
+            "strong": 1.8,
             "adequate": 1.3,
             "marginal": 1.0,
         },
         "quick_ratio": {
-            "strong":   1.10,
+            "strong": 1.10,
             "adequate": 0.80,
         },
         "debt_to_equity": {
-            "low":      1.0,
+            "low": 1.0,
             "moderate": 2.0,
-            "high":     3.0,
+            "high": 3.0,
         },
         "cagr": {
-            "strong":   0.15,
+            "strong": 0.15,
             "moderate": 0.08,
         },
     },
-
     # ------------------------------------------------------------------
     "FMCG_CONSUMER": {
         "dso": {
             "excellent": 20,
-            "good":      40,
-            "high":      60,
+            "good": 40,
+            "high": 60,
         },
         "current_ratio": {
-            "strong":   1.5,
+            "strong": 1.5,
             "adequate": 1.2,
             "marginal": 1.0,
         },
         "quick_ratio": {
-            "strong":   0.90,
+            "strong": 0.90,
             "adequate": 0.65,
         },
         "debt_to_equity": {
-            "low":      1.0,
+            "low": 1.0,
             "moderate": 2.0,
-            "high":     3.0,
+            "high": 3.0,
         },
         "cagr": {
-            "strong":   0.15,
+            "strong": 0.15,
             "moderate": 0.08,
         },
     },
-
     # ------------------------------------------------------------------
     "PHARMA_CHEM": {
         "dso": {
             "excellent": 45,
-            "good":      75,
-            "high":      100,
+            "good": 75,
+            "high": 100,
         },
         "current_ratio": {
-            "strong":   2.0,
+            "strong": 2.0,
             "adequate": 1.5,
             "marginal": 1.1,
         },
         "quick_ratio": {
-            "strong":   1.20,
+            "strong": 1.20,
             "adequate": 0.85,
         },
         "debt_to_equity": {
-            "low":      1.0,
+            "low": 1.0,
             "moderate": 2.0,
-            "high":     3.0,
+            "high": 3.0,
         },
         "cagr": {
-            "strong":   0.15,
+            "strong": 0.15,
             "moderate": 0.08,
         },
     },
-
     # ------------------------------------------------------------------
     "RUBBER_PLASTIC_PAPER": {
         "dso": {
             "excellent": 45,
-            "good":      75,
-            "high":      105,
+            "good": 75,
+            "high": 105,
         },
         "current_ratio": {
-            "strong":   1.6,
+            "strong": 1.6,
             "adequate": 1.2,
             "marginal": 1.0,
         },
         "quick_ratio": {
-            "strong":   0.90,
+            "strong": 0.90,
             "adequate": 0.65,
         },
         "debt_to_equity": {
-            "low":      1.5,
+            "low": 1.5,
             "moderate": 2.5,
-            "high":     3.5,
+            "high": 3.5,
         },
         "cagr": {
-            "strong":   0.10,
+            "strong": 0.10,
             "moderate": 0.05,
         },
     },
-
     # ------------------------------------------------------------------
     "TEXTILE_APPAREL": {
         "dso": {
             "excellent": 45,
-            "good":      75,
-            "high":      100,
+            "good": 75,
+            "high": 100,
         },
         "current_ratio": {
-            "strong":   1.5,
+            "strong": 1.5,
             "adequate": 1.2,
             "marginal": 1.0,
         },
         "quick_ratio": {
-            "strong":   0.80,
+            "strong": 0.80,
             "adequate": 0.60,
         },
         "debt_to_equity": {
-            "low":      1.5,
+            "low": 1.5,
             "moderate": 2.5,
-            "high":     3.5,
+            "high": 3.5,
         },
         "cagr": {
-            "strong":   0.10,
+            "strong": 0.10,
             "moderate": 0.05,
         },
     },
-
     # ------------------------------------------------------------------
     "INFRA_CONSTRUCTION": {
         "dso": {
             "excellent": 75,
-            "good":      120,
-            "high":      150,
+            "good": 120,
+            "high": 150,
         },
         "current_ratio": {
-            "strong":   1.3,
+            "strong": 1.3,
             "adequate": 1.0,
             "marginal": 0.8,
         },
         "quick_ratio": {
-            "strong":   0.80,
+            "strong": 0.80,
             "adequate": 0.60,
         },
         "debt_to_equity": {
-            "low":      2.0,
+            "low": 2.0,
             "moderate": 3.5,
-            "high":     5.0,
+            "high": 5.0,
         },
         "cagr": {
-            "strong":   0.12,
+            "strong": 0.12,
             "moderate": 0.06,
         },
     },
-
     # ------------------------------------------------------------------
     # v1.1 FIX: D/E tolerance corrected for Indian MSME trading norms.
     # Traders structurally run CC limits + stock financing.
@@ -296,81 +287,79 @@ SECTOR_BENCHMARKS: dict[str, dict] = {
     "TRADE_WHOLESALE": {
         "dso": {
             "excellent": 20,
-            "good":      45,
-            "high":      60,
+            "good": 45,
+            "high": 60,
         },
         "current_ratio": {
-            "strong":   1.5,
-            "adequate": 1.2,   # tighter floor — primary liquidity signal
+            "strong": 1.5,
+            "adequate": 1.2,  # tighter floor — primary liquidity signal
             "marginal": 1.0,
         },
         "quick_ratio": {
-            "strong":   0.70,
+            "strong": 0.70,
             "adequate": 0.50,
         },
         "debt_to_equity": {
-            "low":      2.5,   # was 1.5 — raised to match actual trading leverage
-            "moderate": 3.5,   # was 2.5
-            "high":     5.0,   # was 3.5
+            "low": 2.5,  # was 1.5 — raised to match actual trading leverage
+            "moderate": 3.5,  # was 2.5
+            "high": 5.0,  # was 3.5
         },
         "cagr": {
-            "strong":   0.12,
+            "strong": 0.12,
             "moderate": 0.06,
         },
     },
-
     # ------------------------------------------------------------------
     "SERVICES_IT": {
         "dso": {
             "excellent": 30,
-            "good":      60,
-            "high":      90,
+            "good": 60,
+            "high": 90,
         },
         "current_ratio": {
-            "strong":   2.0,
+            "strong": 2.0,
             "adequate": 1.5,
             "marginal": 1.0,
         },
         "quick_ratio": {
-            "strong":   1.50,
+            "strong": 1.50,
             "adequate": 1.00,
         },
         "debt_to_equity": {
-            "low":      0.5,
+            "low": 0.5,
             "moderate": 1.0,
-            "high":     2.0,
+            "high": 2.0,
         },
         "cagr": {
-            "strong":   0.20,
+            "strong": 0.20,
             "moderate": 0.10,
         },
     },
-
     # ------------------------------------------------------------------
     # GENERAL — original universal thresholds preserved verbatim.
     # DO NOT change these values without a full regression review.
     "GENERAL": {
         "dso": {
             "excellent": 30,
-            "good":      60,
-            "high":      90,
+            "good": 60,
+            "high": 90,
         },
         "current_ratio": {
-            "strong":   2.0,
+            "strong": 2.0,
             "adequate": 1.5,
             "marginal": 1.0,
         },
         "quick_ratio": {
-            "strong":   1.00,
+            "strong": 1.00,
             "adequate": 0.75,
         },
         "debt_to_equity": {
-            "low":      1.0,
+            "low": 1.0,
             "moderate": 2.0,
-            "high":     3.0,
+            "high": 3.0,
         },
         "cagr": {
-            "strong":   0.20,
+            "strong": 0.20,
             "moderate": 0.10,
         },
     },
@@ -380,6 +369,7 @@ SECTOR_BENCHMARKS: dict[str, dict] = {
 # ---------------------------------------------------------------------------
 # Public helper
 # ---------------------------------------------------------------------------
+
 
 def get_benchmarks(sector: str) -> dict:
     """

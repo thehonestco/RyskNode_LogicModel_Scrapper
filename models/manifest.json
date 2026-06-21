@@ -1,0 +1,221 @@
+{
+  "entries": [
+    {
+      "name": "scorecard",
+      "path": "/home/hrishi/Desktop/THC/rysknode/RyskNode_LogicModel_Scrapper/src/domain/models/scorecard.pkl",
+      "version": "2026-06-21T08-50-17TUTC",
+      "metrics": {
+        "val_auc": 0.6146,
+        "val_ap": 0.3241,
+        "val_brier": 0.2374,
+        "val_logloss": 0.6673,
+        "test_auc": 0.5634,
+        "test_ap": 0.2678,
+        "test_brier": 0.2486,
+        "test_logloss": 0.6912
+      },
+      "is_synthetic": false,
+      "trained_at": "2026-06-21 08:50:17 UTC",
+      "promoted": false
+    },
+    {
+      "name": "scorecard",
+      "path": "/home/hrishi/Desktop/THC/rysknode/RyskNode_LogicModel_Scrapper/src/domain/models/scorecard.pkl",
+      "version": "2026-06-21T08-52-50TUTC",
+      "metrics": {
+        "val_auc": 0.6146,
+        "val_ap": 0.3241,
+        "val_brier": 0.2374,
+        "val_logloss": 0.6673,
+        "test_auc": 0.5634,
+        "test_ap": 0.2678,
+        "test_brier": 0.2486,
+        "test_logloss": 0.6912
+      },
+      "is_synthetic": false,
+      "trained_at": "2026-06-21 08:52:50 UTC",
+      "promoted": false
+    },
+    {
+      "name": "lgbm_calibrated",
+      "path": "/home/hrishi/Desktop/THC/rysknode/RyskNode_LogicModel_Scrapper/src/domain/models/lgbm_calibrated.pkl",
+      "version": "2026-06-21T08-52-52TUTC",
+      "metrics": {
+        "val_auc": 0.6183,
+        "val_ap": 0.3778,
+        "val_brier": 0.1816,
+        "val_logloss": 0.5472,
+        "test_auc": 0.6082,
+        "test_ap": 0.3095,
+        "test_brier": 0.1753,
+        "test_logloss": 0.5328
+      },
+      "is_synthetic": false,
+      "trained_at": "2026-06-21 08:52:52 UTC",
+      "promoted": false
+    },
+    {
+      "name": "xgb_calibrated",
+      "path": "/home/hrishi/Desktop/THC/rysknode/RyskNode_LogicModel_Scrapper/src/domain/models/xgb_calibrated.pkl",
+      "version": "2026-06-21T08-52-58TUTC",
+      "metrics": {
+        "val_auc": 0.605,
+        "val_ap": 0.3582,
+        "val_brier": 0.1827,
+        "val_logloss": 0.55,
+        "test_auc": 0.5796,
+        "test_ap": 0.2777,
+        "test_brier": 0.1777,
+        "test_logloss": 0.5392
+      },
+      "is_synthetic": false,
+      "trained_at": "2026-06-21 08:52:58 UTC",
+      "promoted": false
+    },
+    {
+      "name": "lgd",
+      "path": "/home/hrishi/Desktop/THC/rysknode/RyskNode_LogicModel_Scrapper/src/domain/models/lgd.pkl",
+      "version": "2026-06-21T08-52-58TUTC",
+      "metrics": {
+        "val_mae": 0.0666,
+        "val_r2": -0.0902
+      },
+      "is_synthetic": false,
+      "trained_at": "2026-06-21 08:52:58 UTC",
+      "promoted": false
+    },
+    {
+      "name": "scorecard",
+      "path": "/home/hrishi/Desktop/THC/rysknode/RyskNode_LogicModel_Scrapper/src/domain/models/scorecard.pkl",
+      "version": "2026-06-21T08-54-51TUTC",
+      "metrics": {
+        "val_auc": 0.6146,
+        "val_ap": 0.3241,
+        "val_brier": 0.2374,
+        "val_logloss": 0.6673,
+        "test_auc": 0.5634,
+        "test_ap": 0.2678,
+        "test_brier": 0.2486,
+        "test_logloss": 0.6912
+      },
+      "is_synthetic": false,
+      "trained_at": "2026-06-21 08:54:51 UTC",
+      "promoted": false
+    },
+    {
+      "name": "lgbm_calibrated",
+      "path": "/home/hrishi/Desktop/THC/rysknode/RyskNode_LogicModel_Scrapper/src/domain/models/lgbm_calibrated.pkl",
+      "version": "2026-06-21T08-54-53TUTC",
+      "metrics": {
+        "val_auc": 0.6183,
+        "val_ap": 0.3778,
+        "val_brier": 0.1816,
+        "val_logloss": 0.5472,
+        "test_auc": 0.6082,
+        "test_ap": 0.3095,
+        "test_brier": 0.1753,
+        "test_logloss": 0.5328
+      },
+      "is_synthetic": false,
+      "trained_at": "2026-06-21 08:54:53 UTC",
+      "promoted": false
+    },
+    {
+      "name": "xgb_calibrated",
+      "path": "/home/hrishi/Desktop/THC/rysknode/RyskNode_LogicModel_Scrapper/src/domain/models/xgb_calibrated.pkl",
+      "version": "2026-06-21T08-54-58TUTC",
+      "metrics": {
+        "val_auc": 0.605,
+        "val_ap": 0.3582,
+        "val_brier": 0.1827,
+        "val_logloss": 0.55,
+        "test_auc": 0.5796,
+        "test_ap": 0.2777,
+        "test_brier": 0.1777,
+        "test_logloss": 0.5392
+      },
+      "is_synthetic": false,
+      "trained_at": "2026-06-21 08:54:58 UTC",
+      "promoted": false
+    },
+    {
+      "name": "lgd",
+      "path": "/home/hrishi/Desktop/THC/rysknode/RyskNode_LogicModel_Scrapper/src/domain/models/lgd.pkl",
+      "version": "2026-06-21T08-54-58TUTC",
+      "metrics": {
+        "val_mae": 0.0666,
+        "val_r2": -0.0902
+      },
+      "is_synthetic": false,
+      "trained_at": "2026-06-21 08:54:58 UTC",
+      "promoted": false
+    },
+    {
+      "name": "scorecard",
+      "path": "/home/hrishi/Desktop/THC/rysknode/RyskNode_LogicModel_Scrapper/src/domain/models/scorecard.pkl",
+      "version": "2026-06-21T08-57-28TUTC",
+      "metrics": {
+        "val_auc": 0.6146,
+        "val_ap": 0.3241,
+        "val_brier": 0.2374,
+        "val_logloss": 0.6673,
+        "test_auc": 0.5634,
+        "test_ap": 0.2678,
+        "test_brier": 0.2486,
+        "test_logloss": 0.6912
+      },
+      "is_synthetic": false,
+      "trained_at": "2026-06-21 08:57:28 UTC",
+      "promoted": false
+    },
+    {
+      "name": "lgbm_calibrated",
+      "path": "/home/hrishi/Desktop/THC/rysknode/RyskNode_LogicModel_Scrapper/src/domain/models/lgbm_calibrated.pkl",
+      "version": "2026-06-21T08-57-30TUTC",
+      "metrics": {
+        "val_auc": 0.6183,
+        "val_ap": 0.3778,
+        "val_brier": 0.1816,
+        "val_logloss": 0.5472,
+        "test_auc": 0.6082,
+        "test_ap": 0.3095,
+        "test_brier": 0.1753,
+        "test_logloss": 0.5328
+      },
+      "is_synthetic": false,
+      "trained_at": "2026-06-21 08:57:30 UTC",
+      "promoted": false
+    },
+    {
+      "name": "xgb_calibrated",
+      "path": "/home/hrishi/Desktop/THC/rysknode/RyskNode_LogicModel_Scrapper/src/domain/models/xgb_calibrated.pkl",
+      "version": "2026-06-21T08-57-33TUTC",
+      "metrics": {
+        "val_auc": 0.605,
+        "val_ap": 0.3582,
+        "val_brier": 0.1827,
+        "val_logloss": 0.55,
+        "test_auc": 0.5796,
+        "test_ap": 0.2777,
+        "test_brier": 0.1777,
+        "test_logloss": 0.5392
+      },
+      "is_synthetic": false,
+      "trained_at": "2026-06-21 08:57:33 UTC",
+      "promoted": false
+    },
+    {
+      "name": "lgd",
+      "path": "/home/hrishi/Desktop/THC/rysknode/RyskNode_LogicModel_Scrapper/src/domain/models/lgd.pkl",
+      "version": "2026-06-21T08-57-34TUTC",
+      "metrics": {
+        "val_mae": 0.0666,
+        "val_r2": -0.0902
+      },
+      "is_synthetic": false,
+      "trained_at": "2026-06-21 08:57:34 UTC",
+      "promoted": false
+    }
+  ],
+  "updated_at": "2026-06-21 08:57:34 UTC"
+}

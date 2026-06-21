@@ -1,4 +1,5 @@
 """Raw financial field extraction and validation from NormalizedRecord."""
+
 from typing import Optional
 from domain.schemas.normalized_record import NormalizedRecord
 from domain.compute.safe_math import safe_subtract
@@ -20,22 +21,20 @@ class RawFinancials:
         self.cogs = record.cogs_latest
 
         # Derived working capital
-        self.working_capital: Optional[float] = safe_subtract(
-            self.current_assets, self.current_liabilities
-        )
+        self.working_capital: Optional[float] = safe_subtract(self.current_assets, self.current_liabilities)
 
         # Quick assets = current assets - inventory
-        self.quick_assets: Optional[float] = safe_subtract(
-            self.current_assets, self.inventory
-        )
+        self.quick_assets: Optional[float] = safe_subtract(self.current_assets, self.inventory)
 
         # Tangible net worth = equity - intangible assets (approximated as equity here)
         self.tangible_net_worth: Optional[float] = self.equity
 
     @property
     def is_balance_sheet_available(self) -> bool:
-        return any([
-            self.current_assets is not None,
-            self.total_assets is not None,
-            self.equity is not None,
-        ])
+        return any(
+            [
+                self.current_assets is not None,
+                self.total_assets is not None,
+                self.equity is not None,
+            ]
+        )

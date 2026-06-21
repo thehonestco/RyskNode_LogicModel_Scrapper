@@ -3,6 +3,7 @@
 All ratios follow standard accounting definitions.
 References: standard balance-sheet and working-capital ratio formulas.
 """
+
 from typing import Optional
 from domain.compute.raw_financials import RawFinancials
 from domain.compute.safe_math import safe_divide
@@ -53,12 +54,12 @@ def compute_dpo(rf: RawFinancials) -> Optional[float]:
 def compute_all_ratios(rf: RawFinancials) -> dict:
     """Compute and return all financial ratios as a dict."""
     return {
-        "current_ratio":       compute_current_ratio(rf),
-        "quick_ratio":         compute_quick_ratio(rf),
-        "working_capital":     compute_working_capital(rf),
-        "debt_to_equity":      compute_debt_to_equity(rf),
-        "debt_to_assets":      compute_debt_to_assets(rf),
-        "tangible_net_worth":  compute_tangible_net_worth(rf),
-        "dso":                 compute_dso(rf),
-        "dpo":                 compute_dpo(rf),
+        "current_ratio": compute_current_ratio(rf),
+        "quick_ratio": compute_quick_ratio(rf),
+        "working_capital": compute_working_capital(rf),
+        "debt_to_equity": compute_debt_to_equity(rf),
+        "debt_to_assets": compute_debt_to_assets(rf),
+        "tangible_net_worth": compute_tangible_net_worth(rf),
+        "dso": compute_dso(rf),
+        "dpo": compute_dpo(rf),
     }

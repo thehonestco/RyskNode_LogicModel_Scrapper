@@ -43,6 +43,18 @@ class AbstractUnitOfWork(abc.ABC):
     async def rollback(self):
         raise NotImplementedError
 
+    @abc.abstractmethod
+    async def flush(self):
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    async def refresh(self, instance):
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def begin_nested(self):
+        raise NotImplementedError
+
 
 class FastCRUDUnitOfWork(AbstractUnitOfWork):
     """
@@ -77,3 +89,12 @@ class FastCRUDUnitOfWork(AbstractUnitOfWork):
 
     async def rollback(self):
         await self.session.rollback()
+
+    async def flush(self):
+        await self.session.flush()
+
+    async def refresh(self, instance):
+        await self.session.refresh(instance)
+
+    def begin_nested(self):
+        return self.session.begin_nested()

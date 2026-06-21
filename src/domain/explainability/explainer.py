@@ -81,6 +81,7 @@ logger = logging.getLogger(__name__)
 # Optional heavy dependencies — graceful fallback if not installed
 try:
     import shap
+
     _SHAP_AVAILABLE = True
 except ImportError:
     _SHAP_AVAILABLE = False
@@ -88,6 +89,7 @@ except ImportError:
 
 try:
     from lime import lime_tabular
+
     _LIME_AVAILABLE = True
 except ImportError:
     _LIME_AVAILABLE = False
@@ -95,8 +97,10 @@ except ImportError:
 
 try:
     import matplotlib
-    matplotlib.use("Agg")           # non-interactive backend for server use
+
+    matplotlib.use("Agg")  # non-interactive backend for server use
     import matplotlib.pyplot as plt
+
     _MPL_AVAILABLE = True
 except ImportError:
     _MPL_AVAILABLE = False
@@ -105,16 +109,16 @@ EXPLAINATIONS_DIR = Path(__file__).resolve().parents[2] / "part2" / "reports" / 
 
 # Feature display names — maps internal Buyer feature column names to human-readable labels
 FEATURE_LABELS: Dict[str, str] = {
-    "dscr":                  "Debt Service Coverage Ratio",
-    "leverage":              "Leverage (Debt/Assets)",
-    "collateral_cover":      "Collateral Cover Ratio",
-    "sector_risk":           "Sector Risk Score",
+    "dscr": "Debt Service Coverage Ratio",
+    "leverage": "Leverage (Debt/Assets)",
+    "collateral_cover": "Collateral Cover Ratio",
+    "sector_risk": "Sector Risk Score",
     "payment_history_score": "Payment History Score",
-    "net_revenue":           "Net Revenue (Buyer)",
-    "current_ratio":         "Current Ratio",
-    "interest_coverage":     "Interest Coverage Ratio",
-    "years_in_operation":    "Years in Operation",
-    "promoter_stake":        "Promoter Stake (%)",
+    "net_revenue": "Net Revenue (Buyer)",
+    "current_ratio": "Current Ratio",
+    "interest_coverage": "Interest Coverage Ratio",
+    "years_in_operation": "Years in Operation",
+    "promoter_stake": "Promoter Stake (%)",
 }
 
 
@@ -169,21 +173,21 @@ class CreditExplainer:
 
     def __init__(
         self,
-        lgbm_model:    Any,
-        xgb_model:     Any,
+        lgbm_model: Any,
+        xgb_model: Any,
         feature_names: List[str],
-        X_train:       Any,
+        X_train: Any,
         primary_model: str = "lgbm",
     ):
-        self.lgbm_model    = lgbm_model
-        self.xgb_model     = xgb_model
+        self.lgbm_model = lgbm_model
+        self.xgb_model = xgb_model
         self.feature_names = feature_names
-        self.X_train       = np.array(X_train)
+        self.X_train = np.array(X_train)
         self.primary_model = primary_model
 
         self._shap_explainer: Optional[Any] = None
         self._lime_explainer: Optional[Any] = None
-        self._shap_fitted    = False
+        self._shap_fitted = False
 
     # ── Lazy init ────────────────────────────────────────────────────────────
 
@@ -224,13 +228,13 @@ class CreditExplainer:
 
     def explain_buyer(
         self,
-        buyer_id:     str,
-        x_instance:   np.ndarray,
-        blended_pd:   float,
-        band:         str,
-        decision:     str,
+        buyer_id: str,
+        x_instance: np.ndarray,
+        blended_pd: float,
+        band: str,
+        decision: str,
         advised_limit: float = 0.0,
-        save:         bool = True,
+        save: bool = True,
     ) -> Dict:
         """
         Generate a full local explanation for a single Buyer.
@@ -255,17 +259,17 @@ class CreditExplainer:
         """
         x_instance = np.array(x_instance).flatten()
         report: Dict = {
-            "buyer_id":      buyer_id,
+            "buyer_id": buyer_id,
             "generated_at": datetime.now().isoformat(),
-            "blended_pd":   blended_pd,
-            "band":         band,
-            "decision":     decision,
-            "advised_limit":advised_limit,
-            "shap_values":  {},
-            "shap_ranked":  [],
+            "blended_pd": blended_pd,
+            "band": band,
+            "decision": decision,
+            "advised_limit": advised_limit,
+            "shap_values": {},
+            "shap_ranked": [],
             "lime_explanation": {},
-            "narrative":    "",
-            "plot_paths":   [],
+            "narrative": "",
+            "plot_paths": [],
         }
 
         # ── SHAP local explanation ──────────────────────────────────────
@@ -276,31 +280,24 @@ class CreditExplainer:
                 shap_vals = sv.values[0] if hasattr(sv, "values") else sv[0]
 
                 # Map to feature names
-                shap_dict = {
-                    self.feature_names[i]: float(shap_vals[i])
-                    for i in range(len(self.feature_names))
-                }
+                shap_dict = {self.feature_names[i]: float(shap_vals[i]) for i in range(len(self.feature_names))}
                 # Rank by absolute impact
-                ranked = sorted(
-                    shap_dict.items(), key=lambda x: abs(x[1]), reverse=True
-                )
+                ranked = sorted(shap_dict.items(), key=lambda x: abs(x[1]), reverse=True)
                 report["shap_values"] = shap_dict
                 report["shap_ranked"] = [
                     {
-                        "feature":       feat,
-                        "label":         FEATURE_LABELS.get(feat, feat),
+                        "feature": feat,
+                        "label": FEATURE_LABELS.get(feat, feat),
                         "feature_value": float(x_instance[self.feature_names.index(feat)]),
-                        "shap_value":    round(sv, 5),
-                        "direction":     "risk_increasing" if sv > 0 else "risk_reducing",
+                        "shap_value": round(sv, 5),
+                        "direction": "risk_increasing" if sv > 0 else "risk_reducing",
                     }
                     for feat, sv in ranked
                 ]
 
                 # Waterfall plot
                 if _MPL_AVAILABLE and save:
-                    plot_path = self._save_shap_waterfall(
-                        buyer_id, sv, x_instance
-                    )
+                    plot_path = self._save_shap_waterfall(buyer_id, sv, x_instance)
                     report["plot_paths"].append(str(plot_path))
 
             except Exception as e:
@@ -310,10 +307,7 @@ class CreditExplainer:
         if _LIME_AVAILABLE:
             try:
                 self._init_lime()
-                model = (
-                    self.lgbm_model if self.primary_model == "lgbm"
-                    else self.xgb_model
-                )
+                model = self.lgbm_model if self.primary_model == "lgbm" else self.xgb_model
 
                 def _predict_fn(X):
                     """Wrap model to return [P(non-default), P(default)] columns."""
@@ -328,10 +322,7 @@ class CreditExplainer:
                 )
                 lime_list = lime_exp.as_list()
                 report["lime_explanation"] = {
-                    "features": [
-                        {"condition": cond, "weight": round(weight, 5)}
-                        for cond, weight in lime_list
-                    ]
+                    "features": [{"condition": cond, "weight": round(weight, 5)} for cond, weight in lime_list]
                 }
 
                 # LIME plot
@@ -344,8 +335,7 @@ class CreditExplainer:
 
         # ── Narrative ───────────────────────────────────────────────
         report["narrative"] = self._build_narrative(
-            buyer_id, blended_pd, band, decision, advised_limit,
-            report["shap_ranked"]
+            buyer_id, blended_pd, band, decision, advised_limit, report["shap_ranked"]
         )
 
         if save:
@@ -364,10 +354,10 @@ class CreditExplainer:
 
     def explain_portfolio(
         self,
-        X:           np.ndarray,
-        entity_ids:  Optional[List[str]] = None,
-        save_plots:  bool = True,
-        top_n:       int = 10,
+        X: np.ndarray,
+        entity_ids: Optional[List[str]] = None,
+        save_plots: bool = True,
+        top_n: int = 10,
     ) -> Dict:
         """
         Global portfolio-level Buyer explainability.
@@ -399,19 +389,16 @@ class CreditExplainer:
         shap_vals = sv.values if hasattr(sv, "values") else sv
 
         mean_abs = np.mean(np.abs(shap_vals), axis=0)
-        ranked = sorted(
-            zip(self.feature_names, mean_abs.tolist()),
-            key=lambda x: x[1], reverse=True
-        )
+        ranked = sorted(zip(self.feature_names, mean_abs.tolist()), key=lambda x: x[1], reverse=True)
 
         result: Dict = {
-            "generated_at":     datetime.now().isoformat(),
-            "n_buyers":         len(X),
+            "generated_at": datetime.now().isoformat(),
+            "n_buyers": len(X),
             "feature_importance": [
                 {
-                    "rank":        i + 1,
-                    "feature":     feat,
-                    "label":       FEATURE_LABELS.get(feat, feat),
+                    "rank": i + 1,
+                    "feature": feat,
+                    "label": FEATURE_LABELS.get(feat, feat),
                     "mean_abs_shap": round(v, 6),
                 }
                 for i, (feat, v) in enumerate(ranked)
@@ -445,10 +432,10 @@ class CreditExplainer:
 
     def plot_pdp(
         self,
-        X:            np.ndarray,
+        X: np.ndarray,
         feature_name: str,
-        n_points:     int = 50,
-        save:         bool = True,
+        n_points: int = 50,
+        save: bool = True,
     ) -> Optional[Path]:
         """
         Partial Dependency Plot for a single Buyer feature.
@@ -474,17 +461,11 @@ class CreditExplainer:
             return None
 
         if feature_name not in self.feature_names:
-            raise ValueError(
-                f"'{feature_name}' not in feature_names. "
-                f"Available: {self.feature_names}"
-            )
+            raise ValueError(f"'{feature_name}' not in feature_names. Available: {self.feature_names}")
 
-        model = (
-            self.lgbm_model if self.primary_model == "lgbm"
-            else self.xgb_model
-        )
+        model = self.lgbm_model if self.primary_model == "lgbm" else self.xgb_model
         X = np.array(X)
-        feat_idx  = self.feature_names.index(feature_name)
+        feat_idx = self.feature_names.index(feature_name)
         feat_vals = np.linspace(X[:, feat_idx].min(), X[:, feat_idx].max(), n_points)
         pdp_preds = []
 
@@ -508,7 +489,7 @@ class CreditExplainer:
         path = None
         if save:
             EXPLANATIONS_DIR.mkdir(parents=True, exist_ok=True)
-            ts   = datetime.now().strftime("%Y%m%d_%H%M%S")
+            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
             path = EXPLANATIONS_DIR / f"pdp_{feature_name}_{ts}.png"
             fig.savefig(path, dpi=150, bbox_inches="tight")
             logger.info("PDP saved → %s", path)
@@ -521,12 +502,12 @@ class CreditExplainer:
 
     @staticmethod
     def _build_narrative(
-        buyer_id:     str,
-        blended_pd:   float,
-        band:         str,
-        decision:     str,
-        advised_limit:float,
-        shap_ranked:  List[Dict],
+        buyer_id: str,
+        blended_pd: float,
+        band: str,
+        decision: str,
+        advised_limit: float,
+        shap_ranked: List[Dict],
     ) -> str:
         """
         Build a plain-English Buyer risk assessment narrative from SHAP-ranked features.
@@ -541,7 +522,7 @@ class CreditExplainer:
         lines.append(f"BUYER RISK ASSESSMENT — {buyer_id}")
         lines.append("-" * 50)
         dec_upper = decision.upper().replace("_", " ")
-        lines.append(f"Decision: {dec_upper}  (Band: {band} | Blended PD: {blended_pd*100:.1f}%)")
+        lines.append(f"Decision: {dec_upper}  (Band: {band} | Blended PD: {blended_pd * 100:.1f}%)")
         if advised_limit > 0:
             lines.append(f"Advised Seller Exposure Limit: \u20b9{advised_limit:,.0f}")
         else:
@@ -549,14 +530,14 @@ class CreditExplainer:
         lines.append("")
 
         risk_factors = [f for f in shap_ranked if f["direction"] == "risk_increasing"]
-        mitigants    = [f for f in shap_ranked if f["direction"] == "risk_reducing"]
+        mitigants = [f for f in shap_ranked if f["direction"] == "risk_reducing"]
 
         if risk_factors:
             lines.append("Primary risk drivers (Buyer):")
             for f in risk_factors[:4]:
                 label = f["label"]
-                val   = f["feature_value"]
-                sv    = f["shap_value"]
+                val = f["feature_value"]
+                sv = f["shap_value"]
                 lines.append(f"  \u2022 {label}: {val:.3g}  (impact: +{sv:+.4f} on default probability)")
 
         if mitigants:
@@ -564,8 +545,8 @@ class CreditExplainer:
             lines.append("Mitigating factors (Buyer):")
             for f in mitigants[:3]:
                 label = f["label"]
-                val   = f["feature_value"]
-                sv    = f["shap_value"]
+                val = f["feature_value"]
+                sv = f["shap_value"]
                 lines.append(f"  \u2022 {label}: {val:.3g}  (impact: {sv:+.4f} on default probability)")
 
         if not shap_ranked:
@@ -577,9 +558,7 @@ class CreditExplainer:
     # Plot savers (internal)
     # ─────────────────────────────────────────────────────────────────────────
 
-    def _save_shap_waterfall(
-        self, buyer_id: str, shap_values: Any, x_instance: np.ndarray
-    ) -> Path:
+    def _save_shap_waterfall(self, buyer_id: str, shap_values: Any, x_instance: np.ndarray) -> Path:
         EXPLANATIONS_DIR.mkdir(parents=True, exist_ok=True)
         path = EXPLANATIONS_DIR / f"shap_waterfall_{buyer_id}.png"
         try:
@@ -608,11 +587,9 @@ class CreditExplainer:
             plt.close("all")
         return path
 
-    def _save_global_importance(
-        self, labels: List[str], values: List[float]
-    ) -> Path:
+    def _save_global_importance(self, labels: List[str], values: List[float]) -> Path:
         EXPLANATIONS_DIR.mkdir(parents=True, exist_ok=True)
-        ts   = datetime.now().strftime("%Y%m%d_%H%M%S")
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
         path = EXPLANATIONS_DIR / f"global_importance_{ts}.png"
         fig, ax = plt.subplots(figsize=(9, 5))
         ax.barh(labels[::-1], values[::-1], color="#01696f", alpha=0.85)
@@ -626,7 +603,7 @@ class CreditExplainer:
 
     def _save_shap_summary(self, shap_values: Any, X: np.ndarray) -> Path:
         EXPLANATIONS_DIR.mkdir(parents=True, exist_ok=True)
-        ts   = datetime.now().strftime("%Y%m%d_%H%M%S")
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
         path = EXPLANATIONS_DIR / f"shap_summary_{ts}.png"
         try:
             fig, ax = plt.subplots(figsize=(10, 6))
@@ -652,7 +629,7 @@ class CreditExplainer:
 
     def _save_explanation(self, buyer_id: str, report: Dict) -> None:
         EXPLANATIONS_DIR.mkdir(parents=True, exist_ok=True)
-        ts   = datetime.now().strftime("%Y%m%d_%H%M%S")
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
         path = EXPLANATIONS_DIR / f"explanation_{buyer_id}_{ts}.json"
         with open(path, "w") as fh:
             json.dump(report, fh, indent=2, default=str)

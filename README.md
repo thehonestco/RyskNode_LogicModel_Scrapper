@@ -89,6 +89,21 @@ When a batch request is processed, a report is generated in `reports/scrape_repo
 - Success/Failure count.
 - Detailed logs for failed CINs with specific reasons (e.g., Timeout, 404).
 
+## 🧠 ML Model Training & Artifacts
+
+The Pralyon AI Predictive Risk Engine (PPRE) relies on trained Machine Learning artifacts (LightGBM, XGBoost, openLGD, etc.) to compute the blended probability of default and LGD estimates.
+
+If you need to retrain the models with a new `training_data.csv` file, follow these steps:
+
+1. **Use the Training Pipeline**: 
+   Model training is intentionally decoupled from this API repository to prevent heavy data-science dependencies from bloating the web service. Run your model training pipeline (e.g., from the standalone POC repository) using your new `.csv` dataset.
+2. **Generate Artifacts**:
+   The training pipeline will output several serialized model files (e.g., `lgbm_calibrated.pkl`, `xgb_calibrated.pkl`, `scorecard.pkl`, `lgd.pkl`).
+3. **Deploy to V2.2**:
+   Copy the newly generated `.pkl` files into the `models/` directory at the root of this project.
+4. **Restart the Application**:
+   The `ArtifactService` loads these artifacts as singletons into memory upon startup. Restart the FastAPI server, and the new models will immediately take effect for all `/api/v1/assess` and `/api/v1/credit-limit` endpoints.
+
 ## 🏗️ Project Structure
 ```text
 src/

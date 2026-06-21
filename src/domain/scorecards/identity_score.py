@@ -55,31 +55,32 @@ from domain.compute.safe_math import clamp
 # Component scorers
 # ---------------------------------------------------------------------------
 
+
 def _score_name_match(grade: Optional[str]) -> tuple[float, str]:
     mapping = {
-        "exact":        (100.0, "NAME_EXACT_MATCH"),
-        "strong_fuzzy": (75.0,  "NAME_STRONG_FUZZY_MATCH"),
-        "weak_fuzzy":   (40.0,  "NAME_WEAK_FUZZY_MATCH"),
-        "mismatch":     (0.0,   "LEGAL_NAME_MISMATCH"),
+        "exact": (100.0, "NAME_EXACT_MATCH"),
+        "strong_fuzzy": (75.0, "NAME_STRONG_FUZZY_MATCH"),
+        "weak_fuzzy": (40.0, "NAME_WEAK_FUZZY_MATCH"),
+        "mismatch": (0.0, "LEGAL_NAME_MISMATCH"),
     }
     return mapping.get(str(grade).lower(), (50.0, "NAME_MATCH_UNKNOWN"))
 
 
 def _score_linkage(status: Optional[str]) -> tuple[float, str]:
     mapping = {
-        "full":     (100.0, "LINKAGE_FULL_MATCH"),
-        "partial":  (50.0,  "IDENTIFIER_LINKAGE_INCOMPLETE"),
-        "conflict": (0.0,   "IDENTIFIER_LINKAGE_CONFLICT"),
+        "full": (100.0, "LINKAGE_FULL_MATCH"),
+        "partial": (50.0, "IDENTIFIER_LINKAGE_INCOMPLETE"),
+        "conflict": (0.0, "IDENTIFIER_LINKAGE_CONFLICT"),
     }
     return mapping.get(str(status).lower(), (50.0, "LINKAGE_STATUS_UNKNOWN"))
 
 
 def _score_address(grade: Optional[str]) -> tuple[float, str]:
     mapping = {
-        "full":       (100.0, "ADDRESS_FULL_MATCH"),
-        "state_city": (70.0,  "ADDRESS_CITY_MATCH"),
-        "state_only": (40.0,  "ADDRESS_INCONSISTENCY"),
-        "conflict":   (0.0,   "ADDRESS_INCONSISTENCY"),
+        "full": (100.0, "ADDRESS_FULL_MATCH"),
+        "state_city": (70.0, "ADDRESS_CITY_MATCH"),
+        "state_only": (40.0, "ADDRESS_INCONSISTENCY"),
+        "conflict": (0.0, "ADDRESS_INCONSISTENCY"),
     }
     return mapping.get(str(grade).lower(), (50.0, "ADDRESS_MATCH_UNKNOWN"))
 
@@ -88,7 +89,7 @@ def _score_entity_type(match: Optional[bool]) -> tuple[float, str]:
     if match is True:
         return 100.0, "ENTITY_TYPE_CONSISTENT"
     if match is False:
-        return 0.0,   "ENTITY_TYPE_CONFLICT"
+        return 0.0, "ENTITY_TYPE_CONFLICT"
     return 50.0, "ENTITY_TYPE_UNKNOWN"
 
 
@@ -98,15 +99,15 @@ def _score_reg_date(variance_days: Optional[int]) -> tuple[float, str]:
     if variance_days <= 7:
         return 100.0, "REG_DATE_CONSISTENT"
     if variance_days <= 90:
-        return 50.0,  "REG_DATE_MINOR_VARIANCE"
+        return 50.0, "REG_DATE_MINOR_VARIANCE"
     return 0.0, "REGISTRATION_DATE_CONFLICT"
 
 
 def _score_pan(grade: Optional[str]) -> tuple[float, str]:
     mapping = {
-        "full":    (100.0, "PAN_FULL_MATCH"),
-        "partial": (50.0,  "PAN_PARTIAL_MATCH"),
-        "mismatch":(0.0,   "PAN_ID_MISMATCH"),
+        "full": (100.0, "PAN_FULL_MATCH"),
+        "partial": (50.0, "PAN_PARTIAL_MATCH"),
+        "mismatch": (0.0, "PAN_ID_MISMATCH"),
     }
     return mapping.get(str(grade).lower(), (50.0, "PAN_MATCH_UNKNOWN"))
 
@@ -114,6 +115,7 @@ def _score_pan(grade: Optional[str]) -> tuple[float, str]:
 # ---------------------------------------------------------------------------
 # Public entry-point
 # ---------------------------------------------------------------------------
+
 
 def compute_identity_score(
     record: NormalizedRecord,
@@ -148,33 +150,39 @@ def compute_identity_score(
     else:
         s = clamp(float(_legacy or 50))
         r = "NAME_MATCH_LEGACY_FALLBACK"
-    components.append(ComponentScore(
-        component_name  = "legal_name_match",
-        raw_value       = resolver_result.get("name_match_grade") or _legacy,
-        normalized_score= s,
-        weight          = 30.0,
-        reason_code     = r,
-    ))
+    components.append(
+        ComponentScore(
+            component_name="legal_name_match",
+            raw_value=resolver_result.get("name_match_grade") or _legacy,
+            normalized_score=s,
+            weight=30.0,
+            reason_code=r,
+        )
+    )
 
     # 2. GST–CIN/Udyam linkage consistency (weight 20)
     if _new_keys_present:
         s, r = _score_linkage(resolver_result.get("linkage_status"))
     else:
         # Legacy fallback: derive from presence of identifiers
-        ids_present = sum([
-            1 if record.gstin else 0,
-            1 if record.cin else 0,
-            1 if record.udyam_no else 0,
-        ])
+        ids_present = sum(
+            [
+                1 if record.gstin else 0,
+                1 if record.cin else 0,
+                1 if record.udyam_no else 0,
+            ]
+        )
         s = min(100.0, ids_present * 34.0)
         r = "LINKAGE_DERIVED_FROM_PRESENCE"
-    components.append(ComponentScore(
-        component_name  = "gst_cin_udyam_linkage",
-        raw_value       = resolver_result.get("linkage_status"),
-        normalized_score= s,
-        weight          = 20.0,
-        reason_code     = r,
-    ))
+    components.append(
+        ComponentScore(
+            component_name="gst_cin_udyam_linkage",
+            raw_value=resolver_result.get("linkage_status"),
+            normalized_score=s,
+            weight=20.0,
+            reason_code=r,
+        )
+    )
 
     # 3. Address consistency (weight 15)
     if _new_keys_present:
@@ -182,13 +190,15 @@ def compute_identity_score(
     else:
         s = 50.0
         r = "ADDRESS_MATCH_UNKNOWN"
-    components.append(ComponentScore(
-        component_name  = "address_consistency",
-        raw_value       = resolver_result.get("address_match_grade"),
-        normalized_score= s,
-        weight          = 15.0,
-        reason_code     = r,
-    ))
+    components.append(
+        ComponentScore(
+            component_name="address_consistency",
+            raw_value=resolver_result.get("address_match_grade"),
+            normalized_score=s,
+            weight=15.0,
+            reason_code=r,
+        )
+    )
 
     # 4. Entity type consistency (weight 10)
     if _new_keys_present:
@@ -196,13 +206,15 @@ def compute_identity_score(
     else:
         s = 50.0
         r = "ENTITY_TYPE_UNKNOWN"
-    components.append(ComponentScore(
-        component_name  = "entity_type_consistency",
-        raw_value       = resolver_result.get("entity_type_match"),
-        normalized_score= s,
-        weight          = 10.0,
-        reason_code     = r,
-    ))
+    components.append(
+        ComponentScore(
+            component_name="entity_type_consistency",
+            raw_value=resolver_result.get("entity_type_match"),
+            normalized_score=s,
+            weight=10.0,
+            reason_code=r,
+        )
+    )
 
     # 5. Registration date consistency (weight 10)
     if _new_keys_present:
@@ -210,13 +222,15 @@ def compute_identity_score(
     else:
         s = 50.0
         r = "REG_DATE_UNKNOWN"
-    components.append(ComponentScore(
-        component_name  = "registration_date_consistency",
-        raw_value       = resolver_result.get("reg_date_variance_days"),
-        normalized_score= s,
-        weight          = 10.0,
-        reason_code     = r,
-    ))
+    components.append(
+        ComponentScore(
+            component_name="registration_date_consistency",
+            raw_value=resolver_result.get("reg_date_variance_days"),
+            normalized_score=s,
+            weight=10.0,
+            reason_code=r,
+        )
+    )
 
     # 6. PAN / submitted ID consistency (weight 15)
     if _new_keys_present:
@@ -225,12 +239,14 @@ def compute_identity_score(
         pan_score = 100.0 if record.pan else 0.0
         s = pan_score
         r = "PAN_PRESENT" if record.pan else "PAN_ID_MISMATCH"
-    components.append(ComponentScore(
-        component_name  = "pan_id_consistency",
-        raw_value       = resolver_result.get("pan_match_grade") or record.pan,
-        normalized_score= s,
-        weight          = 15.0,
-        reason_code     = r,
-    ))
+    components.append(
+        ComponentScore(
+            component_name="pan_id_consistency",
+            raw_value=resolver_result.get("pan_match_grade") or record.pan,
+            normalized_score=s,
+            weight=15.0,
+            reason_code=r,
+        )
+    )
 
     return build_domain_score("identity", components)

@@ -1,4 +1,5 @@
 """Weighted average engine — aggregates component scores into a domain score."""
+
 from domain.schemas.score_components import ComponentScore, DomainScore
 
 
@@ -17,17 +18,9 @@ def compute_weighted_score(components: list[ComponentScore]) -> float:
 def build_domain_score(domain: str, components: list[ComponentScore]) -> DomainScore:
     """Build a DomainScore from a list of components."""
     weighted_score = compute_weighted_score(components)
-    top_reasons = [
-        c.reason_code
-        for c in sorted(components, key=lambda x: x.weight, reverse=True)
-        if c.reason_code
-    ][:3]
+    top_reasons = [c.reason_code for c in sorted(components, key=lambda x: x.weight, reverse=True) if c.reason_code][:3]
     available = sum(1 for c in components if c.raw_value is not None)
-    sufficiency = (
-        "full" if available == len(components)
-        else "partial" if available > 0
-        else "insufficient"
-    )
+    sufficiency = "full" if available == len(components) else "partial" if available > 0 else "insufficient"
     return DomainScore(
         domain=domain,
         components=components,

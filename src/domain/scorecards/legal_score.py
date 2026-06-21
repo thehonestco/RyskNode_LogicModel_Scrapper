@@ -43,6 +43,7 @@ from domain.scorecards.weighted_average import build_domain_score
 # Component scorers  (all return 0–100; higher = more risk)
 # ---------------------------------------------------------------------------
 
+
 def _score_pending_intensity(pending: Optional[int], vintage: Optional[float]) -> tuple[float, str]:
     """Pending case intensity = pending_count / max(vintage_years, 1)."""
     if pending is None:
@@ -50,7 +51,7 @@ def _score_pending_intensity(pending: Optional[int], vintage: Optional[float]) -
     v = max(float(vintage or 1), 1.0)
     intensity = pending / v
     if intensity == 0:
-        return 0.0,  "PENDING_INTENSITY_ZERO"
+        return 0.0, "PENDING_INTENSITY_ZERO"
     if intensity <= 0.5:
         return 25.0, "PENDING_INTENSITY_LOW"
     if intensity <= 1.0:
@@ -67,7 +68,7 @@ def _score_total_intensity(total: Optional[int], vintage: Optional[float]) -> tu
     v = max(float(vintage or 1), 1.0)
     intensity = total / v
     if intensity == 0:
-        return 0.0,  "TOTAL_INTENSITY_ZERO"
+        return 0.0, "TOTAL_INTENSITY_ZERO"
     if intensity <= 1.0:
         return 25.0, "TOTAL_INTENSITY_LOW"
     if intensity <= 2.0:
@@ -93,7 +94,7 @@ def _score_severe_case_mix(
     severe = (criminal or 0) + (high_value or 0)
     pct = severe / max(total, 1)
     if pct == 0:
-        return 0.0,  "SEVERE_MIX_ZERO"
+        return 0.0, "SEVERE_MIX_ZERO"
     if pct <= 0.10:
         return 25.0, "SEVERE_MIX_LOW"
     if pct <= 0.25:
@@ -140,9 +141,9 @@ def _score_concentration_spike(
         return 100.0 if recent_12m >= 2 else 50.0, "LITIGATION_CONCENTRATION_SPIKE"
     ratio = recent_12m / annual_run_rate
     if ratio <= 1.0:
-        return 0.0,   "NO_CONCENTRATION_SPIKE"
+        return 0.0, "NO_CONCENTRATION_SPIKE"
     if ratio <= 2.0:
-        return 50.0,  "LITIGATION_CONCENTRATION_SPIKE"
+        return 50.0, "LITIGATION_CONCENTRATION_SPIKE"
     return 100.0, "LITIGATION_CONCENTRATION_SPIKE"
 
 
@@ -150,14 +151,15 @@ def _score_concentration_spike(
 # Public entry-point
 # ---------------------------------------------------------------------------
 
+
 def compute_legal_score(
-    legal_case_count:     Optional[int]   = None,
-    pending_case_count:   Optional[int]   = None,
-    criminal_case_count:  Optional[int]   = None,
-    high_value_case_count: Optional[int]  = None,
+    legal_case_count: Optional[int] = None,
+    pending_case_count: Optional[int] = None,
+    criminal_case_count: Optional[int] = None,
+    high_value_case_count: Optional[int] = None,
     business_vintage_years: Optional[float] = None,
-    recent_cases_24m:     Optional[int]   = None,
-    recent_cases_12m:     Optional[int]   = None,
+    recent_cases_24m: Optional[int] = None,
+    recent_cases_12m: Optional[int] = None,
 ) -> DomainScore:
     """
     Compute Legal Risk Score (0–100; higher = more risk).
@@ -180,52 +182,62 @@ def compute_legal_score(
 
     # 1. Pending case intensity (weight 25)
     s, r = _score_pending_intensity(pending_case_count, business_vintage_years)
-    components.append(ComponentScore(
-        component_name  = "pending_case_intensity",
-        raw_value       = pending_case_count,
-        normalized_score= s,
-        weight          = 25.0,
-        reason_code     = r,
-    ))
+    components.append(
+        ComponentScore(
+            component_name="pending_case_intensity",
+            raw_value=pending_case_count,
+            normalized_score=s,
+            weight=25.0,
+            reason_code=r,
+        )
+    )
 
     # 2. Total case intensity (weight 15)
     s, r = _score_total_intensity(legal_case_count, business_vintage_years)
-    components.append(ComponentScore(
-        component_name  = "total_case_intensity",
-        raw_value       = legal_case_count,
-        normalized_score= s,
-        weight          = 15.0,
-        reason_code     = r,
-    ))
+    components.append(
+        ComponentScore(
+            component_name="total_case_intensity",
+            raw_value=legal_case_count,
+            normalized_score=s,
+            weight=15.0,
+            reason_code=r,
+        )
+    )
 
     # 3. Severe case mix (weight 30)
     s, r = _score_severe_case_mix(criminal_case_count, high_value_case_count, legal_case_count)
-    components.append(ComponentScore(
-        component_name  = "severe_case_mix",
-        raw_value       = float((criminal_case_count or 0) + (high_value_case_count or 0)),
-        normalized_score= s,
-        weight          = 30.0,
-        reason_code     = r,
-    ))
+    components.append(
+        ComponentScore(
+            component_name="severe_case_mix",
+            raw_value=float((criminal_case_count or 0) + (high_value_case_count or 0)),
+            normalized_score=s,
+            weight=30.0,
+            reason_code=r,
+        )
+    )
 
     # 4. Recent adverse activity (weight 20)
     s, r = _score_recent_adverse(recent_cases_24m, legal_case_count)
-    components.append(ComponentScore(
-        component_name  = "recent_adverse_activity",
-        raw_value       = float(recent_cases_24m) if recent_cases_24m is not None else None,
-        normalized_score= s,
-        weight          = 20.0,
-        reason_code     = r,
-    ))
+    components.append(
+        ComponentScore(
+            component_name="recent_adverse_activity",
+            raw_value=float(recent_cases_24m) if recent_cases_24m is not None else None,
+            normalized_score=s,
+            weight=20.0,
+            reason_code=r,
+        )
+    )
 
     # 5. Case concentration spike (weight 10)
     s, r = _score_concentration_spike(recent_cases_12m, legal_case_count, business_vintage_years)
-    components.append(ComponentScore(
-        component_name  = "concentration_spike",
-        raw_value       = float(recent_cases_12m) if recent_cases_12m is not None else None,
-        normalized_score= s,
-        weight          = 10.0,
-        reason_code     = r,
-    ))
+    components.append(
+        ComponentScore(
+            component_name="concentration_spike",
+            raw_value=float(recent_cases_12m) if recent_cases_12m is not None else None,
+            normalized_score=s,
+            weight=10.0,
+            reason_code=r,
+        )
+    )
 
     return build_domain_score("legal", components)

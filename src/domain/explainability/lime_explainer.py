@@ -13,6 +13,7 @@ Use cases
   2. Governance spot-check: compare LIME and SHAP reason codes.
   3. Explain LR scorecard model (Model A) predictions.
 """
+
 from __future__ import annotations
 
 import logging
@@ -47,15 +48,15 @@ def build_lime_explainer(
     from lime.lime_tabular import LimeTabularExplainer
 
     fn = feature_names or X_train.columns.tolist()
-    cn = class_names  or ["No Default", "Default"]
+    cn = class_names or ["No Default", "Default"]
 
     explainer = LimeTabularExplainer(
-        training_data  = X_train.values,
-        feature_names  = fn,
-        class_names    = cn,
-        mode           = mode,
-        discretize_continuous = True,
-        random_state   = 42,
+        training_data=X_train.values,
+        feature_names=fn,
+        class_names=cn,
+        mode=mode,
+        discretize_continuous=True,
+        random_state=42,
     )
     logger.info("LIME explainer built on %d training samples", len(X_train))
     return explainer
@@ -67,7 +68,7 @@ def local_lime_explanation(
     X_row: pd.DataFrame,
     entity_id: str = "UNKNOWN",
     num_features: int = 10,
-    num_samples:  int = 1000,
+    num_samples: int = 1000,
 ) -> Dict:
     """
     Compute LIME local explanation for a single entity.
@@ -86,14 +87,14 @@ def local_lime_explanation(
     dict with feature_weights, intercept, local_pred, entity_id
     """
     exp = explainer.explain_instance(
-        data_row     = X_row.values[0],
-        predict_fn   = predict_fn,
-        num_features = num_features,
-        num_samples  = num_samples,
-        labels       = (1,),
+        data_row=X_row.values[0],
+        predict_fn=predict_fn,
+        num_features=num_features,
+        num_samples=num_samples,
+        labels=(1,),
     )
 
-    weights  = exp.as_list(label=1)
+    weights = exp.as_list(label=1)
     intercept = exp.intercept[1]
     local_pred = exp.local_pred[1] if hasattr(exp, "local_pred") else None
 
@@ -105,8 +106,8 @@ def local_lime_explanation(
     )
 
     return {
-        "entity_id":       entity_id,
+        "entity_id": entity_id,
         "feature_weights": [(f, round(float(w), 6)) for f, w in weights],
-        "intercept":       round(float(intercept), 6),
-        "local_pred":      round(float(local_pred), 6) if local_pred is not None else None,
+        "intercept": round(float(intercept), 6),
+        "local_pred": round(float(local_pred), 6) if local_pred is not None else None,
     }

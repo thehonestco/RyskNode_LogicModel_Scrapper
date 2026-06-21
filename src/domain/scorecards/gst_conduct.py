@@ -13,6 +13,7 @@ Design note:
   Band B into Band C without being a hard decline. A valid reason (e.g. below
   GST threshold turnover) should be captured in underwriter notes.
 """
+
 from __future__ import annotations
 
 from typing import Any

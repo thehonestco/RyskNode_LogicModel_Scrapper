@@ -1,4 +1,5 @@
 """Safe math utilities — prevent division-by-zero and handle None inputs gracefully."""
+
 from typing import Optional
 
 

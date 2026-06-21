@@ -42,5 +42,9 @@ class Company(Base):
     deleted_at = Column(DateTime, nullable=True)
 
     # Relationships
-    snapshots = relationship("CompanyDataSnapshot", back_populates="company", order_by="desc(CompanyDataSnapshot.fetched_at)", cascade="all, delete-orphan")
-
+    snapshots = relationship(
+        "CompanyDataSnapshot",
+        back_populates="company",
+        order_by="desc(CompanyDataSnapshot.fetched_at)",
+        cascade="all, delete-orphan",
+    )

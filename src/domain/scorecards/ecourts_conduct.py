@@ -14,6 +14,7 @@ Design note:
   into Band C or D, forcing manual review. It is NOT a hard decline because
   a petition may have been filed by a creditor and subsequently stayed.
 """
+
 from __future__ import annotations
 
 from typing import Any

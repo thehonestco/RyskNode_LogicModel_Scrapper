@@ -6,6 +6,7 @@ from model.company import Company
 from sqlalchemy import text
 from typing import Optional
 
+
 class CompanyRepository(FastCRUDRepository[Company, CompanyCreate, CompanyUpdate]):
     model = Company
 
@@ -34,7 +35,6 @@ class CompanyRepository(FastCRUDRepository[Company, CompanyCreate, CompanyUpdate
                 LIMIT 1
             """)
             result = await self.session.execute(query, {"cin": identifier})
-            
+
         row = result.mappings().first()
         return dict(row) if row else None
-

@@ -18,6 +18,7 @@ from repository.company_repository import CompanyRepository
 
 logger = logging.getLogger(__name__)
 
+
 class ScrapeService(BaseService):
     def __init__(self, uow: AbstractUnitOfWork, falcon_scraper: FalconBizScraper, tracxn_scraper: TracxnScraper):
         super().__init__()
@@ -32,7 +33,9 @@ class ScrapeService(BaseService):
         data = await self._perform_scrape(cin)
 
         if not data or not data.get("company_name"):
-             raise ApplicationError(response_code=constants.HTTP_404_NOT_FOUND, message=f"Company with CIN {cin} not found.")
+            raise ApplicationError(
+                response_code=constants.HTTP_404_NOT_FOUND, message=f"Company with CIN {cin} not found."
+            )
 
         effective_uow = uow or inject.instance(AbstractUnitOfWork)
 
@@ -54,9 +57,9 @@ class ScrapeService(BaseService):
         if existing:
             logger.info(f"Updating existing record for CIN {data['cin']}")
             await repo.update_by(update_data, {"cin": data["cin"]})
-            await uow.session.flush()
+            await uow.flush()
             if hasattr(existing, "id"):
-                await uow.session.refresh(existing)
+                await uow.refresh(existing)
             result = await repo.get_single(cin=data["cin"])
         else:
             logger.info(f"Creating new record for CIN {data['cin']}")
@@ -97,32 +100,32 @@ class ScrapeService(BaseService):
 
     def _cleanup_data(self, data: Dict):
         if data.get("description_of_main_activity"):
-             desc = data["description_of_main_activity"]
+            desc = data["description_of_main_activity"]
 
-             if data.get("company_name"):
-                  name = data["company_name"]
-                  short_name = name.replace("PRIVATE LIMITED", "PVT LTD").replace("LIMITED", "LTD")
+            if data.get("company_name"):
+                name = data["company_name"]
+                short_name = name.replace("PRIVATE LIMITED", "PVT LTD").replace("LIMITED", "LTD")
 
-                  # Remove name variations and address boilerplate
-                  patterns = [
-                      re.escape(name),
-                      re.escape(short_name),
-                      r"'s registered office address is.*$",
-                      r"registered office address is.*$",
-                      r"is unlisted.*?$",
-                      r"it upholds a compliant status.*?$",
-                  ]
+                # Remove name variations and address boilerplate
+                patterns = [
+                    re.escape(name),
+                    re.escape(short_name),
+                    r"'s registered office address is.*$",
+                    r"registered office address is.*$",
+                    r"is unlisted.*?$",
+                    r"it upholds a compliant status.*?$",
+                ]
 
-                  for pattern in patterns:
-                      desc = re.sub(pattern, "", desc, flags=re.I | re.S)
+                for pattern in patterns:
+                    desc = re.sub(pattern, "", desc, flags=re.I | re.S)
 
-                  data["description_of_main_activity"] = desc.strip().strip("'s").strip()
+                data["description_of_main_activity"] = desc.strip().strip("'s").strip()
 
         if not data.get("description_of_business_activity"):
-             data["description_of_business_activity"] = data.get("description_of_main_activity")
+            data["description_of_business_activity"] = data.get("description_of_main_activity")
 
         if not data.get("business_activity_code"):
-             data["business_activity_code"] = data.get("main_activity_group_code")
+            data["business_activity_code"] = data.get("main_activity_group_code")
 
         if not data.get("latest_revenue_date"):
             raw_val = data.get("raw_data", {}).get("tracxn", {}).get("latest_revenue_date")
@@ -130,7 +133,8 @@ class ScrapeService(BaseService):
                 if isinstance(raw_val, str):
                     try:
                         data["latest_revenue_date"] = datetime.date.fromisoformat(raw_val)
-                    except: pass
+                    except:
+                        pass
                 elif isinstance(raw_val, (datetime.date, datetime.datetime)):
                     data["latest_revenue_date"] = raw_val
 
@@ -148,8 +152,16 @@ class ScrapeService(BaseService):
         merged.update(falcon)
         for k, v in tracxn.items():
             if v is not None and v != "":
-                if k in ["latest_revenue", "latest_revenue_date", "revenue_text", "main_activity_group_code", "description_of_main_activity", "business_activity_code", "description_of_business_activity"]:
-                     merged[k] = v
+                if k in [
+                    "latest_revenue",
+                    "latest_revenue_date",
+                    "revenue_text",
+                    "main_activity_group_code",
+                    "description_of_main_activity",
+                    "business_activity_code",
+                    "description_of_business_activity",
+                ]:
+                    merged[k] = v
                 elif k not in merged or not merged[k]:
                     merged[k] = v
         return merged
@@ -169,7 +181,12 @@ class ScrapeService(BaseService):
                     # Each record gets its own UOW transaction to ensure individual commit
                     # and that one failure doesn't affect others
                     from common.service.unit_of_work import FastCRUDUnitOfWork
-                    fresh_uow = FastCRUDUnitOfWork(session_factory=session_factory) if session_factory else inject.instance(AbstractUnitOfWork)
+
+                    fresh_uow = (
+                        FastCRUDUnitOfWork(session_factory=session_factory)
+                        if session_factory
+                        else inject.instance(AbstractUnitOfWork)
+                    )
                     async with fresh_uow as active_uow:
                         await self.scrape_single(cin, uow=active_uow)
                     success_count += 1

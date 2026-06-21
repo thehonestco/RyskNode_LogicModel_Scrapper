@@ -77,6 +77,7 @@ def create_app(settings) -> FastAPI:
 
     # Mount background tasks dashboard
     from fastapi_bgtasks_dashboard import mount_bg_tasks_dashboard
+
     mount_bg_tasks_dashboard(app=api)
 
     return api

@@ -1,4 +1,5 @@
 """Score component schemas for each domain scorecard."""
+
 from pydantic import BaseModel, Field
 from typing import Optional, Any
 
@@ -12,11 +13,11 @@ class ComponentScore(BaseModel):
 
 
 class DomainScore(BaseModel):
-    domain: str                                # identity | financial | legal | documentation
+    domain: str  # identity | financial | legal | documentation
     components: list[ComponentScore]
     weighted_score: float = Field(..., ge=0, le=100)
     top_reason_codes: list[str] = Field(default_factory=list)
-    data_sufficiency: str = "full"             # full | partial | insufficient
+    data_sufficiency: str = "full"  # full | partial | insufficient
 
 
 class IdentityScoreResult(DomainScore):

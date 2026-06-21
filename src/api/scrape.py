@@ -31,6 +31,7 @@ async def scrape(
 
             from app.dependency import create_isolated_uow, dispose_isolated_uow
             from settings import Settings
+
             thread_logger = logging.getLogger(__name__)
 
             loop = asyncio.new_event_loop()
@@ -40,7 +41,9 @@ async def scrape(
 
             try:
                 session_factory = uow.session_factory
-                loop.run_until_complete(scrape_service.batch_scrape_background(queries, session_factory=session_factory))
+                loop.run_until_complete(
+                    scrape_service.batch_scrape_background(queries, session_factory=session_factory)
+                )
             except Exception as e:
                 thread_logger.error(f"Error executing batch scrape in background: {e}", exc_info=True)
             finally:

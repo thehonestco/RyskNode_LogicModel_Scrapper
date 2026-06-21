@@ -68,6 +68,7 @@ async def sync_data_gov(
     if sync_service._thread_lock.locked():
         logger.warning("Rejecting concurrent sync request: another sync is already in progress.")
         from common.base.error import ApplicationError
+
         raise ApplicationError(
             response_code=constants.HTTP_409_CONFLICT,
             message="Another synchronization task is already in progress.",
@@ -101,7 +102,7 @@ async def continue_sync_data_gov(
     sync_service: DataGovSyncService = Depends(lambda: inject.instance(DataGovSyncService)),
 ):
     """
-    Trigger the synchronization continuation. 
+    Trigger the synchronization continuation.
     Loads the last report for the requested statecode/All States.
     - If status is Completed, starts from 0 to refresh/update old records.
     - Otherwise (Stopped, Failed, Running), resumes from the last successfully synced offset.
@@ -109,6 +110,7 @@ async def continue_sync_data_gov(
     if sync_service._thread_lock.locked():
         logger.warning("Rejecting concurrent sync request: another sync is already in progress.")
         from common.base.error import ApplicationError
+
         raise ApplicationError(
             response_code=constants.HTTP_409_CONFLICT,
             message="Another synchronization task is already in progress.",
@@ -179,9 +181,7 @@ async def list_reports():
                     {
                         "filename": file,
                         "created_at": str(
-                            os.path.basename(file)
-                            .split("_")[-1]
-                            .replace(".md", "")
+                            os.path.basename(file).split("_")[-1].replace(".md", "")
                         ),  # parse/approximate timestamp from name
                         "size_bytes": stat.st_size,
                     }
@@ -208,9 +208,7 @@ async def get_report_content(report_name: str):
     file_path = os.path.join(report_dir, safe_name)
 
     if not os.path.exists(file_path):
-        raise HTTPException(
-            status_code=404, detail=f"Report file '{report_name}' not found."
-        )
+        raise HTTPException(status_code=404, detail=f"Report file '{report_name}' not found.")
 
     try:
         with open(file_path, "r", encoding="utf-8") as f:
@@ -218,6 +216,4 @@ async def get_report_content(report_name: str):
         return PlainTextResponse(content=content, status_code=200)
     except Exception as e:
         logger.error(f"Error reading report {report_name}: {e}")
-        raise HTTPException(
-            status_code=500, detail=f"Failed to read report: {e}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to read report: {e}")

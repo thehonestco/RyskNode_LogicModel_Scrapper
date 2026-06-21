@@ -2,6 +2,7 @@
 
 This is the canonical output of Part 1 and the future PD/LGD training feature table.
 """
+
 from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import date
@@ -23,7 +24,7 @@ class FinalFeatureRow(BaseModel):
     msme_category: Optional[str] = None
 
     # --- Sector ---
-    nic_code: Optional[str] = None             # NIC 2008 activity code — drives sector benchmarks
+    nic_code: Optional[str] = None  # NIC 2008 activity code — drives sector benchmarks
 
     # --- Stability ---
     business_vintage_years: Optional[float] = None
@@ -92,4 +93,4 @@ class FinalFeatureRow(BaseModel):
     source_fetch_date: Optional[date] = None
     pipeline_version: str = "1.0.0"
     sources_used: list[str] = Field(default_factory=list)
-    data_sufficiency_band: Optional[str] = None   # full | partial | insufficient
+    data_sufficiency_band: Optional[str] = None  # full | partial | insufficient

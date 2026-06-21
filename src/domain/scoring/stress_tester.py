@@ -91,26 +91,26 @@ from domain.scoring.pd_mapper import derive_pd_band, BAND_ORDER
 # PD prior per band (matches openriskscore_blender.py stub priors)
 BAND_PD_PRIORS: Dict[str, float] = {
     "AAA": 0.004,
-    "AA":  0.009,
-    "A":   0.018,
+    "AA": 0.009,
+    "A": 0.018,
     "BBB": 0.035,
-    "BB":  0.070,
-    "B":   0.140,
+    "BB": 0.070,
+    "B": 0.140,
     "CCC": 0.280,
-    "D":   1.000,
+    "D": 1.000,
     "UNSCOREABLE": 1.000,
 }
 
 # Band multiplier for limit (matches limit_advisor.py)
 BAND_LIMIT_MULT: Dict[str, float] = {
     "AAA": 0.90,
-    "AA":  0.85,
-    "A":   0.75,
+    "AA": 0.85,
+    "A": 0.75,
     "BBB": 0.65,
-    "BB":  0.50,
-    "B":   0.35,
+    "BB": 0.50,
+    "B": 0.35,
     "CCC": 0.20,
-    "D":   0.00,
+    "D": 0.00,
     "UNSCOREABLE": 0.00,
 }
 
@@ -124,13 +124,13 @@ TNW_ANCHOR_RATE = 0.15
 #   Each entry: (scenario_id, label, revenue_mult, debt_mult, current_ratio_override)
 #   current_ratio_override = None → keep base value
 SCENARIOS: List[tuple] = [
-    ("S0", "Base Case",                               1.00, 1.00, None),
-    ("S1", "Revenue Decline −20%",                    0.80, 1.00, None),
-    ("S2", "Revenue Decline −40%",                    0.60, 1.00, None),
-    ("S3", "Leverage Increase +50%",                  1.00, 1.50, None),
-    ("S4", "Combined: Rev −20% + Leverage +50%",      0.80, 1.50, None),
+    ("S0", "Base Case", 1.00, 1.00, None),
+    ("S1", "Revenue Decline −20%", 0.80, 1.00, None),
+    ("S2", "Revenue Decline −40%", 0.60, 1.00, None),
+    ("S3", "Leverage Increase +50%", 1.00, 1.50, None),
+    ("S4", "Combined: Rev −20% + Leverage +50%", 0.80, 1.50, None),
     ("S5", "Liquidity Stress (Current Ratio → 0.90)", 1.00, 1.00, 0.90),
-    ("S6", "Severe: Rev −50% + Leverage +100%",       0.50, 2.00, None),
+    ("S6", "Severe: Rev −50% + Leverage +100%", 0.50, 2.00, None),
 ]
 
 
@@ -138,38 +138,40 @@ SCENARIOS: List[tuple] = [
 # Result dataclass
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class StressScenarioResult:
-    scenario_id:      str
-    label:            str
-    revenue_mult:     float
-    debt_mult:        float
-    cr_override:      Optional[float]
+    scenario_id: str
+    label: str
+    revenue_mult: float
+    debt_mult: float
+    cr_override: Optional[float]
 
     # Shocked inputs
-    shocked_revenue:  Optional[float]
-    shocked_debt:     Optional[float]
-    shocked_cr:       Optional[float]
+    shocked_revenue: Optional[float]
+    shocked_debt: Optional[float]
+    shocked_cr: Optional[float]
 
     # Re-scored outputs
     governance_score: float
-    pd_band:          str
-    blended_pd:       float
-    evaluated_limit:  float
+    pd_band: str
+    blended_pd: float
+    evaluated_limit: float
 
     # Deltas vs base
-    score_delta:      float
-    band_delta:       int          # positive = improved (notches), negative = worsened
-    pd_delta:         float        # absolute change in PD
-    limit_delta:      float        # absolute change in limit (₹)
+    score_delta: float
+    band_delta: int  # positive = improved (notches), negative = worsened
+    pd_delta: float  # absolute change in PD
+    limit_delta: float  # absolute change in limit (₹)
 
-    override_flags:   List[str] = field(default_factory=list)
-    is_base:          bool = False
+    override_flags: List[str] = field(default_factory=list)
+    is_base: bool = False
 
 
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
 
 def _safe_div(a: Any, b: Any) -> Optional[float]:
     """Safe division — returns None if inputs are None or b is zero."""
@@ -190,15 +192,15 @@ def _band_notch_delta(new_band: str, base_band: str) -> int:
     Both bands must be in BAND_ORDER.
     """
     base_idx = BAND_ORDER.index(base_band) if base_band in BAND_ORDER else 0
-    new_idx  = BAND_ORDER.index(new_band)  if new_band  in BAND_ORDER else 0
+    new_idx = BAND_ORDER.index(new_band) if new_band in BAND_ORDER else 0
     return new_idx - base_idx
 
 
 def _re_score(
-    base_row:       Dict[str, Any],
-    revenue_mult:   float,
-    debt_mult:      float,
-    cr_override:    Optional[float],
+    base_row: Dict[str, Any],
+    revenue_mult: float,
+    debt_mult: float,
+    cr_override: Optional[float],
 ) -> Dict[str, Any]:
     """
     Apply shocks to the base feature row and re-derive the ratios
@@ -217,14 +219,14 @@ def _re_score(
       business_vintage_years, criminal_case_count
     """
     # ── Apply revenue shock
-    base_rev    = base_row.get("net_revenue_latest") or base_row.get("revenue") or 0
+    base_rev = base_row.get("net_revenue_latest") or base_row.get("revenue") or 0
     shocked_rev = base_rev * revenue_mult
 
     # ── Apply debt shock
-    base_debt    = base_row.get("total_debt") or 0
+    base_debt = base_row.get("total_debt") or 0
     shocked_debt = base_debt * debt_mult
-    networth     = base_row.get("networth") or base_row.get("tangible_net_worth") or 1
-    shocked_dte  = _safe_div(shocked_debt, networth)
+    networth = base_row.get("networth") or base_row.get("tangible_net_worth") or 1
+    shocked_dte = _safe_div(shocked_debt, networth)
 
     # ── Current ratio — override or recalculate
     if cr_override is not None:
@@ -239,38 +241,36 @@ def _re_score(
     base_fin_score = float(base_row.get("financial_score", 70))
 
     # Revenue decline penalty: each 10% decline → ~3 pts off financial_score
-    rev_penalty   = max(0.0, (1.0 - revenue_mult) * 30.0)
+    rev_penalty = max(0.0, (1.0 - revenue_mult) * 30.0)
 
     # Leverage increase penalty: each 50% debt increase → ~4 pts off
-    lev_penalty   = max(0.0, (debt_mult - 1.0) * 8.0)
+    lev_penalty = max(0.0, (debt_mult - 1.0) * 8.0)
 
     # Current ratio penalty: if shocked CR < 1 → additional 5 pts off
-    cr_penalty    = 5.0 if (shocked_cr is not None and shocked_cr < 1.0) else 0.0
+    cr_penalty = 5.0 if (shocked_cr is not None and shocked_cr < 1.0) else 0.0
 
-    shocked_fin_score = round(
-        max(0.0, base_fin_score - rev_penalty - lev_penalty - cr_penalty), 2
-    )
+    shocked_fin_score = round(max(0.0, base_fin_score - rev_penalty - lev_penalty - cr_penalty), 2)
 
     return {
-        "shocked_revenue":       shocked_rev,
-        "shocked_debt":          shocked_debt,
-        "shocked_cr":            shocked_cr,
-        "financial_score":       shocked_fin_score,
-        "identity_score":        float(base_row.get("identity_score", 78)),
-        "legal_risk_score":      float(base_row.get("legal_score", 85)),
-        "documentation_score":   float(base_row.get("documentation_score", 88)),
-        "debt_to_equity":        shocked_dte,
-        "current_ratio":         shocked_cr,
-        "business_vintage_years":float(base_row.get("business_vintage_years", 10)),
-        "criminal_case_count":   int(base_row.get("criminal_case_count", 0)),
+        "shocked_revenue": shocked_rev,
+        "shocked_debt": shocked_debt,
+        "shocked_cr": shocked_cr,
+        "financial_score": shocked_fin_score,
+        "identity_score": float(base_row.get("identity_score", 78)),
+        "legal_risk_score": float(base_row.get("legal_score", 85)),
+        "documentation_score": float(base_row.get("documentation_score", 88)),
+        "debt_to_equity": shocked_dte,
+        "current_ratio": shocked_cr,
+        "business_vintage_years": float(base_row.get("business_vintage_years", 10)),
+        "criminal_case_count": int(base_row.get("criminal_case_count", 0)),
     }
 
 
 def _compute_limit(
     shocked_revenue: Optional[float],
-    base_row:        Dict[str, Any],
-    pd_band:         str,
-    requested_amount:float,
+    base_row: Dict[str, Any],
+    pd_band: str,
+    requested_amount: float,
 ) -> float:
     """
     Recompute evaluated limit for a shocked scenario.
@@ -283,16 +283,16 @@ def _compute_limit(
     mult = BAND_LIMIT_MULT.get(pd_band, 0.0)
 
     # Anchor 1 — shocked revenue
-    rev    = shocked_revenue or 0.0
-    anch1  = round(rev * REVENUE_ANCHOR_RATE * mult, 0)
+    rev = shocked_revenue or 0.0
+    anch1 = round(rev * REVENUE_ANCHOR_RATE * mult, 0)
 
     # Anchor 2 — TNW (not shocked by revenue/debt scenario alone)
-    tnw    = float(base_row.get("tangible_net_worth") or base_row.get("networth") or 0)
-    anch2  = round(tnw * TNW_ANCHOR_RATE * mult, 0)
+    tnw = float(base_row.get("tangible_net_worth") or base_row.get("networth") or 0)
+    anch2 = round(tnw * TNW_ANCHOR_RATE * mult, 0)
 
     # Anchor 3 — purchase volume (unchanged)
-    avg_monthly = requested_amount / 3.0   # back-solve: requested = 3× monthly
-    anch3  = round(avg_monthly * 3, 0)
+    avg_monthly = requested_amount / 3.0  # back-solve: requested = 3× monthly
+    anch3 = round(avg_monthly * 3, 0)
 
     return min(anch1, anch2, anch3)
 
@@ -301,11 +301,12 @@ def _compute_limit(
 # Public entry-point
 # ---------------------------------------------------------------------------
 
+
 def run_stress_test(
-    base_row:         Dict[str, Any],
-    base_pd_result:   Any,                # PDMapResult from pd_mapper
-    base_limit:       float,
-    blended_pd:       float,
+    base_row: Dict[str, Any],
+    base_pd_result: Any,  # PDMapResult from pd_mapper
+    base_limit: float,
+    blended_pd: float,
     requested_amount: float = 5_000_000,
 ) -> List[StressScenarioResult]:
     """
@@ -325,11 +326,11 @@ def run_stress_test(
     S0 (Base Case) is always first and has is_base=True.
     """
     results: List[StressScenarioResult] = []
-    base_band  = base_pd_result.pd_band
+    base_band = base_pd_result.pd_band
     base_score = base_pd_result.governance_score
 
     for sc_id, label, rev_mult, debt_mult, cr_override in SCENARIOS:
-        is_base = (sc_id == "S0")
+        is_base = sc_id == "S0"
 
         # ── Shock and re-score
         shocked = _re_score(base_row, rev_mult, debt_mult, cr_override)
@@ -341,49 +342,49 @@ def run_stress_test(
         legal_risk_score = 100.0 - shocked["legal_risk_score"]
 
         pd_result = derive_pd_band(
-            identity_score         = shocked["identity_score"],
-            financial_score        = shocked["financial_score"],
-            legal_risk_score       = legal_risk_score,
-            documentation_score    = shocked["documentation_score"],
-            criminal_case_count    = shocked["criminal_case_count"],
-            debt_to_equity         = shocked["debt_to_equity"],
-            current_ratio          = shocked["current_ratio"],
-            business_vintage_years = shocked["business_vintage_years"],
+            identity_score=shocked["identity_score"],
+            financial_score=shocked["financial_score"],
+            legal_risk_score=legal_risk_score,
+            documentation_score=shocked["documentation_score"],
+            criminal_case_count=shocked["criminal_case_count"],
+            debt_to_equity=shocked["debt_to_equity"],
+            current_ratio=shocked["current_ratio"],
+            business_vintage_years=shocked["business_vintage_years"],
         )
 
-        shocked_band  = pd_result.pd_band
+        shocked_band = pd_result.pd_band
         shocked_score = pd_result.governance_score
-        shocked_pd    = BAND_PD_PRIORS.get(shocked_band, 1.0)
-        shocked_limit = _compute_limit(
-            shocked["shocked_revenue"], base_row, shocked_band, requested_amount
-        )
+        shocked_pd = BAND_PD_PRIORS.get(shocked_band, 1.0)
+        shocked_limit = _compute_limit(shocked["shocked_revenue"], base_row, shocked_band, requested_amount)
 
         # ── Deltas
         score_delta = round(shocked_score - base_score, 2)
-        band_delta  = _band_notch_delta(shocked_band, base_band)
-        pd_delta    = round(shocked_pd - blended_pd, 6)
+        band_delta = _band_notch_delta(shocked_band, base_band)
+        pd_delta = round(shocked_pd - blended_pd, 6)
         limit_delta = round(shocked_limit - base_limit, 0)
 
-        results.append(StressScenarioResult(
-            scenario_id      = sc_id,
-            label            = label,
-            revenue_mult     = rev_mult,
-            debt_mult        = debt_mult,
-            cr_override      = cr_override,
-            shocked_revenue  = shocked["shocked_revenue"],
-            shocked_debt     = shocked["shocked_debt"],
-            shocked_cr       = shocked["shocked_cr"],
-            governance_score = shocked_score,
-            pd_band          = shocked_band,
-            blended_pd       = shocked_pd,
-            evaluated_limit  = shocked_limit,
-            score_delta      = score_delta,
-            band_delta       = band_delta,
-            pd_delta         = pd_delta,
-            limit_delta      = limit_delta,
-            override_flags   = pd_result.override_flags,
-            is_base          = is_base,
-        ))
+        results.append(
+            StressScenarioResult(
+                scenario_id=sc_id,
+                label=label,
+                revenue_mult=rev_mult,
+                debt_mult=debt_mult,
+                cr_override=cr_override,
+                shocked_revenue=shocked["shocked_revenue"],
+                shocked_debt=shocked["shocked_debt"],
+                shocked_cr=shocked["shocked_cr"],
+                governance_score=shocked_score,
+                pd_band=shocked_band,
+                blended_pd=shocked_pd,
+                evaluated_limit=shocked_limit,
+                score_delta=score_delta,
+                band_delta=band_delta,
+                pd_delta=pd_delta,
+                limit_delta=limit_delta,
+                override_flags=pd_result.override_flags,
+                is_base=is_base,
+            )
+        )
 
     return results
 
@@ -391,6 +392,7 @@ def run_stress_test(
 # ---------------------------------------------------------------------------
 # Report formatter
 # ---------------------------------------------------------------------------
+
 
 def format_stress_table(
     results: List[StressScenarioResult],
@@ -416,7 +418,7 @@ def format_stress_table(
     The stress table is shown BELOW the 3-Anchor Limit panel in the report.
     It does NOT change the sanctioned limit.
     """
-    sep  = "═" * 75
+    sep = "═" * 75
     dash = "─" * 75
     lines = [
         "",
@@ -427,23 +429,20 @@ def format_stress_table(
     ]
     for r in results:
         delta_str = (
-            "  (BASE)"
-            if r.is_base
-            else f"{'+' if r.limit_delta >= 0 else ''}{currency_symbol}{r.limit_delta:>+,.0f}"
+            "  (BASE)" if r.is_base else f"{'+' if r.limit_delta >= 0 else ''}{currency_symbol}{r.limit_delta:>+,.0f}"
         )
         row = (
             f"  {r.scenario_id:<4} {r.label:<38}"
             f"  {r.governance_score:>5.1f}"
             f"  {r.pd_band:>5}"
-            f"  {r.blended_pd*100:>5.2f}%"
+            f"  {r.blended_pd * 100:>5.2f}%"
             f"  {currency_symbol}{r.evaluated_limit:>11,.0f}"
             f"  {delta_str:>14}"
         )
         lines.append(row)
     lines.append(dash)
     lines.append(
-        "  NOTE: Stress scenarios are informational only."
-        " The sanctioned limit is always the base-case evaluated limit."
+        "  NOTE: Stress scenarios are informational only. The sanctioned limit is always the base-case evaluated limit."
     )
     lines.append("")
     return "\n".join(lines)

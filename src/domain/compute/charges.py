@@ -4,7 +4,17 @@ from collections import Counter
 from datetime import date, datetime, timezone
 from typing import Any, Iterable
 
-PSU_KEYWORDS = {"state bank", "bank of baroda", "punjab national", "canara", "union bank", "bank of india", "indian bank", "ucobank", "central bank of india"}
+PSU_KEYWORDS = {
+    "state bank",
+    "bank of baroda",
+    "punjab national",
+    "canara",
+    "union bank",
+    "bank of india",
+    "indian bank",
+    "ucobank",
+    "central bank of india",
+}
 PRIVATE_BANK_KEYWORDS = {"hdfc", "icici", "axis", "kotak", "indusind", "yes bank", "idfc", "federal bank"}
 NBFC_KEYWORDS = {"finance", "capital", "finserv", "credit", "leasing", "housing finance", "investment"}
 

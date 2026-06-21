@@ -77,31 +77,40 @@ BAND_ORDER: List[str] = ["D", "CCC", "B", "BB", "BBB", "A", "AA", "AAA"]
 # Result dataclass
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class PDMapResult:
-    pd_band:              str               # final band after all overrides
-    band_before_override: str               # band from score mapping only
-    governance_score:     float             # 0–100 composite score
-    legal_health_score:   float             # 100 − legal_risk_score
-    data_penalty:         float             # 1.0 or 0.80
-    unscoreable:          bool              # True if identity gate failed
-    override_flags:       List[str] = field(default_factory=list)
-    reason_codes:         List[str] = field(default_factory=list)
+    pd_band: str  # final band after all overrides
+    band_before_override: str  # band from score mapping only
+    governance_score: float  # 0–100 composite score
+    legal_health_score: float  # 100 − legal_risk_score
+    data_penalty: float  # 1.0 or 0.80
+    unscoreable: bool  # True if identity gate failed
+    override_flags: List[str] = field(default_factory=list)
+    reason_codes: List[str] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
 
+
 def _score_to_band(score: float) -> str:
     """Map governance score to master-scale PD band."""
-    if score >= 90: return "AAA"
-    if score >= 80: return "AA"
-    if score >= 70: return "A"
-    if score >= 55: return "BBB"
-    if score >= 40: return "BB"
-    if score >= 25: return "B"
-    if score >= 10: return "CCC"
+    if score >= 90:
+        return "AAA"
+    if score >= 80:
+        return "AA"
+    if score >= 70:
+        return "A"
+    if score >= 55:
+        return "BBB"
+    if score >= 40:
+        return "BB"
+    if score >= 25:
+        return "B"
+    if score >= 10:
+        return "CCC"
     return "D"
 
 
@@ -114,7 +123,7 @@ def _worsen_band(band: str, notches: int) -> str:
 
 def _apply_floor(band: str, floor: str) -> str:
     """Ensure band is no better than `floor`."""
-    band_idx  = BAND_ORDER.index(band)
+    band_idx = BAND_ORDER.index(band)
     floor_idx = BAND_ORDER.index(floor)
     return BAND_ORDER[min(band_idx, floor_idx)]
 
@@ -123,16 +132,17 @@ def _apply_floor(band: str, floor: str) -> str:
 # Public entry-point
 # ---------------------------------------------------------------------------
 
+
 def derive_pd_band(
     # ─ Part 1 domain scores (0–100) ───────────────────────────────────────────
-    identity_score:         float,
-    financial_score:        float,
-    legal_risk_score:       float,      # higher = more risk (bad score)
-    documentation_score:    float,
+    identity_score: float,
+    financial_score: float,
+    legal_risk_score: float,  # higher = more risk (bad score)
+    documentation_score: float,
     # ─ Hard-override inputs (raw values from NormalizedRecord / computed) ─
-    criminal_case_count:    Optional[int]   = None,
-    debt_to_equity:         Optional[float] = None,
-    current_ratio:          Optional[float] = None,
+    criminal_case_count: Optional[int] = None,
+    debt_to_equity: Optional[float] = None,
+    current_ratio: Optional[float] = None,
     business_vintage_years: Optional[float] = None,
 ) -> PDMapResult:
     """
@@ -155,7 +165,7 @@ def derive_pd_band(
     override_flags, and reason_codes.
     """
     override_flags: List[str] = []
-    reason_codes:   List[str] = []
+    reason_codes: List[str] = []
 
     # ─────────────────────────────────────────────────────────────────────────
     # Layer 1 — Confidence gate
@@ -163,14 +173,14 @@ def derive_pd_band(
     if identity_score < 60:
         reason_codes.append("IDENTITY_GATE_FAILED_UNSCOREABLE")
         return PDMapResult(
-            pd_band              = "UNSCOREABLE",
-            band_before_override = "UNSCOREABLE",
-            governance_score     = 0.0,
-            legal_health_score   = 0.0,
-            data_penalty         = 1.0,
-            unscoreable          = True,
-            override_flags       = [],
-            reason_codes         = reason_codes,
+            pd_band="UNSCOREABLE",
+            band_before_override="UNSCOREABLE",
+            governance_score=0.0,
+            legal_health_score=0.0,
+            data_penalty=1.0,
+            unscoreable=True,
+            override_flags=[],
+            reason_codes=reason_codes,
         )
 
     data_penalty = 1.0
@@ -187,16 +197,16 @@ def derive_pd_band(
 
     governance_score = round(
         0.15 * float(identity_score)
-      + 0.40 * float(financial_score)
-      + 0.30 * legal_health_score
-      + 0.15 * float(documentation_score),
+        + 0.40 * float(financial_score)
+        + 0.30 * legal_health_score
+        + 0.15 * float(documentation_score),
         4,
     )
 
     # ─────────────────────────────────────────────────────────────────────────
     # Layer 3 — Score → band
     # ─────────────────────────────────────────────────────────────────────────
-    band                 = _score_to_band(governance_score)
+    band = _score_to_band(governance_score)
     band_before_override = band
 
     # ─────────────────────────────────────────────────────────────────────────
@@ -242,12 +252,12 @@ def derive_pd_band(
         reason_codes.append("FINANCIAL_SCORE_WEAK")
 
     return PDMapResult(
-        pd_band              = band,
-        band_before_override = band_before_override,
-        governance_score     = governance_score,
-        legal_health_score   = legal_health_score,
-        data_penalty         = data_penalty,
-        unscoreable          = False,
-        override_flags       = override_flags,
-        reason_codes         = reason_codes,
+        pd_band=band,
+        band_before_override=band_before_override,
+        governance_score=governance_score,
+        legal_health_score=legal_health_score,
+        data_penalty=data_penalty,
+        unscoreable=False,
+        override_flags=override_flags,
+        reason_codes=reason_codes,
     )

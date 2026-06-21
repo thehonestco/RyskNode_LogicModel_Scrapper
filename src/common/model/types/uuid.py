@@ -1,4 +1,5 @@
 """UUID types used in models."""
+
 import uuid
 from typing import Any
 
