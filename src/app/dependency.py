@@ -109,10 +109,20 @@ def configure_dependency(binder: inject.Binder):
 
     binder.bind_to_constructor(DataGovSyncService, get_data_gov_sync_service)
 
+    # Bind ArtifactService as singleton
+    from service.artifact_service import ArtifactService
+    artifact_svc = ArtifactService()
+    # Eager load artifacts during startup
+    artifact_svc.load_artifacts()
+    binder.bind(ArtifactService, artifact_svc)
+
     # Bind PPREService
     from service.ppre_service import PPREService
     def get_ppre_service():
-        return PPREService(uow=inject.instance(AbstractUnitOfWork))
+        return PPREService(
+            uow=inject.instance(AbstractUnitOfWork),
+            artifact_service=inject.instance(ArtifactService)
+        )
 
     binder.bind_to_constructor(PPREService, get_ppre_service)
 
