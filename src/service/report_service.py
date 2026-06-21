@@ -75,6 +75,7 @@ class ReportService:
             "stress_table": stress_table,
             "tenor_schedule": tenor_schedule,
             "requested_amount": requested_amount or ppre_out.get("requested_amount") or 0.0,
+            "pralyon_score": credit_data.get("pralyon_score", 300),
         }
         
         return template.render(**context)

@@ -109,19 +109,19 @@ tr:hover td{background:rgba(88,166,255,0.04)}
 <!-- ══════════════════════════════════════════════════════ ENTITY IDENTITY -->
 <div class="sec">
   <div class="sec-label">Entity Identity · ZeroPass™ Verified</div>
-  <h2>ABC Industrial Components Pvt Ltd</h2>
+  <h2>{{ metadata.company_name }}</h2>
   <table>
     <tr><th>Field</th><th>Value</th><th>Source</th><th>Status</th></tr>
-    <tr><td><strong>Legal name</strong></td><td>ABC Industrial Components Pvt Ltd</td><td>MCA CIN API</td><td><span class="tp">Verified</span></td></tr>
-    <tr><td><strong>CIN</strong></td><td>U28990MH2015PTC271234</td><td>MCA CIN API</td><td><span class="tp">Active</span></td></tr>
-    <tr><td><strong>GSTIN</strong></td><td>27AABCA1234F1Z5</td><td>GSTIN Advanced API</td><td><span class="tp">Active</span></td></tr>
-    <tr><td><strong>PAN</strong></td><td>AABCA1234F</td><td>PAN → CIN cross-verified</td><td><span class="tp">Match</span></td></tr>
-    <tr><td><strong>Incorporation date</strong></td><td>14 March 2015 · 11 years</td><td>MCA CIN API</td><td><span class="tp">Verified</span></td></tr>
-    <tr><td><strong>Registered address</strong></td><td>Plot 42, MIDC Bhosari, Pune – 411 026, Maharashtra</td><td>MCA CIN API</td><td><span class="tp">Confirmed</span></td></tr>
-    <tr><td><strong>Sector / NIC</strong></td><td>NIC 2822 · Industrial Machinery (Capital Goods)</td><td>MCA CIN API</td><td><span class="tp">Confirmed</span></td></tr>
-    <tr><td><strong>Authorised capital</strong></td><td>₹2,50,00,000</td><td>MCA</td><td><span class="tp">On file</span></td></tr>
-    <tr><td><strong>Paid-up capital</strong></td><td>₹1,80,00,000</td><td>MCA</td><td><span class="tp">On file</span></td></tr>
-    <tr><td><strong>Udyam / MSME status</strong></td><td>UDYAM-MH-11-0048231 · Small Enterprise</td><td>Udyam API</td><td><span class="tp">Valid</span></td></tr>
+    <tr><td><strong>Legal name</strong></td><td>{{ metadata.company_name }}</td><td>MCA CIN API</td><td><span class="{% if metadata.company_name %}tp{% else %}tf{% endif %}">{% if metadata.company_name %}Verified{% else %}Missing{% endif %}</span></td></tr>
+    <tr><td><strong>CIN</strong></td><td>{{ metadata.cin }}</td><td>MCA CIN API</td><td><span class="{% if metadata.cin %}tp{% else %}tf{% endif %}">{% if metadata.cin %}Active{% else %}Missing{% endif %}</span></td></tr>
+    <tr><td><strong>GSTIN</strong></td><td>{{ gstin }}</td><td>GSTIN Advanced API</td><td><span class="{% if gstin %}tp{% else %}tf{% endif %}">{% if gstin %}Active{% else %}Missing{% endif %}</span></td></tr>
+    <tr><td><strong>PAN</strong></td><td>{{ pan }}</td><td>PAN → CIN cross-verified</td><td><span class="{% if pan %}tp{% else %}tf{% endif %}">{% if pan %}Match{% else %}Missing{% endif %}</span></td></tr>
+    <tr><td><strong>Incorporation date</strong></td><td>{{ metadata.incorporation_date }} · {{ metadata.vintage_years }} years</td><td>MCA CIN API</td><td><span class="{% if metadata.incorporation_date %}tp{% else %}tf{% endif %}">{% if metadata.incorporation_date %}Verified{% else %}Missing{% endif %}</span></td></tr>
+    <tr><td><strong>Registered address</strong></td><td>{{ metadata.registered_address }}</td><td>MCA CIN API</td><td><span class="{% if metadata.registered_address and metadata.registered_address != 'Not Available' %}tp{% else %}tw{% endif %}">{% if metadata.registered_address and metadata.registered_address != 'Not Available' %}Confirmed{% else %}Pending{% endif %}</span></td></tr>
+    <tr><td><strong>Sector / NIC</strong></td><td>NIC {{ metadata.nic_code }} · {{ metadata.sector }}</td><td>MCA CIN API</td><td><span class="tp">Confirmed</span></td></tr>
+    <tr><td><strong>Authorised capital</strong></td><td>₹{{ metadata.authorized_capital }}</td><td>MCA</td><td><span class="tp">On file</span></td></tr>
+    <tr><td><strong>Paid-up capital</strong></td><td>₹{{ metadata.paid_up_capital }}</td><td>MCA</td><td><span class="tp">On file</span></td></tr>
+    <tr><td><strong>Udyam / MSME status</strong></td><td>Not Available</td><td>Udyam API</td><td><span class="tw">Pending</span></td></tr>
   </table>
 </div>
 
@@ -131,11 +131,25 @@ tr:hover td{background:rgba(88,166,255,0.04)}
   <h2>Promoter &amp; Director Intelligence</h2>
   <table>
     <tr><th>Name</th><th>DIN</th><th>Designation</th><th>Sec 164 Disqualified</th><th>Other entities</th><th>Struck-off links</th><th>Status</th></tr>
-    <tr><td><strong>Rajesh Mehta</strong></td><td>02918347</td><td>Managing Director</td><td><span class="tp">No</span></td><td>3 active</td><td>None</td><td><span class="tp">Clear</span></td></tr>
-    <tr><td><strong>Sunita Mehta</strong></td><td>05124893</td><td>Director</td><td><span class="tp">No</span></td><td>1 active</td><td>None</td><td><span class="tp">Clear</span></td></tr>
-    <tr><td><strong>Deepak Joshi</strong></td><td>07341256</td><td>Independent Director</td><td><span class="tp">No</span></td><td>4 active</td><td>1 (FY18 — explained)</td><td><span class="tw">Monitor</span></td></tr>
+    {% for dir in metadata.directors %}
+    <tr>
+      <td><strong>{{ dir.name }}</strong></td><td>{{ dir.din }}</td><td>{{ dir.designation }}</td>
+      <td><span class="{% if dir.disqualified %}tf{% else %}tp{% endif %}">{% if dir.disqualified %}Yes{% else %}No{% endif %}</span></td>
+      <td>{{ dir.other_entities_count }} active</td>
+      <td>{{ dir.struck_off_links }}</td>
+      <td><span class="{% if dir.status == 'Clear' %}tp{% else %}tf{% endif %}">{{ dir.status }}</span></td>
+    </tr>
+    {% else %}
+    <tr><td colspan="7" style="text-align:center;color:#8b949e;padding:22px 0">No directors found</td></tr>
+    {% endfor %}
   </table>
-  <div class="nbox g">All directors cleared for disqualification under Sec 164 MCA. No PEP match. No adverse media. One struck-off entity link under Independent Director — historical, no active risk.</div>
+  <div class="nbox {% if metadata.directors|selectattr('disqualified', 'equalto', true)|list|length > 0 %}r{% else %}g{% endif %}">
+    {% if metadata.directors|selectattr('disqualified', 'equalto', true)|list|length > 0 %}
+      One or more directors have disqualifications or adverse links. Review carefully.
+    {% else %}
+      All directors cleared for disqualification under Sec 164 MCA. No PEP match. No adverse media.
+    {% endif %}
+  </div>
 </div>
 
 <!-- ══════════════════════════════════════════════════════ ZEROPASS -->
@@ -159,25 +173,25 @@ tr:hover td{background:rgba(88,166,255,0.04)}
 <!-- ══════════════════════════════════════════════════════ RISKBAND + SCORE -->
 <div class="sec">
   <div class="sec-label">RiskBand™ · Tri-Core™ Score Breakdown</div>
-  <h2>Composite score: 79.4 / 100 · RiskBand™ AA · Blended PD 0.8%</h2>
+  <h2>Composite score: {{ pralyon_score }} / 850 · RiskBand™ {{ risk_band }} · Blended PD {{ blended_pd_pct }}%</h2>
   <table>
     <tr><th>Dimension</th><th>Weight</th><th>Score</th><th>Reading</th></tr>
-    <tr><td><strong>Financial Health</strong></td><td>40%</td><td><strong class="pass">{{ financial_score | int }} / 100</strong></td><td>Strong profitability and leverage position. Quick ratio borderline — monitor.</td></tr>
-    <tr><td><strong>Identity &amp; Governance</strong></td><td>25%</td><td><strong class="pass">{{ identity_score | int }} / 100</strong></td><td>CIN, PAN, GSTIN verified. All directors clear. No Sec 164 flags.</td></tr>
-    <tr><td><strong>Legal &amp; Compliance</strong></td><td>20%</td><td><strong class="pass">{{ legal_score | int }} / 100</strong></td><td>ZeroPass™ all clear. One minor eCourts civil reference — no material risk.</td></tr>
-    <tr><td><strong>Conduct &amp; Behaviour</strong></td><td>15%</td><td><strong class="pass">{{ conduct_score | int }} / 100</strong></td><td>BehaviourPrint™ signals broadly positive. DPO elevated — watch.</td></tr>
+    <tr><td><strong>Financial Health</strong></td><td>40%</td><td><strong class="pass">{{ financial_score | int }} / 100</strong></td><td>{{ metadata.readings.financial }}</td></tr>
+    <tr><td><strong>Identity &amp; Governance</strong></td><td>25%</td><td><strong class="pass">{{ identity_score | int }} / 100</strong></td><td>{{ metadata.readings.identity }}</td></tr>
+    <tr><td><strong>Legal &amp; Compliance</strong></td><td>20%</td><td><strong class="pass">{{ legal_score | int }} / 100</strong></td><td>{{ metadata.readings.legal }}</td></tr>
+    <tr><td><strong>Conduct &amp; Behaviour</strong></td><td>15%</td><td><strong class="pass">{{ conduct_score | int }} / 100</strong></td><td>{{ metadata.readings.conduct }}</td></tr>
   </table>
 
   <h3>RiskBand™ scale</h3>
   <table>
     <tr><th>Band</th><th>PD Range</th><th>Reading</th></tr>
-    <tr><td>AAA</td><td>&lt; 0.3%</td><td>Institutional-grade counterparty</td></tr>
-    <tr class="hl"><td><strong>AA ◀ This entity</strong></td><td>0.3–1.0%</td><td>Low risk — generous terms justifiable with sector-appropriate tenor cap</td></tr>
-    <tr><td>A</td><td>1.0–3.0%</td><td>Low-moderate risk — standard trade credit</td></tr>
-    <tr><td>BBB</td><td>3.0–7.0%</td><td>Moderate risk — conservative limit</td></tr>
-    <tr><td>BB</td><td>7.0–15%</td><td>Elevated risk — short tenor, small limit</td></tr>
-    <tr><td>B</td><td>15–25%</td><td>High risk — advance collection advised</td></tr>
-    <tr><td>CCC–D</td><td>&gt; 25%</td><td>Do not extend trade credit</td></tr>
+    <tr {% if risk_band == 'AAA' %}class="hl"{% endif %}><td><strong>AAA {% if risk_band == 'AAA' %}◀ This entity{% endif %}</strong></td><td>&lt; 0.3%</td><td>{% if risk_band == 'AAA' %}{{ xai_narrative }}{% else %}Institutional-grade counterparty{% endif %}</td></tr>
+    <tr {% if risk_band == 'AA' %}class="hl"{% endif %}><td><strong>AA {% if risk_band == 'AA' %}◀ This entity{% endif %}</strong></td><td>0.3–1.0%</td><td>{% if risk_band == 'AA' %}{{ xai_narrative }}{% else %}Low risk — generous terms justifiable with sector-appropriate tenor cap{% endif %}</td></tr>
+    <tr {% if risk_band == 'A' %}class="hl"{% endif %}><td><strong>A {% if risk_band == 'A' %}◀ This entity{% endif %}</strong></td><td>1.0–3.0%</td><td>{% if risk_band == 'A' %}{{ xai_narrative }}{% else %}Low-moderate risk — standard trade credit{% endif %}</td></tr>
+    <tr {% if risk_band == 'BBB' %}class="hl"{% endif %}><td><strong>BBB {% if risk_band == 'BBB' %}◀ This entity{% endif %}</strong></td><td>3.0–7.0%</td><td>{% if risk_band == 'BBB' %}{{ xai_narrative }}{% else %}Moderate risk — conservative limit{% endif %}</td></tr>
+    <tr {% if risk_band == 'BB' %}class="hl"{% endif %}><td><strong>BB {% if risk_band == 'BB' %}◀ This entity{% endif %}</strong></td><td>7.0–15%</td><td>{% if risk_band == 'BB' %}{{ xai_narrative }}{% else %}Elevated risk — short tenor, small limit{% endif %}</td></tr>
+    <tr {% if risk_band == 'B' %}class="hl"{% endif %}><td><strong>B {% if risk_band == 'B' %}◀ This entity{% endif %}</strong></td><td>15–25%</td><td>{% if risk_band == 'B' %}{{ xai_narrative }}{% else %}High risk — advance collection advised{% endif %}</td></tr>
+    <tr {% if risk_band in ('CCC', 'D', 'UNSCOREABLE') %}class="hl"{% endif %}><td><strong>CCC–D {% if risk_band in ('CCC', 'D', 'UNSCOREABLE') %}◀ This entity{% endif %}</strong></td><td>&gt; 25%</td><td>{% if risk_band in ('CCC', 'D', 'UNSCOREABLE') %}{{ xai_narrative }}{% else %}Do not extend trade credit{% endif %}</td></tr>
   </table>
 </div>
 
@@ -187,11 +201,11 @@ tr:hover td{background:rgba(88,166,255,0.04)}
   <h2>10 ratios · Peer bench comparison</h2>
   <table>
     <tr><th>Ratio</th><th>Value</th><th>Benchmark</th><th>Status</th><th>Seller implication</th></tr>
-    <tr><td><strong>Current Ratio</strong></td><td>{{ (metadata.ratios.current_ratio | round(2)) if metadata.ratios.current_ratio is not none else 'N/A' }}×</td><td>1.5–2.5×</td><td><span class="tp">{% if metadata.ratios.current_ratio and metadata.ratios.current_ratio >= 1.5 %}Pass{% else %}Weak{% endif %}</span></td><td>Short-term coverage.</td></tr>
-    <tr><td><strong>Quick Ratio</strong></td><td>{{ (metadata.ratios.quick_ratio | round(2)) if metadata.ratios.quick_ratio is not none else 'N/A' }}×</td><td>≥ 1.0×</td><td><span class="tp">{% if metadata.ratios.quick_ratio and metadata.ratios.quick_ratio >= 1.0 %}Pass{% else %}Borderline{% endif %}</span></td><td>Immediate liquidity.</td></tr>
-    <tr><td><strong>Debt / Equity</strong></td><td>{{ (metadata.ratios.debt_to_equity | round(2)) if metadata.ratios.debt_to_equity is not none else '0.00' }}×</td><td>≤ 2.5×</td><td><span class="tp">{% if metadata.ratios.debt_to_equity and metadata.ratios.debt_to_equity > 2.5 %}High{% else %}Pass{% endif %}</span></td><td>Leverage risk.</td></tr>
-    <tr><td><strong>Net Profit Margin</strong></td><td>{{ (metadata.ratios.net_margin | round(1)) if metadata.ratios.net_margin is not none else 'N/A' }}%</td><td>≥ 4%</td><td><span class="tp">{% if metadata.ratios.net_margin and metadata.ratios.net_margin >= 4 %}Pass{% else %}Thin{% endif %}</span></td><td>Operating cushion.</td></tr>
-    <tr><td><strong>DSO</strong></td><td>{{ (metadata.ratios.dso | round(0)) if metadata.ratios.dso is not none else 'N/A' }} days</td><td>≤ 120d</td><td><span class="tp">Pass</span></td><td>Receivables speed.</td></tr>
+    <tr><td><strong>Current Ratio</strong></td><td>{{ (metadata.ratios.current_ratio | round(2)) if metadata.ratios.current_ratio is not none else 'N/A' }}×</td><td>{{ metadata.ratio_insights.current_ratio.benchmark }}</td><td><span class="{% if metadata.ratio_insights.current_ratio.status_class == 'pass' %}tp{% elif metadata.ratio_insights.current_ratio.status_class == 'warn' %}tw{% else %}tf{% endif %}">{{ metadata.ratio_insights.current_ratio.status }}</span></td><td>{{ metadata.ratio_insights.current_ratio.implication }}</td></tr>
+    <tr><td><strong>Quick Ratio</strong></td><td>{{ (metadata.ratios.quick_ratio | round(2)) if metadata.ratios.quick_ratio is not none else 'N/A' }}×</td><td>{{ metadata.ratio_insights.quick_ratio.benchmark }}</td><td><span class="{% if metadata.ratio_insights.quick_ratio.status_class == 'pass' %}tp{% elif metadata.ratio_insights.quick_ratio.status_class == 'warn' %}tw{% else %}tf{% endif %}">{{ metadata.ratio_insights.quick_ratio.status }}</span></td><td>{{ metadata.ratio_insights.quick_ratio.implication }}</td></tr>
+    <tr><td><strong>Debt / Equity</strong></td><td>{{ (metadata.ratios.debt_to_equity | round(2)) if metadata.ratios.debt_to_equity is not none else '0.00' }}×</td><td>{{ metadata.ratio_insights.debt_to_equity.benchmark }}</td><td><span class="{% if metadata.ratio_insights.debt_to_equity.status_class == 'pass' %}tp{% elif metadata.ratio_insights.debt_to_equity.status_class == 'warn' %}tw{% else %}tf{% endif %}">{{ metadata.ratio_insights.debt_to_equity.status }}</span></td><td>{{ metadata.ratio_insights.debt_to_equity.implication }}</td></tr>
+    <tr><td><strong>Net Profit Margin</strong></td><td>{{ (metadata.ratios.net_margin | round(1)) if metadata.ratios.net_margin is not none else 'N/A' }}%</td><td>{{ metadata.ratio_insights.net_margin.benchmark }}</td><td><span class="{% if metadata.ratio_insights.net_margin.status_class == 'pass' %}tp{% elif metadata.ratio_insights.net_margin.status_class == 'warn' %}tw{% else %}tf{% endif %}">{{ metadata.ratio_insights.net_margin.status }}</span></td><td>{{ metadata.ratio_insights.net_margin.implication }}</td></tr>
+    <tr><td><strong>DSO</strong></td><td>{{ (metadata.ratios.dso | round(0)) if metadata.ratios.dso is not none else 'N/A' }} days</td><td>{{ metadata.ratio_insights.dso.benchmark }}</td><td><span class="{% if metadata.ratio_insights.dso.status_class == 'pass' %}tp{% elif metadata.ratio_insights.dso.status_class == 'warn' %}tw{% else %}tf{% endif %}">{{ metadata.ratio_insights.dso.status }}</span></td><td>{{ metadata.ratio_insights.dso.implication }}</td></tr>
   </table>
 </div>
 
@@ -201,9 +215,9 @@ tr:hover td{background:rgba(88,166,255,0.04)}
   <h2>Statutory filing and payment discipline</h2>
   <table>
     <tr><th>Signal</th><th>Type</th><th>Observation</th><th>Seller Implication</th></tr>
-    <tr><td><strong>GST filing discipline</strong></td><td><span class="tp">Strength</span></td><td>Filing consistency: {{ metadata.gst.filing_consistency_label }}</td><td>GST compliance regularity.</td></tr>
-    <tr><td><strong>EPFO workforce continuity</strong></td><td><span class="tp">Strength</span></td><td>EPFO headcount: {{ metadata.epfo.employee_count or 'N/A' }} employees</td><td>Workforce stability.</td></tr>
-    <tr><td><strong>EPFO challan defaults</strong></td><td><span class="tp">Strength</span></td><td>ECR filings: {% if metadata.epfo.pf_filing_regular %}Regular{% else %}Delayed{% endif %}</td><td>Payroll compliance behaviour.</td></tr>
+    <tr><td><strong>GST filing discipline</strong></td><td><span class="{% if 'good' in metadata.gst.filing_consistency_label.lower() %}tp{% else %}tw{% endif %}">{% if 'good' in metadata.gst.filing_consistency_label.lower() %}Strength{% else %}Watchpoint{% endif %}</span></td><td>Filing consistency: {{ metadata.gst.filing_consistency_label }}</td><td>{% if 'good' in metadata.gst.filing_consistency_label.lower() %}Reliable statutory default risk.{% else %}Potential cashflow stress indicator.{% endif %}</td></tr>
+    <tr><td><strong>EPFO workforce continuity</strong></td><td><span class="{% if metadata.epfo.headcount_drop %}tw{% else %}tp{% endif %}">{% if metadata.epfo.headcount_drop %}Watchpoint{% else %}Strength{% endif %}</span></td><td>EPFO headcount: {{ metadata.epfo.employee_count or 'N/A' }} employees</td><td>{% if metadata.epfo.headcount_drop %}Recent workforce contraction detected.{% else %}Stable workforce indicator.{% endif %}</td></tr>
+    <tr><td><strong>EPFO challan defaults</strong></td><td><span class="{% if metadata.epfo.pf_filing_regular %}tp{% else %}tw{% endif %}">{% if metadata.epfo.pf_filing_regular %}Strength{% else %}Watchpoint{% endif %}</span></td><td>ECR filings: {% if metadata.epfo.pf_filing_regular %}Regular{% else %}Delayed{% endif %}</td><td>{% if metadata.epfo.pf_filing_regular %}Strong payroll compliance behaviour.{% else %}Delayed payroll payments observed.{% endif %}</td></tr>
   </table>
 </div>
 
