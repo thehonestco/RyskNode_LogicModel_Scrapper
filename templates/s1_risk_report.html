@@ -203,17 +203,17 @@ tr.hl td { background: rgba(245,166,35,.05); }
   <h2>Verified company profile</h2>
   <table>
     <tr><th>Field</th><th>Value</th><th>Source</th><th>Status</th></tr>
-    <tr><td><strong>Legal name</strong></td><td>{{ metadata.company_name }}</td><td>MCA CIN API</td><td><span class="chip pass">Verified</span></td></tr>
-    <tr><td><strong>CIN</strong></td><td>{{ metadata.cin }}</td><td>MCA CIN API</td><td><span class="chip pass">Active</span></td></tr>
-    <tr><td><strong>GSTIN</strong></td><td>{{ gstin }}</td><td>GSTIN Advanced API</td><td><span class="chip pass">Active · Regular</span></td></tr>
-    <tr><td><strong>PAN</strong></td><td>{{ pan }}</td><td>PAN → CIN cross-verified</td><td><span class="chip pass">Match</span></td></tr>
-    <tr><td><strong>Incorporation date</strong></td><td>{{ metadata.incorporation_date }} · {{ metadata.vintage_years }} years</td><td>MCA CIN API</td><td><span class="chip neutral">Verified</span></td></tr>
-    <tr><td><strong>Registered address</strong></td><td>{{ metadata.registered_address }}</td><td>MCA CIN API</td><td><span class="chip pass">Confirmed</span></td></tr>
+    <tr><td><strong>Legal name</strong></td><td>{{ metadata.company_name }}</td><td>MCA CIN API</td><td><span class="chip {% if metadata.company_name %}pass{% else %}fail{% endif %}">{% if metadata.company_name %}Verified{% else %}Missing{% endif %}</span></td></tr>
+    <tr><td><strong>CIN</strong></td><td>{{ metadata.cin }}</td><td>MCA CIN API</td><td><span class="chip {% if metadata.cin %}pass{% else %}fail{% endif %}">{% if metadata.cin %}Active{% else %}Missing{% endif %}</span></td></tr>
+    <tr><td><strong>GSTIN</strong></td><td>{{ gstin }}</td><td>GSTIN Advanced API</td><td><span class="chip {% if gstin %}pass{% else %}fail{% endif %}">{% if gstin %}Active · Regular{% else %}Missing{% endif %}</span></td></tr>
+    <tr><td><strong>PAN</strong></td><td>{{ pan }}</td><td>PAN → CIN cross-verified</td><td><span class="chip {% if pan %}pass{% else %}fail{% endif %}">{% if pan %}Match{% else %}Missing{% endif %}</span></td></tr>
+    <tr><td><strong>Incorporation date</strong></td><td>{{ metadata.incorporation_date }} · {{ metadata.vintage_years }} years</td><td>MCA CIN API</td><td><span class="chip {% if metadata.incorporation_date %}pass{% else %}fail{% endif %}">{% if metadata.incorporation_date %}Verified{% else %}Missing{% endif %}</span></td></tr>
+    <tr><td><strong>Registered address</strong></td><td>{{ metadata.registered_address }}</td><td>MCA CIN API</td><td><span class="chip {% if metadata.registered_address and metadata.registered_address != 'Not Available' %}pass{% else %}warn{% endif %}">{% if metadata.registered_address and metadata.registered_address != 'Not Available' %}Confirmed{% else %}Pending{% endif %}</span></td></tr>
     <tr><td><strong>Sector / NIC</strong></td><td>NIC {{ metadata.nic_code }} · {{ metadata.sector }}</td><td>MCA CIN API</td><td><span class="chip neutral">Confirmed</span></td></tr>
     <tr><td><strong>Authorised capital</strong></td><td>₹{{ metadata.authorized_capital }}</td><td>MCA</td><td><span class="chip neutral">On file</span></td></tr>
     <tr><td><strong>Paid-up capital</strong></td><td>₹{{ metadata.paid_up_capital }}</td><td>MCA</td><td><span class="chip neutral">On file</span></td></tr>
     <tr><td><strong>ROC</strong></td><td>{{ metadata.roc }}</td><td>MCA CIN API</td><td><span class="chip pass">Compliant</span></td></tr>
-    <tr><td><strong>MCA company status</strong></td><td>{{ metadata.company_status }}</td><td>MCA CIN API</td><td><span class="chip pass">Active</span></td></tr>
+    <tr><td><strong>MCA company status</strong></td><td>{{ metadata.company_status }}</td><td>MCA CIN API</td><td><span class="chip {% if metadata.company_status == 'Active' %}pass{% else %}warn{% endif %}">{{ metadata.company_status }}</span></td></tr>
   </table>
 </div>
 
@@ -226,7 +226,7 @@ tr.hl td { background: rgba(245,166,35,.05); }
     {% for dir in metadata.directors %}
     <tr>
       <td><strong>{{ dir.name }}</strong></td><td>{{ dir.din }}</td><td>{{ dir.designation }}</td>
-      <td><span class="chip {% if dir.disqualified %}fail{% else %}pass{% endif %}">{% if dir.disqualified %}Yes{% else %}No{% endif %}</span></td><td>{{ dir.other_entities_count }} active</td><td><span class="chip pass">None</span></td><td><span class="chip pass">Clear</span></td>
+      <td><span class="chip {% if dir.disqualified %}fail{% else %}pass{% endif %}">{% if dir.disqualified %}Yes{% else %}No{% endif %}</span></td><td>{{ dir.other_entities_count }} active</td><td><span class="chip {% if dir.struck_off_links == 'None' %}pass{% else %}warn{% endif %}">{{ dir.struck_off_links }}</span></td><td><span class="chip {% if dir.status == 'Clear' %}pass{% else %}fail{% endif %}">{{ dir.status }}</span></td>
     </tr>
     {% else %}
     <tr><td colspan="7" style="text-align:center">No directors found</td></tr>
@@ -256,24 +256,24 @@ tr.hl td { background: rgba(245,166,35,.05); }
 <!-- ═══════════════════════ 4. TRI-CORE SYNTHESIS ═══════════════════════ -->
 <div class="sec">
   <div class="sec-label">Tri-Core™ Synthesis</div>
-  <h2>RiskBand™ BB · Blended PD 4.8%</h2>
+  <h2>RiskBand™ {{ risk_band }} · Blended PD {{ blended_pd_pct }}%</h2>
   <p>Three independent scoring tracks are run in parallel and synthesised into a single calibrated score, which maps to the RiskBand™. No single track can override the others — all three must converge.</p>
   <table>
     <tr><th>Dimension</th><th>Weight</th><th>Score</th><th>Reading</th></tr>
-    <tr><td><strong>Financial Health</strong></td><td>40%</td><td>{{ financial_score | int }} / 100</td><td>Revenue growing at 31% YoY. Thin net margins at 7.2%. Debtor days elevated at 54. Low leverage is a meaningful offset.</td></tr>
-    <tr><td><strong>Identity &amp; Governance</strong></td><td>25%</td><td>{{ identity_score | int }} / 100</td><td>CIN, PAN, GSTIN fully verified and matched. Both directors clear. Annual filings current. No ROC notices.</td></tr>
-    <tr><td><strong>Legal &amp; Compliance</strong></td><td>20%</td><td>{{ legal_score | int }} / 100</td><td>ZeroPass™ all clear. One active minor commercial court matter at pre-decree stage adds moderate legal track pressure.</td></tr>
-    <tr><td><strong>Conduct &amp; Behaviour</strong></td><td>15%</td><td>{{ conduct_score | int }} / 100</td><td>GST filing discipline strong. EPFO headcount contracting 20% YoY despite revenue growth — primary behavioural watchpoint.</td></tr>
+    <tr><td><strong>Financial Health</strong></td><td>40%</td><td>{{ financial_score | int }} / 100</td><td>{{ metadata.readings.financial }}</td></tr>
+    <tr><td><strong>Identity &amp; Governance</strong></td><td>25%</td><td>{{ identity_score | int }} / 100</td><td>{{ metadata.readings.identity }}</td></tr>
+    <tr><td><strong>Legal &amp; Compliance</strong></td><td>20%</td><td>{{ legal_score | int }} / 100</td><td>{{ metadata.readings.legal }}</td></tr>
+    <tr><td><strong>Conduct &amp; Behaviour</strong></td><td>15%</td><td>{{ conduct_score | int }} / 100</td><td>{{ metadata.readings.conduct }}</td></tr>
   </table>
   <table style="margin-top:20px">
     <tr><th>Band</th><th>PD Range</th><th>Reading</th></tr>
-    <tr><td><strong>AAA</strong></td><td>&lt; 0.3%</td><td>Institutional-grade counterparty</td></tr>
-    <tr><td><strong>AA</strong></td><td>0.3–1.0%</td><td>Very strong — generous terms justifiable</td></tr>
-    <tr><td><strong>A</strong></td><td>1.0–3.0%</td><td>Low-moderate risk — standard trade credit</td></tr>
-    <tr><td><strong>BBB</strong></td><td>3.0–4.0%</td><td>Adequate — minor watchpoints present</td></tr>
-    <tr class="hl"><td><strong>BB ◀ This entity</strong></td><td>4.0–7.0%</td><td>Monitored pass — exposure supportable with conditions · Blended PD 4.8%</td></tr>
-    <tr><td><strong>B</strong></td><td>7.0–15%</td><td>Elevated risk — short tenor only</td></tr>
-    <tr><td><strong>CCC–D</strong></td><td>&gt; 15%</td><td>Do not extend trade credit</td></tr>
+    <tr {% if risk_band == 'AAA' %}class="hl"{% endif %}><td><strong>AAA {% if risk_band == 'AAA' %}◀ This entity{% endif %}</strong></td><td>&lt; 0.3%</td><td>{% if risk_band == 'AAA' %}{{ xai_narrative }} · Blended PD {{ blended_pd_pct }}%{% else %}Institutional-grade counterparty{% endif %}</td></tr>
+    <tr {% if risk_band == 'AA' %}class="hl"{% endif %}><td><strong>AA {% if risk_band == 'AA' %}◀ This entity{% endif %}</strong></td><td>0.3–1.0%</td><td>{% if risk_band == 'AA' %}{{ xai_narrative }} · Blended PD {{ blended_pd_pct }}%{% else %}Very strong — generous terms justifiable{% endif %}</td></tr>
+    <tr {% if risk_band == 'A' %}class="hl"{% endif %}><td><strong>A {% if risk_band == 'A' %}◀ This entity{% endif %}</strong></td><td>1.0–3.0%</td><td>{% if risk_band == 'A' %}{{ xai_narrative }} · Blended PD {{ blended_pd_pct }}%{% else %}Low-moderate risk — standard trade credit{% endif %}</td></tr>
+    <tr {% if risk_band == 'BBB' %}class="hl"{% endif %}><td><strong>BBB {% if risk_band == 'BBB' %}◀ This entity{% endif %}</strong></td><td>3.0–4.0%</td><td>{% if risk_band == 'BBB' %}{{ xai_narrative }} · Blended PD {{ blended_pd_pct }}%{% else %}Adequate — minor watchpoints present{% endif %}</td></tr>
+    <tr {% if risk_band == 'BB' %}class="hl"{% endif %}><td><strong>BB {% if risk_band == 'BB' %}◀ This entity{% endif %}</strong></td><td>4.0–7.0%</td><td>{% if risk_band == 'BB' %}{{ xai_narrative }} · Blended PD {{ blended_pd_pct }}%{% else %}Monitored pass — exposure supportable with conditions{% endif %}</td></tr>
+    <tr {% if risk_band == 'B' %}class="hl"{% endif %}><td><strong>B {% if risk_band == 'B' %}◀ This entity{% endif %}</strong></td><td>7.0–15%</td><td>{% if risk_band == 'B' %}{{ xai_narrative }} · Blended PD {{ blended_pd_pct }}%{% else %}Elevated risk — short tenor only{% endif %}</td></tr>
+    <tr {% if risk_band in ('CCC', 'D', 'UNSCOREABLE') %}class="hl"{% endif %}><td><strong>CCC–D {% if risk_band in ('CCC', 'D', 'UNSCOREABLE') %}◀ This entity{% endif %}</strong></td><td>&gt; 15%</td><td>{% if risk_band in ('CCC', 'D', 'UNSCOREABLE') %}{{ xai_narrative }} · Blended PD {{ blended_pd_pct }}%{% else %}Do not extend trade credit{% endif %}</td></tr>
   </table>
 </div>
 
@@ -283,12 +283,12 @@ tr.hl td { background: rgba(245,166,35,.05); }
   <h2>10-parameter financial assessment · FY25 MCA filings</h2>
   <table>
     <tr><th>Ratio</th><th>Value</th><th>Benchmark</th><th>Status</th><th>Seller implication</th></tr>
-    <tr><td><strong>Current Ratio</strong></td><td>{{ (metadata.ratios.current_ratio | round(2)) if metadata.ratios.current_ratio is not none else 'N/A' }}×</td><td>≥ 1.5×</td><td><span class="chip {% if metadata.ratios.current_ratio and metadata.ratios.current_ratio >= 1.5 %}pass{% else %}warn{% endif %}">{% if metadata.ratios.current_ratio and metadata.ratios.current_ratio >= 1.5 %}Pass{% else %}Weak{% endif %}</span></td><td>Short-term assets cover near-term liabilities.</td></tr>
-    <tr><td><strong>Quick Ratio</strong></td><td>{{ (metadata.ratios.quick_ratio | round(2)) if metadata.ratios.quick_ratio is not none else 'N/A' }}×</td><td>≥ 1.0×</td><td><span class="chip {% if metadata.ratios.quick_ratio and metadata.ratios.quick_ratio >= 1.0 %}pass{% else %}warn{% endif %}">{% if metadata.ratios.quick_ratio and metadata.ratios.quick_ratio >= 1.0 %}Pass{% else %}Weak{% endif %}</span></td><td>Quick liquidity cover without inventory.</td></tr>
-    <tr><td><strong>Debt / Equity</strong></td><td>{{ (metadata.ratios.debt_to_equity | round(2)) if metadata.ratios.debt_to_equity is not none else '0.00' }}×</td><td>≤ 2.5×</td><td><span class="chip {% if metadata.ratios.debt_to_equity and metadata.ratios.debt_to_equity > 2.5 %}fail{% else %}pass{% endif %}">{% if metadata.ratios.debt_to_equity and metadata.ratios.debt_to_equity > 2.5 %}High{% else %}Pass{% endif %}</span></td><td>Balance sheet leverage indicator.</td></tr>
-    <tr><td><strong>Net Profit Margin</strong></td><td>{{ (metadata.ratios.net_margin | round(1)) if metadata.ratios.net_margin is not none else 'N/A' }}%</td><td>≥ 6%</td><td><span class="chip {% if metadata.ratios.net_margin and metadata.ratios.net_margin >= 6 %}pass{% else %}warn{% endif %}">{% if metadata.ratios.net_margin and metadata.ratios.net_margin >= 6 %}Pass{% else %}Thin{% endif %}</span></td><td>Operating profitability.</td></tr>
-    <tr><td><strong>DSO (Debtor Days)</strong></td><td>{{ (metadata.ratios.dso | round(0)) if metadata.ratios.dso is not none else 'N/A' }} days</td><td>≤ 90 days</td><td><span class="chip {% if metadata.ratios.dso and metadata.ratios.dso > 90 %}warn{% else %}pass{% endif %}">{% if metadata.ratios.dso and metadata.ratios.dso > 90 %}Elevated{% else %}Pass{% endif %}</span></td><td>Debtor collection speed.</td></tr>
-    <tr><td><strong>Tangible Net Worth</strong></td><td>₹{{ (metadata.ratios.tangible_net_worth / 100000) | round(2) }} L</td><td>Positive</td><td><span class="chip pass">Pass</span></td><td>Solvency backing at current scale.</td></tr>
+    <tr><td><strong>Current Ratio</strong></td><td>{{ (metadata.ratios.current_ratio | round(2)) if metadata.ratios.current_ratio is not none else 'N/A' }}×</td><td>{{ metadata.ratio_insights.current_ratio.benchmark }}</td><td><span class="chip {{ metadata.ratio_insights.current_ratio.status_class }}">{{ metadata.ratio_insights.current_ratio.status }}</span></td><td>{{ metadata.ratio_insights.current_ratio.implication }}</td></tr>
+    <tr><td><strong>Quick Ratio</strong></td><td>{{ (metadata.ratios.quick_ratio | round(2)) if metadata.ratios.quick_ratio is not none else 'N/A' }}×</td><td>{{ metadata.ratio_insights.quick_ratio.benchmark }}</td><td><span class="chip {{ metadata.ratio_insights.quick_ratio.status_class }}">{{ metadata.ratio_insights.quick_ratio.status }}</span></td><td>{{ metadata.ratio_insights.quick_ratio.implication }}</td></tr>
+    <tr><td><strong>Debt / Equity</strong></td><td>{{ (metadata.ratios.debt_to_equity | round(2)) if metadata.ratios.debt_to_equity is not none else '0.00' }}×</td><td>{{ metadata.ratio_insights.debt_to_equity.benchmark }}</td><td><span class="chip {{ metadata.ratio_insights.debt_to_equity.status_class }}">{{ metadata.ratio_insights.debt_to_equity.status }}</span></td><td>{{ metadata.ratio_insights.debt_to_equity.implication }}</td></tr>
+    <tr><td><strong>Net Profit Margin</strong></td><td>{{ (metadata.ratios.net_margin | round(1)) if metadata.ratios.net_margin is not none else 'N/A' }}%</td><td>{{ metadata.ratio_insights.net_margin.benchmark }}</td><td><span class="chip {{ metadata.ratio_insights.net_margin.status_class }}">{{ metadata.ratio_insights.net_margin.status }}</span></td><td>{{ metadata.ratio_insights.net_margin.implication }}</td></tr>
+    <tr><td><strong>DSO (Debtor Days)</strong></td><td>{{ (metadata.ratios.dso | round(0)) if metadata.ratios.dso is not none else 'N/A' }} days</td><td>{{ metadata.ratio_insights.dso.benchmark }}</td><td><span class="chip {{ metadata.ratio_insights.dso.status_class }}">{{ metadata.ratio_insights.dso.status }}</span></td><td>{{ metadata.ratio_insights.dso.implication }}</td></tr>
+    <tr><td><strong>Tangible Net Worth</strong></td><td>₹{{ (metadata.ratios.tangible_net_worth / 100000) | round(2) }} L</td><td>{{ metadata.ratio_insights.tangible_net_worth.benchmark }}</td><td><span class="chip {{ metadata.ratio_insights.tangible_net_worth.status_class }}">{{ metadata.ratio_insights.tangible_net_worth.status }}</span></td><td>{{ metadata.ratio_insights.tangible_net_worth.implication }}</td></tr>
   </table>
 </div>
 

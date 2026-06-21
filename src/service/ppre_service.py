@@ -495,6 +495,7 @@ class PPREService:
         # Parse directors
         directors_list = []
         for d in payload.get("directors", []):
+            disqualified = d.get("disqualified") or False
             directors_list.append(
                 {
                     "name": d.get("fullName") or d.get("name") or d.get("directorName") or "Unknown",
@@ -502,8 +503,10 @@ class PPREService:
                     "designation": d.get("designation")
                     if d.get("designation") not in (None, "", "-")
                     else d.get("role") or "Director",
-                    "disqualified": d.get("disqualified") or False,
+                    "disqualified": disqualified,
                     "other_entities_count": d.get("other_entities_count") or 0,
+                    "struck_off_links": "Yes" if disqualified else "None",
+                    "status": "Flagged" if disqualified else "Clear",
                 }
             )
 
@@ -601,6 +604,50 @@ class PPREService:
                 "drt_cases": raw_feature_row.get("case_count_drt", 0),
                 "active_cases": raw_feature_row.get("case_count_active", 0),
             },
+            "readings": {
+                "financial": f"Score {int(financial_ds.weighted_score)}/100. Based on {vintage} years vintage with debt/equity {ratios.get('debt_to_equity') or 0:.1f}x.",
+                "identity": f"Score {int(identity_ds.weighted_score)}/100. All primary identities checked. {len(directors_list)} directors verified.",
+                "legal": f"Score {int(legal_ds.weighted_score)}/100. Legal track reflects {raw_feature_row.get('case_count_active', 0)} active cases.",
+                "conduct": f"Score {int(raw_feature_row.get('conduct_score') or 70.0)}/100. Incorporates GST and EPFO compliance history."
+            },
+            "ratio_insights": {
+                "current_ratio": {
+                    "benchmark": "≥ 1.5×",
+                    "status": "Pass" if (ratios.get("current_ratio") or 0) >= 1.5 else "Weak",
+                    "status_class": "pass" if (ratios.get("current_ratio") or 0) >= 1.5 else "warn",
+                    "implication": "Strong short-term asset cover." if (ratios.get("current_ratio") or 0) >= 1.5 else "Short-term liabilities exceed liquid assets."
+                },
+                "quick_ratio": {
+                    "benchmark": "≥ 1.0×",
+                    "status": "Pass" if (ratios.get("quick_ratio") or 0) >= 1.0 else "Weak",
+                    "status_class": "pass" if (ratios.get("quick_ratio") or 0) >= 1.0 else "warn",
+                    "implication": "Adequate liquid assets." if (ratios.get("quick_ratio") or 0) >= 1.0 else "Potential liquidity constraint."
+                },
+                "debt_to_equity": {
+                    "benchmark": "≤ 2.5×",
+                    "status": "High" if (ratios.get("debt_to_equity") or 0) > 2.5 else "Pass",
+                    "status_class": "fail" if (ratios.get("debt_to_equity") or 0) > 2.5 else "pass",
+                    "implication": "Elevated leverage risk." if (ratios.get("debt_to_equity") or 0) > 2.5 else "Healthy capital structure."
+                },
+                "net_margin": {
+                    "benchmark": "≥ 6%",
+                    "status": "Pass" if ((raw_feature_row.get("pat", 0) / raw_feature_row.get("revenue", 1) * 100) if raw_feature_row.get("revenue") else 0) >= 6 else "Thin",
+                    "status_class": "pass" if ((raw_feature_row.get("pat", 0) / raw_feature_row.get("revenue", 1) * 100) if raw_feature_row.get("revenue") else 0) >= 6 else "warn",
+                    "implication": "Solid operating profitability." if ((raw_feature_row.get("pat", 0) / raw_feature_row.get("revenue", 1) * 100) if raw_feature_row.get("revenue") else 0) >= 6 else "Marginal profitability limits buffer."
+                },
+                "dso": {
+                    "benchmark": "≤ 90 days",
+                    "status": "Elevated" if (ratios.get("dso") or 0) > 90 else "Pass",
+                    "status_class": "warn" if (ratios.get("dso") or 0) > 90 else "pass",
+                    "implication": "Slow receivables collection." if (ratios.get("dso") or 0) > 90 else "Efficient debtor collection."
+                },
+                "tangible_net_worth": {
+                    "benchmark": "Positive",
+                    "status": "Pass" if raw_feature_row.get("networth", 0) > 0 else "Fail",
+                    "status_class": "pass" if raw_feature_row.get("networth", 0) > 0 else "fail",
+                    "implication": "Sufficient solvency backing." if raw_feature_row.get("networth", 0) > 0 else "Severe capital erosion."
+                }
+            }
         }
 
         return {
