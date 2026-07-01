@@ -42,6 +42,7 @@ class BuyerAssessResponse(BaseModel):
     data_sources_used: List[str]
     pipeline_version: str
     metadata: Dict[str, Any] = Field(default_factory=dict)
+    input_parameters: Dict[str, Any] = Field(default_factory=dict, description="The 36 feature columns used as input to the ML scoring engine")
 
 
 class CreditLimitResponse(BaseModel):
@@ -70,3 +71,4 @@ class CreditLimitResponse(BaseModel):
     stress_table: List[Dict[str, Any]]
 
     metadata: Dict[str, Any] = Field(default_factory=dict)
+    input_parameters: Dict[str, Any] = Field(default_factory=dict, description="The 36 feature columns used as input to the ML scoring engine")

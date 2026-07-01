@@ -528,9 +528,9 @@ class PPREService:
 
         # ZeroPass mock checks mapping actual raw flags if present
         zeropass_data = {
-            "g1_result": "None found"
-            if raw_feature_row.get("case_count_nclt", 0) == 0
-            else f"{raw_feature_row.get('case_count_nclt')} cases",
+            "g1_result": "No NCLT / CIRP insolvency proceedings"
+            if (raw_feature_row.get("case_count_nclt") or 0) == 0
+            else f"{raw_feature_row.get('case_count_nclt')} NCLT matters identified",
             "g1_fail": raw_feature_row.get("has_insolvency_petition", False),
             "g2_result": "All clear — both directors",
             "g2_fail": False,
@@ -542,14 +542,14 @@ class PPREService:
             "g5_fail": raw_feature_row.get("is_wilful_defaulter", False),
             "g6_result": "Nil active proceedings",
             "g6_fail": False,
-            "g7_result": "None found"
-            if raw_feature_row.get("case_count_drt", 0) == 0
+            "g7_result": "No DRT recovery proceedings"
+            if (raw_feature_row.get("case_count_drt") or 0) == 0
             else f"{raw_feature_row.get('case_count_drt')} cases",
-            "g7_fail": raw_feature_row.get("case_count_drt", 0) > 0,
-            "g8_result": f"Positive TNW — ₹{raw_feature_row.get('networth', 0) / 10000000:.2f} Cr"
-            if raw_feature_row.get("networth", 0) > 0
-            else "Negative TNW",
-            "g8_fail": raw_feature_row.get("networth", 0) <= 0,
+            "g7_fail": (raw_feature_row.get("case_count_drt") or 0) > 0,
+            "g8_result": f"Positive TNW — ₹{(raw_feature_row.get('networth') or 0) / 10000000:.2f} Cr"
+            if (raw_feature_row.get("networth") or 0) > 0
+            else "Negative / Eroded Net Worth",
+            "g8_fail": (raw_feature_row.get("networth") or 0) <= 0,
         }
 
         # Financial Ratios snapshot
@@ -557,7 +557,7 @@ class PPREService:
             "current_ratio": ratios.get("current_ratio"),
             "quick_ratio": ratios.get("quick_ratio"),
             "debt_to_equity": ratios.get("debt_to_equity"),
-            "net_margin": (raw_feature_row.get("pat", 0) / raw_feature_row.get("revenue", 1) * 100)
+            "net_margin": ((raw_feature_row.get("pat") or 0) / (raw_feature_row.get("revenue") or 1) * 100)
             if raw_feature_row.get("revenue")
             else 0.0,
             "dso": ratios.get("dso"),
@@ -631,9 +631,9 @@ class PPREService:
                 },
                 "net_margin": {
                     "benchmark": "≥ 6%",
-                    "status": "Pass" if ((raw_feature_row.get("pat", 0) / raw_feature_row.get("revenue", 1) * 100) if raw_feature_row.get("revenue") else 0) >= 6 else "Thin",
-                    "status_class": "pass" if ((raw_feature_row.get("pat", 0) / raw_feature_row.get("revenue", 1) * 100) if raw_feature_row.get("revenue") else 0) >= 6 else "warn",
-                    "implication": "Solid operating profitability." if ((raw_feature_row.get("pat", 0) / raw_feature_row.get("revenue", 1) * 100) if raw_feature_row.get("revenue") else 0) >= 6 else "Marginal profitability limits buffer."
+                    "status": "Pass" if (((raw_feature_row.get("pat") or 0) / (raw_feature_row.get("revenue") or 1) * 100) if raw_feature_row.get("revenue") else 0) >= 6 else "Thin",
+                    "status_class": "pass" if (((raw_feature_row.get("pat") or 0) / (raw_feature_row.get("revenue") or 1) * 100) if raw_feature_row.get("revenue") else 0) >= 6 else "warn",
+                    "implication": "Solid operating profitability." if (((raw_feature_row.get("pat") or 0) / (raw_feature_row.get("revenue") or 1) * 100) if raw_feature_row.get("revenue") else 0) >= 6 else "Marginal profitability limits buffer."
                 },
                 "dso": {
                     "benchmark": "≤ 90 days",
@@ -643,11 +643,26 @@ class PPREService:
                 },
                 "tangible_net_worth": {
                     "benchmark": "Positive",
-                    "status": "Pass" if raw_feature_row.get("networth", 0) > 0 else "Fail",
-                    "status_class": "pass" if raw_feature_row.get("networth", 0) > 0 else "fail",
-                    "implication": "Sufficient solvency backing." if raw_feature_row.get("networth", 0) > 0 else "Severe capital erosion."
+                    "status": "Pass" if (raw_feature_row.get("networth") or 0) > 0 else "Fail",
+                    "status_class": "pass" if (raw_feature_row.get("networth") or 0) > 0 else "fail",
+                    "implication": "Sufficient solvency backing." if (raw_feature_row.get("networth") or 0) > 0 else "Severe capital erosion."
                 }
             }
+        }
+
+        input_parameters = {
+            k: enriched.get(k) for k in [
+                "identity_score", "financial_score", "legal_score", "documentation_score",
+                "current_ratio", "quick_ratio", "debt_to_equity", "dso", "net_revenue_cagr_5y",
+                "working_capital", "tangible_net_worth", "net_revenue_latest", "turnover_y1",
+                "turnover_y2", "turnover_y3", "charge_count_active", "has_any_active_charge",
+                "has_recent_charge_90d", "old_unsatisfied_charge_count", "distinct_lender_count",
+                "case_count_total", "case_count_active", "case_count_drt", "case_count_nclt",
+                "case_count_hc", "criminal_case_count", "has_insolvency_petition", "gst_turnover",
+                "gst_filing_consistency", "high_director_company_count", "max_director_company_count",
+                "epfo_headcount", "pf_filing_regular", "revenue_per_employee_outlier",
+                "business_vintage_years", "conduct_score",
+            ]
         }
 
         return {
@@ -668,6 +683,7 @@ class PPREService:
             "data_sources_used": ["mca", "gst", "ecourts"],
             "pipeline_version": "2.2.0",
             "metadata": metadata,
+            "input_parameters": input_parameters,
             # Pass full scored engine output along for report generation ease
             "_ppre_output": scored,
         }
