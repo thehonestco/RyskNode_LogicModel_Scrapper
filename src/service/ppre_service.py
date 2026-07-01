@@ -105,7 +105,7 @@ class PPREService:
                     }
                 )
 
-        sorted_years = sorted(years_data.keys(), reverse=True)
+        sorted_years = sorted(years_data.keys(), reverse=True)[:3]  # Enforce ONLY last 3 years
         financials = []
         for y in sorted_years:
             data = years_data[y]
