@@ -105,7 +105,7 @@ try:
 except ImportError:
     _MPL_AVAILABLE = False
 
-EXPLAINATIONS_DIR = Path(__file__).resolve().parents[2] / "part2" / "reports" / "explanations"
+EXPLANATIONS_DIR = Path(__file__).resolve().parents[3] / "reports" / "explanations"
 
 # Feature display names — maps internal Buyer feature column names to human-readable labels
 FEATURE_LABELS: Dict[str, str] = {
@@ -198,6 +198,11 @@ class CreditExplainer:
         if self._shap_fitted:
             return
         model = self.lgbm_model if self.primary_model == "lgbm" else self.xgb_model
+        
+        # Extract base estimator if model is wrapped in CalibratedClassifierCV
+        if hasattr(model, "calibrated_classifiers_"):
+            model = model.calibrated_classifiers_[0].estimator
+            
         self._shap_explainer = shap.TreeExplainer(
             model,
             data=shap.sample(self.X_train, min(100, len(self.X_train))),
@@ -311,6 +316,9 @@ class CreditExplainer:
 
                 def _predict_fn(X):
                     """Wrap model to return [P(non-default), P(default)] columns."""
+                    if hasattr(model, "predict_proba"):
+                        return model.predict_proba(X)
+                    # Fallback if no predict_proba
                     pds = np.array(model.predict(X)).flatten()
                     return np.column_stack([1 - pds, pds])
 
@@ -318,9 +326,9 @@ class CreditExplainer:
                     x_instance,
                     _predict_fn,
                     num_features=min(8, len(self.feature_names)),
-                    top_labels=1,
+                    labels=(1,),
                 )
-                lime_list = lime_exp.as_list()
+                lime_list = lime_exp.as_list(label=1)
                 report["lime_explanation"] = {
                     "features": [{"condition": cond, "weight": round(weight, 5)} for cond, weight in lime_list]
                 }
@@ -331,7 +339,7 @@ class CreditExplainer:
                     report["plot_paths"].append(str(plot_path))
 
             except Exception as e:
-                logger.warning("LIME explanation failed for Buyer %s: %s", buyer_id, e)
+                import traceback; traceback.print_exc(); logger.warning("LIME explanation failed for Buyer %s: %s", buyer_id, e)
 
         # ── Narrative ───────────────────────────────────────────────
         report["narrative"] = self._build_narrative(
@@ -510,49 +518,40 @@ class CreditExplainer:
         shap_ranked: List[Dict],
     ) -> str:
         """
-        Build a plain-English Buyer risk assessment narrative from SHAP-ranked features.
-
-        This narrative is suitable for:
-          - Seller-facing credit decision memo
-          - Risk committee reporting
-          - Regulatory transparency / audit trail
-          - Model explainability record
+        Build a concise, HTML-friendly narrative for the UI templates.
         """
         lines = []
-        lines.append(f"BUYER RISK ASSESSMENT — {buyer_id}")
-        lines.append("-" * 50)
-        dec_upper = decision.upper().replace("_", " ")
-        lines.append(f"Decision: {dec_upper}  (Band: {band} | Blended PD: {blended_pd * 100:.1f}%)")
-        if advised_limit > 0:
-            lines.append(f"Advised Seller Exposure Limit: \u20b9{advised_limit:,.0f}")
-        else:
-            lines.append("Advised Seller Exposure Limit: ₹0 (Buyer declined)")
-        lines.append("")
-
+        
+        # We drop the large text header because the UI template already has it.
+        # Just focus on the drivers and mitigants in HTML list format.
+        
         risk_factors = [f for f in shap_ranked if f["direction"] == "risk_increasing"]
         mitigants = [f for f in shap_ranked if f["direction"] == "risk_reducing"]
 
+        if not shap_ranked:
+            return "<i>Detailed risk attributions unavailable.</i>"
+
         if risk_factors:
-            lines.append("Primary risk drivers (Buyer):")
+            lines.append("<b>Primary Risk Drivers:</b>")
+            lines.append("<ul style='margin-top:4px; margin-bottom:12px; padding-left:20px;'>")
             for f in risk_factors[:4]:
                 label = f["label"]
                 val = f["feature_value"]
                 sv = f["shap_value"]
-                lines.append(f"  \u2022 {label}: {val:.3g}  (impact: +{sv:+.4f} on default probability)")
+                lines.append(f"  <li><b>{label}</b> ({val:.3g}) increases default probability by <b>{sv:+.2f}%</b></li>")
+            lines.append("</ul>")
 
         if mitigants:
-            lines.append("")
-            lines.append("Mitigating factors (Buyer):")
+            lines.append("<b>Key Mitigating Factors:</b>")
+            lines.append("<ul style='margin-top:4px; margin-bottom:0; padding-left:20px;'>")
             for f in mitigants[:3]:
                 label = f["label"]
                 val = f["feature_value"]
                 sv = f["shap_value"]
-                lines.append(f"  \u2022 {label}: {val:.3g}  (impact: {sv:+.4f} on default probability)")
+                lines.append(f"  <li><b>{label}</b> ({val:.3g}) reduces default probability by <b>{abs(sv):.2f}%</b></li>")
+            lines.append("</ul>")
 
-        if not shap_ranked:
-            lines.append("(SHAP not available — install shap for detailed breakdown)")
-
-        return "\n".join(lines)
+        return "".join(lines)
 
     # ─────────────────────────────────────────────────────────────────────────
     # Plot savers (internal)
