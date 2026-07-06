@@ -39,4 +39,5 @@ def build_hard_decline_result(entity_key: str, reason: str) -> dict[str, Any]:
         "decision": "DECLINE",
         "hard_decline_reason": reason,
         "source_notes": [reason],
+        "hard_decline": True,
     }

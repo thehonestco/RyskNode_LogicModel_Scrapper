@@ -538,7 +538,8 @@ class CreditExplainer:
                 label = f["label"]
                 val = f["feature_value"]
                 sv = f["shap_value"]
-                lines.append(f"  <li><b>{label}</b> ({val:.3g}) increases default probability by <b>{sv:+.2f}%</b></li>")
+                val_str = "N/A" if (val is None or pd.isna(val)) else f"{val:.3g}"
+                lines.append(f"  <li><b>{label}</b> ({val_str}) increases default probability by <b>{sv:+.2f}%</b></li>")
             lines.append("</ul>")
 
         if mitigants:
@@ -548,7 +549,8 @@ class CreditExplainer:
                 label = f["label"]
                 val = f["feature_value"]
                 sv = f["shap_value"]
-                lines.append(f"  <li><b>{label}</b> ({val:.3g}) reduces default probability by <b>{abs(sv):.2f}%</b></li>")
+                val_str = "N/A" if (val is None or pd.isna(val)) else f"{val:.3g}"
+                lines.append(f"  <li><b>{label}</b> ({val_str}) reduces default probability by <b>{abs(sv):.2f}%</b></li>")
             lines.append("</ul>")
 
         return "".join(lines)

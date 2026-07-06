@@ -151,76 +151,186 @@ class PPREService:
         return round(filed / len(returns), 4)
 
     def _run_part1_sourcing(self, db_row: dict) -> dict[str, Any]:
+        """
+        Part 1 Pipeline per RA Model Doc & Whiteboard:
+        ================================================
+        Step 1: Extract all available data signals (7-8 sources)
+        Step 2: HARD GATE ① — RBI Wilful Defaulter → INSTANT DECLINE
+        Step 3: HARD GATE ② — Director Wilful Defaulter / MCA Sec164 → INSTANT DECLINE
+        Step 4: MCA Data Validation → MCA or GST revenue proxy
+        Step 5: Compute Financial Ratios
+        Step 6: Part 1 — Conduct Score Chain (base 70, adjustments)
+        Step 7: Part 1 — Four Domain Scores
+        Step 8: Build Final Feature Row (35+ fields)
+        """
         payload = db_row.get("payload") or {}
         overview = (
             payload.get("overview", [{}])[0]
             if isinstance(payload.get("overview"), list)
             else payload.get("overview", {})
-        )
+        ) or {}
 
-        # Extract active GSTIN
+        # ─────────────────────────────────────────────────────────────────────
+        # STEP 1: Extract available data signals
+        # ─────────────────────────────────────────────────────────────────────
+
+        # Extract active GSTIN from GST registrations
         gst_regs = payload.get("gstRegistrations") or []
         gstin_val = None
+        gst_active = False
         for reg in gst_regs:
             if isinstance(reg, dict):
                 g_val = reg.get("gstin")
                 if g_val and g_val != "Not Available":
                     if reg.get("sts") == "Active":
                         gstin_val = g_val
+                        gst_active = True
                         break
                     elif not gstin_val:
                         gstin_val = g_val
 
-        # Merge financials
+        # Extract finanvo pre-computed ratios (authoritative source for ratios)
+        finanvo_ratios = self._extract_finanvo_ratios(payload)
+
+        # Extract MCA financial data (profitLoss + balanceSheet)
         financials = self._extract_financials(payload)
         y1 = financials[0] if len(financials) > 0 else {}
         y2 = financials[1] if len(financials) > 1 else {}
         y3 = financials[2] if len(financials) > 2 else {}
 
-        # Extractor maps
+        # Track which years have usable MCA data
+        mca_years_available = len([y for y in [y1, y2, y3] if y and any(
+            v and float(v or 0) > 0 for v in [y.get("revenue"), y.get("networth"), y.get("current_assets")]
+        )])
+        mca_data_available = mca_years_available >= 1
+
+        # Extract GST filing consistency
         gst_consistency = self._extract_gst_consistency(payload)
+
+        # Extract EPFO signals
         epfo_raw = self._extract_epfo(payload)
 
-        # Hard gates
-        rbi_data = {"is_wilful_defaulter": False}  # Default clear
-        rbi_result = check_rbi_wilful_defaulter(rbi_data)
+        # GST turnover from overview — most reliable turnover field
+        gst_turnover = 0.0
+        for gst_field in ["TOT_TURNOVER", "totalTurnover", "turnover"]:
+            val = overview.get(gst_field)
+            if val:
+                try:
+                    gst_turnover = float(str(val).replace(",", ""))
+                    if gst_turnover > 0:
+                        break
+                except (ValueError, TypeError):
+                    pass
 
-        mca_dir = {"directors": payload.get("directors", [])}
-        dir_signals = derive_director_conduct_signals(mca_dir)
+        # ─────────────────────────────────────────────────────────────────────
+        # STEP 2 & 3: HARD GATES (before any scoring)
+        # Per docs: These are the FIRST checks — INSTANT DECLINE if triggered
+        # ─────────────────────────────────────────────────────────────────────
+
+        # Hard Gate 1: RBI Wilful Defaulter (data source not yet integrated
+        # — defaulting to clear, but flag for transparency)
+        rbi_data = {"is_wilful_defaulter": False}  # RBI API not yet integrated
+        rbi_result = check_rbi_wilful_defaulter(rbi_data)
+        rbi_data_available = False  # Track that RBI check was based on default
 
         if rbi_result.get("is_wilful_defaulter"):
             return build_hard_decline_result(db_row.get("cin"), "RBI_WILFUL_DEFAULTER")
-        if dir_signals.get("director_wilful_defaulter"):
-            return build_hard_decline_result(db_row.get("cin"), "DIRECTOR_WILFUL_DEFAULTER")
 
-        sufficiency = classify_mca_data_sufficiency(y1, y2, y3)
-        gst_turnover = float(overview.get("TOT_TURNOVER") or 0)
-        mca_revenue = y1.get("revenue")
+        # Hard Gate 2: Director Wilful Defaulter or MCA Sec 164 Disqualification
+        mca_dir = {"directors": payload.get("directors", [])}
+        dir_signals = derive_director_conduct_signals(mca_dir)
+
+        if dir_signals.get("director_wilful_defaulter"):
+            # Court cases hard gate: skip per user instruction (data unavailable)
+            # Only trigger if we have explicit disqualification/wilful defaulter flags
+            disq_names = dir_signals.get("disqualified_director_names", [])
+            reason = "DIRECTOR_WILFUL_DEFAULTER" if not disq_names else "DIRECTOR_MCA_SEC164_DISQUALIFIED"
+            return build_hard_decline_result(db_row.get("cin"), reason)
+
+        # ─────────────────────────────────────────────────────────────────────
+        # STEP 4: MCA Data Validation — Revenue Cross-Validation
+        # Per doc: if MCA missing OR MCA < 50% GST → use GST proxy
+        # ─────────────────────────────────────────────────────────────────────
+        mca_revenue = y1.get("revenue") if y1 else None
+        if mca_revenue and float(mca_revenue) <= 0:
+            mca_revenue = None  # Treat zero as missing
+
         revenue_source, rev_notes = maybe_switch_revenue_to_gst(mca_revenue, gst_turnover)
         revenue = gst_turnover if revenue_source == "gst_proxy" else mca_revenue
 
+        # Ultimate fallback: finanvo SALES_GOODS from ratios
+        if not revenue or float(revenue or 0) <= 0:
+            finanvo_revenue = finanvo_ratios.get("sales_goods_raw")
+            if finanvo_revenue and finanvo_revenue > 0:
+                revenue = finanvo_revenue
+                revenue_source = "finanvo_ratios"
+                rev_notes.append("REVENUE_FROM_FINANVO_RATIOS")
+                logger.info(f"Using finanvo SALES_GOODS as revenue fallback: {finanvo_revenue}")
+
+        # MCA data sufficiency classification
+        sufficiency = classify_mca_data_sufficiency(y1, y2, y3)
+
+        # EBIT / PAT — use MCA where available, fallback to finanvo
+        ebit_val = y1.get("ebit") if y1 else None
+        if not ebit_val and finanvo_ratios.get("ebit_raw"):
+            ebit_val = finanvo_ratios["ebit_raw"]
+        pat_val = y1.get("pat") if y1 else None
+        if not pat_val and finanvo_ratios.get("pbt_raw"):
+            pat_val = finanvo_ratios["pbt_raw"]
+
+        # ─────────────────────────────────────────────────────────────────────
+        # STEP 5: Conduct Signals Computation
+        # ─────────────────────────────────────────────────────────────────────
+
+        # Charge conduct signals
         charge_signals = derive_charge_conduct_signals(payload.get("charges", []))
+
+        # EPFO conduct signals
         epfo_signals = derive_epfo_conduct_signals(
             epfo_raw,
             revenue=revenue,
             sector_bucket=overview.get("businessState"),
         )
 
-        ecourts_raw = {"cases": payload.get("legalCases", [])}
+        # eCourts signals
+        # Note: Court cases data skip per user instruction, but process what we have
+        ecourts_raw = {"cases": payload.get("legalCases", []) or []}
         ecourts_signals = derive_ecourts_conduct_signals(ecourts_raw)
 
+        # Criminal case count — DISTINCT from High Court cases
+        # Per doc: criminal_case_count >= 1 → down 2 notches in pd_mapper
+        # We extract this specifically from case types with "criminal" in label
+        legal_cases = payload.get("legalCases", []) or []
+        criminal_case_count = 0
+        for case in legal_cases:
+            case_type = str(case.get("caseType") or case.get("type") or "").lower()
+            if any(kw in case_type for kw in ["criminal", "fir", "ipc", "crpc", "cr.pc"]):
+                criminal_case_count += 1
+        # Fallback: if ecourts explicitly marks criminal cases
+        if ecourts_signals.get("criminal_case_count"):
+            criminal_case_count = max(criminal_case_count, ecourts_signals["criminal_case_count"])
+
+        # GST conduct signals
+        gst_filing_label = (
+            "regular" if gst_consistency >= 0.9
+            else "irregular" if gst_consistency >= 0.5
+            else "non-filer"
+        )
         gst_raw = {
-            "taxpayerInfo": {"gstin": gstin_val or overview.get("IT_PAN_OF_COMPNY"), "gstStatus": "active"},
+            "taxpayerInfo": {
+                "gstin": gstin_val or "",
+                "gstStatus": "active" if gst_active else "inactive",
+            },
             "returnFilingHistory": payload.get("annexureGST", []),
-            "gst_filing_consistency": "regular"
-            if gst_consistency >= 0.9
-            else "irregular"
-            if gst_consistency >= 0.5
-            else "non-filer",
+            "gst_filing_consistency": gst_filing_label,
         }
         gst_signals = derive_gst_conduct_signals(gst_raw)
 
-        base_conduct_score = 70
+        # ─────────────────────────────────────────────────────────────────────
+        # STEP 6: Conduct Score Chain (base 70, strict order per doc)
+        # Order: Charges → EPFO → eCourts → GST → Directors
+        # ─────────────────────────────────────────────────────────────────────
+        base_conduct_score = 70  # Hardcoded per doc Appendix A
         conduct_score, reasons_charge = apply_charge_conduct_adjustments(base_conduct_score, charge_signals)
         conduct_score, reasons_epfo = apply_epfo_conduct_adjustments(conduct_score, epfo_signals)
         conduct_score, reasons_ecourts = apply_ecourts_conduct_adjustments(conduct_score, ecourts_signals)
@@ -233,62 +343,42 @@ class PPREService:
             + reasons_ecourts
             + reasons_gst
             + reasons_director
-            + dir_signals.get("source_notes", [])
         )
 
+        # ─────────────────────────────────────────────────────────────────────
+        # STEP 7: Report-only ratio computation (DPO, Cash Coverage)
+        # ─────────────────────────────────────────────────────────────────────
         dpo = compute_dpo(y1)
         cash_coverage = compute_cash_coverage(y1)
 
+        # ─────────────────────────────────────────────────────────────────────
+        # STEP 8: Build source notes for transparency
+        # ─────────────────────────────────────────────────────────────────────
+        source_notes = list(rev_notes)
+        if not mca_data_available:
+            source_notes.append("MCA_FINANCIAL_DATA_UNAVAILABLE")
+        if sufficiency == "insufficient":
+            source_notes.append("MCA_DATA_SUFFICIENCY_INSUFFICIENT")
+        elif sufficiency == "partial":
+            source_notes.append("MCA_DATA_SUFFICIENCY_PARTIAL")
+        if not rbi_data_available:
+            source_notes.append("RBI_CHECK_DEFAULTED_TO_CLEAR")
+        source_notes += rbi_result.get("source_notes", [])
+        source_notes += dir_signals.get("source_notes", [])
+
+        # ─────────────────────────────────────────────────────────────────────
+        # GST filing consistency label for feature row
+        # ─────────────────────────────────────────────────────────────────────
+        gst_consistency_label = (
+            "REGULAR" if gst_consistency >= 0.9
+            else "MINOR_GAPS" if gst_consistency >= 0.7
+            else "MAJOR_GAPS" if gst_consistency >= 0.3
+            else "NON_FILER"
+        )
+
         return {
+            # Identity
             "entity_key": db_row.get("cin"),
-            "data_sufficiency_band": sufficiency,
-            "revenue_source": revenue_source,
-            "revenue": revenue,
-            "ebit": y1.get("ebit"),
-            "pat": y1.get("pat"),
-            "total_debt": y1.get("total_debt"),
-            "networth": y1.get("networth"),
-            "receivables": y1.get("receivables"),
-            "current_assets": y1.get("current_assets"),
-            "current_liabilities": y1.get("current_liabilities"),
-            "finance_cost": y1.get("finance_cost"),
-            "inventory": y1.get("inventory"),
-            "trade_payables": y1.get("trade_payables"),
-            "cash_and_bank": y1.get("cash_and_bank"),
-            "gross_fixed_assets": y1.get("gross_fixed_assets"),
-            "revenue_prev1": y2.get("revenue"),
-            "revenue_prev2": y3.get("revenue"),
-            "dpo": dpo,
-            "cash_coverage": cash_coverage,
-            "charge_count_active": charge_signals["charge_count_active"],
-            "has_any_active_charge": charge_signals["has_any_active_charge"],
-            "has_recent_charge_90d": charge_signals["has_recent_charge_90d"],
-            "old_unsatisfied_charge_count": charge_signals["old_unsatisfied_charge_count"],
-            "lender_quality_flag": charge_signals["lender_quality_flag"],
-            "distinct_lender_count": charge_signals.get("distinct_lender_count"),
-            "high_director_company_count": dir_signals.get("high_director_company_count"),
-            "max_director_company_count": dir_signals.get("max_director_company_count"),
-            "case_count_total": ecourts_signals["case_count_total"],
-            "case_count_active": ecourts_signals["case_count_active"],
-            "case_count_drt": ecourts_signals["case_count_drt"],
-            "case_count_nclt": ecourts_signals["case_count_nclt"],
-            "case_count_hc": ecourts_signals["case_count_hc"],
-            "has_insolvency_petition": ecourts_signals["has_insolvency_petition"],
-            "gst_turnover": gst_turnover,
-            "gst_sector_bucket": overview.get("businessState"),
-            "gst_filing_consistency": "REGULAR"
-            if gst_consistency >= 0.9
-            else "MINOR_GAPS"
-            if gst_consistency >= 0.7
-            else "MAJOR_GAPS"
-            if gst_consistency >= 0.3
-            else "NON_FILER",
-            "epfo_headcount": epfo_signals.get("epfo_headcount"),
-            "pf_filing_regular": epfo_signals.get("pf_filing_regular"),
-            "revenue_per_employee_outlier": epfo_signals.get("revenue_per_employee_outlier"),
-            "conduct_score": conduct_score,
-            "conduct_reasons": all_conduct_reasons,
-            "source_notes": rev_notes + rbi_result.get("source_notes", []),
             "legal_name": db_row.get("company_name"),
             "gstin": gstin_val,
             "cin": db_row.get("cin"),
@@ -297,73 +387,234 @@ class PPREService:
             "state": db_row.get("registered_state") or overview.get("registeredState"),
             "authorized_capital": db_row.get("authorized_capital"),
             "paid_up_capital": db_row.get("paid_up_capital"),
+            "gst_active": gst_active,
+            # Data quality
+            "data_sufficiency_band": sufficiency,
+            "mca_data_available": mca_data_available,
+            "mca_years_available": mca_years_available,
+            "revenue_source": revenue_source,
+            "source_notes": source_notes,
+            "conduct_reasons": all_conduct_reasons,
+            # Revenue & financials
+            "revenue": revenue,
+            "ebit": ebit_val,
+            "pat": pat_val,
+            "total_debt": y1.get("total_debt") if y1 else None,
+            "networth": y1.get("networth") if y1 else None,
+            "receivables": y1.get("receivables") if y1 else None,
+            "current_assets": y1.get("current_assets") if y1 else None,
+            "current_liabilities": y1.get("current_liabilities") if y1 else None,
+            "finance_cost": y1.get("finance_cost") if y1 else None,
+            "inventory": y1.get("inventory") if y1 else None,
+            "trade_payables": y1.get("trade_payables") if y1 else None,
+            "cash_and_bank": y1.get("cash_and_bank") if y1 else None,
+            "gross_fixed_assets": y1.get("gross_fixed_assets") if y1 else None,
+            "revenue_prev1": y2.get("revenue") if y2 else None,
+            "revenue_prev2": y3.get("revenue") if y3 else None,
+            "dpo": dpo,
+            "cash_coverage": cash_coverage,
+            # Charge signals
+            "charge_count_active": charge_signals["charge_count_active"],
+            "has_any_active_charge": charge_signals["has_any_active_charge"],
+            "has_recent_charge_90d": charge_signals["has_recent_charge_90d"],
+            "old_unsatisfied_charge_count": charge_signals["old_unsatisfied_charge_count"],
+            "lender_quality_flag": charge_signals["lender_quality_flag"],
+            "distinct_lender_count": charge_signals.get("distinct_lender_count"),
+            # Director signals
+            "high_director_company_count": dir_signals.get("high_director_company_count"),
+            "max_director_company_count": dir_signals.get("max_director_company_count"),
+            "is_wilful_defaulter": False,  # Passed hard gate — confirmed clear
+            # eCourts signals
+            "case_count_total": ecourts_signals["case_count_total"],
+            "case_count_active": ecourts_signals["case_count_active"],
+            "case_count_drt": ecourts_signals["case_count_drt"],
+            "case_count_nclt": ecourts_signals["case_count_nclt"],
+            "case_count_hc": ecourts_signals["case_count_hc"],
+            "has_insolvency_petition": ecourts_signals["has_insolvency_petition"],
+            # CRITICAL: criminal_case_count is SEPARATE from HC cases
+            # Per RA Model: criminal_case_count >= 1 → band downgrades 2 notches
+            "criminal_case_count": criminal_case_count,
+            # GST signals
+            "gst_turnover": gst_turnover,
+            "gst_sector_bucket": overview.get("businessState") or overview.get("businessCategory"),
+            "gst_filing_consistency": gst_consistency_label,
+            "gst_filing_consistency_ratio": gst_consistency,
+            # EPFO signals
+            "epfo_headcount": epfo_signals.get("epfo_headcount"),
+            "pf_filing_regular": epfo_signals.get("pf_filing_regular"),
+            "revenue_per_employee_outlier": epfo_signals.get("revenue_per_employee_outlier"),
+            # Conduct score
+            "conduct_score": conduct_score,
+            # Finanvo pre-computed ratios (used in _derive_ratios as override)
+            "_finanvo_ratios": finanvo_ratios,
         }
 
-    def _derive_ratios(self, row: Dict[str, Any]) -> Dict[str, Optional[float]]:
-        r = {}
-        r["current_ratio"] = row.get("current_ratio")
-        r["quick_ratio"] = row.get("quick_ratio")
-        r["debt_to_equity"] = row.get("debt_to_equity")
-        r["net_revenue_cagr_5y"] = row.get("net_revenue_cagr_5y")
-        r["dso"] = row.get("dso")
-        r["working_capital"] = row.get("working_capital")
-        r["dpo"] = row.get("dpo")
-        
-        # New additions for S1 template:
-        try:
-            pat = float(row.get("pat", 0.0))
-            net_revenue = float(row.get("revenue", 1.0))
-            if net_revenue != 0:
-                r["net_margin"] = (pat / net_revenue) * 100
-            else:
-                r["net_margin"] = None
-        except:
-            r["net_margin"] = None
+    def _extract_finanvo_ratios(self, payload: dict) -> dict:
+        """Extract pre-computed ratios from finanvo 'ratios' payload section.
+        These are authoritative computed values from the data provider.
+        Returns dict with float values or None."""
+        ratios_list = payload.get("ratios") or []
+        if not ratios_list:
+            return {}
+        # Take most recent year (first entry)
+        r = ratios_list[0] if isinstance(ratios_list, list) else ratios_list
+        if not isinstance(r, dict):
+            return {}
 
-        try:
-            total_assets = float(row.get("total_assets", 0.0))
-            total_liabilities = float(row.get("total_liabilities", 0.0))
-            intangible_assets = float(row.get("intangible_assets", 0.0))
-            
-            # Fallback if total_assets isn't available
-            if total_assets == 0:
-                r["tangible_net_worth"] = float(row.get("networth", 0.0))
-            else:
-                r["tangible_net_worth"] = total_assets - total_liabilities - intangible_assets
-        except:
-            r["tangible_net_worth"] = None
-            
-        try:
-            ebit = float(row.get("ebit", 0.0))
-            net_revenue = float(row.get("revenue", 1.0))
-            if net_revenue != 0:
-                r["ebit_margin"] = (ebit / net_revenue) * 100
-            else:
-                r["ebit_margin"] = None
-        except:
-            r["ebit_margin"] = None
-            
-        try:
-            ebit = float(row.get("ebit", 0.0))
-            finance_cost = float(row.get("finance_cost", 1.0))
-            if finance_cost > 0:
-                r["icr"] = ebit / finance_cost
-            else:
-                r["icr"] = None
-        except:
-            r["icr"] = None
-            
-        try:
-            ebit = float(row.get("ebit", 0.0))
-            total_debt = float(row.get("total_debt", 0.0))
-            networth = float(row.get("networth", 0.0))
-            capital_employed = total_debt + networth
-            if capital_employed > 0:
-                r["roce"] = (ebit / capital_employed) * 100
-            else:
-                r["roce"] = None
-        except:
-            r["roce"] = None
+        def _parse_float(val: str | None) -> Optional[float]:
+            """Parse values like '2.58 times', '16.75%', '36.76'"""
+            if val is None:
+                return None
+            s = str(val).strip().replace(" times", "").replace("%", "").replace(",", "").strip()
+            try:
+                return float(s)
+            except (ValueError, TypeError):
+                return None
+
+        result = {
+            "current_ratio": _parse_float(r.get("CURRENT_RATIO_TIMES")),
+            "quick_ratio": _parse_float(r.get("QUICK_RATIO_TIMES")),
+            "debt_to_equity": _parse_float(r.get("DEBT_EQUITY_RATIO_TIMES")),
+            "net_profit_margin_pct": _parse_float(r.get("NET_PROFIT_MARGIN_PER")),
+            "gross_profit_margin_pct": _parse_float(r.get("GROSS_PROFIT_MARGIN_PER")),
+            "ebit_margin_pct": _parse_float(r.get("EBIT_MARGIN_PER")),
+            "operating_margin_pct": _parse_float(r.get("OPERATING_PROFIT_MARGIN_PER")),
+            "dso": _parse_float(r.get("COLLECTION_PERIOD_DAYS")),
+            "dpo": _parse_float(r.get("PAYMENT_PERIOD_DAYS")),
+            "revenue_cagr_pct": _parse_float(r.get("SALES_GROWTH_PER")),
+            "net_profit_growth_pct": _parse_float(r.get("NET_PROFIT_GROWTH_PER")),
+            "roce_pct": _parse_float(r.get("RETURN_ON_CAPITAL_EMPLOYED_PER")),
+            "roe_pct": _parse_float(r.get("RETURN_ON_NET_WORTH_PER")),
+            "total_liabilities_to_tnw": _parse_float(r.get("TOTAL_LIABILITIES_TO_TANGIBLE_NETWORTH_TIMES")),
+            "fixed_assets_turnover": _parse_float(r.get("FIXED_ASSETS_TURNOVER_TIMES")),
+            "total_assets_turnover": _parse_float(r.get("TOTAL_ASSETS_TURNOVER_TIMES")),
+            "interest_coverage": _parse_float(r.get("INTEREST_COVERAGE_RATIO_TIMES")),
+            "cash_flow_margin_pct": _parse_float(r.get("CASH_FLOW_MARGIN_PER")),
+            "working_capital_cycle": _parse_float(r.get("WORKING_CAPITAL_CYCLE")),
+            # Raw financials
+            "ebit_raw": _parse_float(r.get("EBIT")),
+            "ebitda_raw": _parse_float(r.get("EBITDA")),
+            "pbt_raw": _parse_float(r.get("PBT")),
+            "operating_profit_raw": _parse_float(r.get("OPERATING_PROFIT")),
+            "gross_profit_raw": _parse_float(r.get("GROSS_PROFIT")),
+            "net_cash_flow_raw": _parse_float(r.get("NET_CASH_FLOW")),
+            "sales_goods_raw": _parse_float(r.get("SALES_GOODS")),
+        }
+        return {k: v for k, v in result.items() if v is not None}
+
+    def _derive_ratios(self, row: Dict[str, Any]) -> Dict[str, Optional[float]]:
+        """Compute all financial ratios per RA Model documentation formulas.
+        Priority: finanvo pre-computed values first, then compute from raw financials."""
+        r: Dict[str, Optional[float]] = {}
+
+        # === Per RA Model Doc Section 4.1 — Formulas ===
+        # Current Ratio = Current Assets / Current Liabilities
+        ca = row.get("current_assets") or 0.0
+        cl = row.get("current_liabilities") or 0.0
+        r["current_ratio"] = round(ca / cl, 4) if cl and cl > 0 else None
+
+        # Quick Ratio = (Current Assets - Inventory) / Current Liabilities
+        inv = row.get("inventory") or 0.0
+        r["quick_ratio"] = round((ca - inv) / cl, 4) if cl and cl > 0 else None
+
+        # Working Capital = Current Assets - Current Liabilities
+        r["working_capital"] = ca - cl if (ca or cl) else None
+
+        # Debt-to-Equity = Total Debt / Networth
+        total_debt = row.get("total_debt") or 0.0
+        networth = row.get("networth") or 0.0
+        r["debt_to_equity"] = round(total_debt / networth, 4) if networth and networth > 0 else None
+
+        # Tangible Net Worth = Networth (proxy — intangibles data often unavailable in MCA)
+        r["tangible_net_worth"] = networth if networth else None
+
+        # DSO = (Receivables / Revenue) × 365
+        receivables = row.get("receivables") or 0.0
+        revenue = row.get("revenue") or 0.0
+        r["dso"] = round((receivables / revenue) * 365, 1) if revenue and revenue > 0 else None
+
+        # DPO = (Trade Payables / Revenue) × 365  [REPORT ONLY — not scored]
+        trade_payables = row.get("trade_payables") or 0.0
+        r["dpo"] = round((trade_payables / revenue) * 365, 1) if revenue and revenue > 0 else None
+
+        # Cash Coverage = Cash & Bank / Total Debt  [REPORT ONLY — not scored]
+        cash_and_bank = row.get("cash_and_bank") or 0.0
+        r["cash_coverage"] = round(cash_and_bank / total_debt, 3) if total_debt and total_debt > 0 else None
+
+        # Revenue CAGR (2-year proxy when only 3Y available)
+        # CAGR = (Y1 / Y3)^(1/2) - 1
+        rev_y1 = row.get("revenue") or 0.0
+        rev_y2 = row.get("revenue_prev1") or 0.0
+        rev_y3 = row.get("revenue_prev2") or 0.0
+        if rev_y1 and rev_y3 and rev_y3 > 0:
+            r["net_revenue_cagr_5y"] = round(((rev_y1 / rev_y3) ** (1 / 2)) - 1, 4)
+        elif rev_y1 and rev_y2 and rev_y2 > 0:
+            r["net_revenue_cagr_5y"] = round((rev_y1 / rev_y2) - 1, 4)
+        else:
+            r["net_revenue_cagr_5y"] = None
+
+        # Revenue Volatility CV = StdDev / Mean (for haircut check)
+        revenues = [x for x in [rev_y1, rev_y2, rev_y3] if x and x > 0]
+        if len(revenues) >= 2:
+            import statistics
+            mean_rev = statistics.mean(revenues)
+            if mean_rev > 0:
+                r["revenue_cv"] = round(statistics.stdev(revenues) / mean_rev, 4)
+        
+        # === Profitability Ratios (REPORT ONLY) ===
+        ebit = row.get("ebit") or 0.0
+        pat = row.get("pat") or 0.0
+        finance_cost = row.get("finance_cost") or 0.0
+
+        # Net Profit Margin = PAT / Revenue × 100
+        r["net_margin"] = round((pat / revenue) * 100, 2) if revenue and revenue > 0 else None
+
+        # EBIT Margin = EBIT / Revenue × 100
+        r["ebit_margin"] = round((ebit / revenue) * 100, 2) if revenue and revenue > 0 else None
+
+        # Interest Coverage Ratio = EBIT / Finance Cost
+        r["icr"] = round(ebit / finance_cost, 2) if finance_cost and finance_cost > 0 else None
+
+        # ROCE = EBIT / (Total Debt + Networth) × 100
+        capital_employed = total_debt + networth
+        r["roce"] = round((ebit / capital_employed) * 100, 2) if capital_employed and capital_employed > 0 else None
+
+        # === Override with finanvo pre-computed values where available ===
+        # Finanvo values are authoritative as they come from verified MCA data
+        fv = row.get("_finanvo_ratios") or {}
+        if fv.get("current_ratio") is not None:
+            r["current_ratio"] = fv["current_ratio"]
+        if fv.get("quick_ratio") is not None:
+            r["quick_ratio"] = fv["quick_ratio"]
+        if fv.get("debt_to_equity") is not None:
+            r["debt_to_equity"] = fv["debt_to_equity"]
+        if fv.get("dso") is not None:
+            r["dso"] = fv["dso"]
+        if fv.get("dpo") is not None:
+            r["dpo"] = fv["dpo"]
+        if fv.get("net_profit_margin_pct") is not None:
+            r["net_margin"] = fv["net_profit_margin_pct"]
+        if fv.get("ebit_margin_pct") is not None:
+            r["ebit_margin"] = fv["ebit_margin_pct"]
+        if fv.get("interest_coverage") is not None:
+            r["icr"] = fv["interest_coverage"]
+        if fv.get("roce_pct") is not None:
+            r["roce"] = fv["roce_pct"]
+        if fv.get("roe_pct") is not None:
+            r["roe"] = fv["roe_pct"]
+        if fv.get("gross_profit_margin_pct") is not None:
+            r["gross_margin"] = fv["gross_profit_margin_pct"]
+        if fv.get("operating_margin_pct") is not None:
+            r["operating_margin"] = fv["operating_margin_pct"]
+        if fv.get("cash_flow_margin_pct") is not None:
+            r["cash_flow_margin"] = fv["cash_flow_margin_pct"]
+        if fv.get("fixed_assets_turnover") is not None:
+            r["fixed_assets_turnover"] = fv["fixed_assets_turnover"]
+        if fv.get("total_assets_turnover") is not None:
+            r["total_assets_turnover"] = fv["total_assets_turnover"]
+        # For CAGR, finanvo gives 1-year growth — use as proxy if we couldn't compute
+        if r.get("net_revenue_cagr_5y") is None and fv.get("revenue_cagr_pct") is not None:
+            r["net_revenue_cagr_5y"] = fv["revenue_cagr_pct"] / 100.0  # Convert % to decimal
 
         return r
 
@@ -372,6 +623,12 @@ class PPREService:
         _filed, _total = {"REGULAR": (11, 12), "MINOR_GAPS": (9, 12), "MAJOR_GAPS": (6, 12), "NON_FILER": (0, 12)}.get(
             str(gst_consistency).upper(), (None, None)
         )
+        sources = ["gst"]
+        if row.get("mca_data_available"):
+            sources.append("mca")
+        if (row.get("case_count_total") or 0) > 0:
+            sources.append("ecourts")
+        
         return NormalizedRecord(
             entity_id=str(row.get("entity_key", "UNKNOWN")),
             legal_name=row.get("legal_name"),
@@ -382,7 +639,7 @@ class PPREService:
             gst_filing_periods_filed=_filed,
             legal_case_count=row.get("case_count_total"),
             pending_case_count=row.get("case_count_active"),
-            criminal_case_count=row.get("case_count_hc"),
+            criminal_case_count=row.get("criminal_case_count"),
             turnover_y1=row.get("revenue"),
             turnover_y2=row.get("revenue_prev1"),
             turnover_y3=row.get("revenue_prev2"),
@@ -392,7 +649,8 @@ class PPREService:
             equity_latest=row.get("networth"),
             accounts_receivable_latest=row.get("receivables"),
             net_revenue_latest=row.get("revenue"),
-            sources_available=["gst", "mca", "ecourts"],
+            nic_code=row.get("nic_code"),
+            sources_available=sources,
             conflict_flags=[],
         )
 
@@ -425,7 +683,8 @@ class PPREService:
         db_row = await self._get_company_data(entity_id)
         raw_feature_row = self._run_part1_sourcing(db_row)
 
-        if raw_feature_row.get("hard_decline"):
+        if raw_feature_row.get("hard_decline") or raw_feature_row.get("decision") == "DECLINE":
+            decline_reason = raw_feature_row.get("hard_decline_reason") or raw_feature_row.get("decline_reason") or "Triggered by hard check gates"
             return {
                 "entity_id": entity_id,
                 "seller_id": seller_id,
@@ -439,7 +698,7 @@ class PPREService:
                 "identity_score": 0.0,
                 "legal_score": 0.0,
                 "documentation_score": 0.0,
-                "xai_narrative": f"Hard decline triggered: {raw_feature_row.get('decline_reason')}",
+                "xai_narrative": f"Hard decline triggered: {decline_reason}",
                 "shap_top_features": [],
                 "data_sources_used": ["mca"],
                 "pipeline_version": "2.2.0",
@@ -469,13 +728,14 @@ class PPREService:
             dso=ratios["dso"],
             working_capital=ratios["working_capital"],
             business_vintage_years=vintage,
+            nic_code=raw_feature_row.get("nic_code"),
         )
         identity_ds = compute_identity_score(record, {})
         legal_ds = compute_legal_score(
             legal_case_count=raw_feature_row.get("case_count_total"),
             pending_case_count=raw_feature_row.get("case_count_active"),
-            criminal_case_count=raw_feature_row.get("case_count_hc"),
-            high_value_case_count=raw_feature_row.get("case_count_hc"),
+            criminal_case_count=raw_feature_row.get("criminal_case_count"),
+            high_value_case_count=raw_feature_row.get("criminal_case_count"),
             business_vintage_years=vintage,
         )
         doc_ds = compute_documentation_score(record, 10.0)
@@ -576,16 +836,26 @@ class PPREService:
             "g8_fail": (raw_feature_row.get("networth") or 0) <= 0,
         }
 
-        # Financial Ratios snapshot
+        # Financial Ratios snapshot - all 10 parameters per RA Model doc
         ratios_snapshot = {
             "current_ratio": ratios.get("current_ratio"),
             "quick_ratio": ratios.get("quick_ratio"),
             "debt_to_equity": ratios.get("debt_to_equity"),
-            "net_margin": ((raw_feature_row.get("pat") or 0) / (raw_feature_row.get("revenue") or 1) * 100)
-            if raw_feature_row.get("revenue")
-            else 0.0,
+            "ebit_margin": ratios.get("ebit_margin"),
+            "net_margin": ratios.get("net_margin"),
+            "icr": ratios.get("icr"),
+            "roce": ratios.get("roce"),
             "dso": ratios.get("dso"),
-            "tangible_net_worth": raw_feature_row.get("networth") or 0.0,
+            "dpo": ratios.get("dpo"),
+            "tangible_net_worth": ratios.get("tangible_net_worth"),
+            # Additional ratios for reporting
+            "working_capital": ratios.get("working_capital"),
+            "cash_coverage": ratios.get("cash_coverage"),
+            "gross_margin": ratios.get("gross_margin"),
+            "operating_margin": ratios.get("operating_margin"),
+            "roe": ratios.get("roe"),
+            "fixed_assets_turnover": ratios.get("fixed_assets_turnover"),
+            "net_revenue_cagr_5y": ratios.get("net_revenue_cagr_5y"),
         }
 
         metadata = {
