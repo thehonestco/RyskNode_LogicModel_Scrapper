@@ -23,6 +23,9 @@ class CreditLimitRequest(BaseModel):
     ead: Optional[float] = Field(None, description="Exposure at default override")
 
 
+from domain.schemas.final_feature_row import FinalFeatureRow
+
+
 # Response Schemas
 class BuyerAssessResponse(BaseModel):
     entity_id: str
@@ -43,6 +46,7 @@ class BuyerAssessResponse(BaseModel):
     pipeline_version: str
     metadata: Dict[str, Any] = Field(default_factory=dict)
     input_parameters: Dict[str, Any] = Field(default_factory=dict, description="The 36 feature columns used as input to the ML scoring engine")
+    final_feature_row: Optional[FinalFeatureRow] = None
 
 
 class CreditLimitResponse(BaseModel):
@@ -72,3 +76,4 @@ class CreditLimitResponse(BaseModel):
 
     metadata: Dict[str, Any] = Field(default_factory=dict)
     input_parameters: Dict[str, Any] = Field(default_factory=dict, description="The 36 feature columns used as input to the ML scoring engine")
+    final_feature_row: Optional[FinalFeatureRow] = None

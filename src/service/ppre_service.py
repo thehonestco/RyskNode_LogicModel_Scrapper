@@ -170,6 +170,19 @@ class PPREService:
             else payload.get("overview", {})
         ) or {}
 
+        # Extract NIC code from snapshot payload or db_row
+        nic_code = None
+        nic_codes_list = overview.get("nicCodes") or []
+        if isinstance(nic_codes_list, list) and len(nic_codes_list) > 0:
+            if isinstance(nic_codes_list[0], dict):
+                nic_code = nic_codes_list[0].get("nicCode")
+        
+        if not nic_code or nic_code == "NA" or nic_code == "-":
+            nic_code = db_row.get("main_activity_group_code") or db_row.get("business_activity_code")
+            
+        if not nic_code or nic_code == "NA" or nic_code == "-":
+            nic_code = "74210" # Default/fallback
+
         # ─────────────────────────────────────────────────────────────────────
         # STEP 1: Extract available data signals
         # ─────────────────────────────────────────────────────────────────────
@@ -380,6 +393,7 @@ class PPREService:
             # Identity
             "entity_key": db_row.get("cin"),
             "legal_name": db_row.get("company_name"),
+            "entity_name": db_row.get("company_name"),
             "gstin": gstin_val,
             "cin": db_row.get("cin"),
             "pan": overview.get("IT_PAN_OF_COMPNY"),
@@ -388,6 +402,8 @@ class PPREService:
             "authorized_capital": db_row.get("authorized_capital"),
             "paid_up_capital": db_row.get("paid_up_capital"),
             "gst_active": gst_active,
+            "gst_active_flag": gst_active,
+            "nic_code": nic_code,
             # Data quality
             "data_sufficiency_band": sufficiency,
             "mca_data_available": mca_data_available,
@@ -989,6 +1005,47 @@ class PPREService:
             ]
         }
 
+        # Construct FinalFeatureRow per Section 7.2 of Documentation
+        from domain.schemas.final_feature_row import FinalFeatureRow
+
+        ff_row = FinalFeatureRow(
+            snapshot_id=f"SNAP-{raw_feature_row.get('cin') or 'UNKNOWN'}-{datetime.now(timezone.utc).strftime('%Y%m%d')}",
+            entity_id=entity_id,
+            legal_name=raw_feature_row.get("legal_name"),
+            gstin=raw_feature_row.get("gstin"),
+            cin=raw_feature_row.get("cin"),
+            udyam_no=None,
+            entity_type=db_row.get("entity_type"),
+            state=raw_feature_row.get("state"),
+            msme_category=None,
+            nic_code=raw_feature_row.get("nic_code"),
+            business_vintage_years=vintage,
+            gst_active_flag=raw_feature_row.get("gst_active"),
+            gst_filing_consistency_ratio=raw_feature_row.get("gst_filing_consistency_ratio"),
+            current_ratio=ratios.get("current_ratio"),
+            quick_ratio=ratios.get("quick_ratio"),
+            working_capital=ratios.get("working_capital"),
+            debt_to_equity=ratios.get("debt_to_equity"),
+            debt_to_assets=ratios.get("debt_to_assets") or (round((raw_feature_row.get("total_debt") or 0.0) / (raw_feature_row.get("current_assets") or 1.0), 4) if raw_feature_row.get("current_assets") else None),
+            tangible_net_worth=ratios.get("tangible_net_worth"),
+            dso=ratios.get("dso"),
+            dpo=ratios.get("dpo"),
+            legal_case_count=raw_feature_row.get("case_count_total"),
+            pending_case_count=raw_feature_row.get("case_count_active"),
+            criminal_case_count=raw_feature_row.get("criminal_case_count"),
+            turnover_y1=raw_feature_row.get("revenue"),
+            turnover_y2=raw_feature_row.get("revenue_prev1"),
+            turnover_y3=raw_feature_row.get("revenue_prev2"),
+            revenue_cagr_5y=ratios.get("net_revenue_cagr_5y"),
+            net_revenue_cagr_5y=ratios.get("net_revenue_cagr_5y"),
+            identity_score=float(identity_ds.weighted_score),
+            financial_score=float(financial_ds.weighted_score),
+            legal_score=float(legal_ds.weighted_score),
+            documentation_score=float(doc_ds.weighted_score),
+            sources_used=record.sources_available,
+            data_sufficiency_band=raw_feature_row.get("data_sufficiency_band")
+        )
+
         return {
             "entity_id": entity_id,
             "seller_id": seller_id,
@@ -1008,6 +1065,7 @@ class PPREService:
             "pipeline_version": "2.2.0",
             "metadata": metadata,
             "input_parameters": input_parameters,
+            "final_feature_row": ff_row,
             # Pass full scored engine output along for report generation ease
             "_ppre_output": scored,
         }
