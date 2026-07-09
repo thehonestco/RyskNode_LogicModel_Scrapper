@@ -41,18 +41,47 @@ def _classify_lender(name: str) -> str:
 
 def derive_charge_conduct_signals(charges: Iterable[dict[str, Any]], today: date | None = None) -> dict[str, Any]:
     today = today or datetime.now(timezone.utc).date()
-    active = [c for c in charges if str(c.get("status", "")).lower() in {"open", "active", "modified"}]
+    
+    # Support multiple status keys (chargeStatus, status, STATUS)
+    active = []
+    for c in charges:
+        status_val = str(
+            c.get("chargeStatus") 
+            or c.get("status") 
+            or c.get("STATUS") 
+            or ""
+        ).strip().lower()
+        if status_val in {"open", "active", "modified"}:
+            active.append(c)
+
     lender_types = []
     recent = 0
     old_unsatisfied = 0
     lenders = set()
 
     for c in active:
-        holder = str(c.get("holder_name") or c.get("charge_holder") or "")
+        # Support multiple holder keys (chargeHolder, chName, holder_name, charge_holder, LENDER_NAME)
+        holder = str(
+            c.get("chargeHolder")
+            or c.get("chName")
+            or c.get("holder_name")
+            or c.get("charge_holder")
+            or c.get("bankName")
+            or c.get("LENDER_NAME")
+            or ""
+        )
         if holder:
             lenders.add(holder.strip())
             lender_types.append(_classify_lender(holder))
-        created = _parse_date(c.get("created_date") or c.get("date_of_creation"))
+            
+        # Support multiple creation date keys (dateOfCreation, creationDate, created_date, date_of_creation, CREATION_DATE)
+        created = _parse_date(
+            c.get("dateOfCreation")
+            or c.get("creationDate")
+            or c.get("created_date")
+            or c.get("date_of_creation")
+            or c.get("CREATION_DATE")
+        )
         if created:
             age_days = (today - created).days
             if age_days <= 90:
