@@ -479,6 +479,11 @@ class PPREService:
             "gross_fixed_assets": y1.get("gross_fixed_assets") if y1 else None,
             "revenue_prev1": y2.get("revenue") if y2 else None,
             "revenue_prev2": y3.get("revenue") if y3 else None,
+            # Aliased fields expected by input_parameters and FinalFeatureRow
+            "net_revenue_latest": revenue,  # Latest year revenue
+            "turnover_y1": revenue,          # FY Latest
+            "turnover_y2": y2.get("revenue") if y2 else None,  # FY-1
+            "turnover_y3": y3.get("revenue") if y3 else None,  # FY-2
             "dpo": dpo,
             "cash_coverage": cash_coverage,
             # Charge signals
@@ -1061,6 +1066,25 @@ class PPREService:
         # Construct FinalFeatureRow per Section 7.2 of Documentation
         from domain.schemas.final_feature_row import FinalFeatureRow
 
+        # Compute total_assets_latest = current_assets + non_current_assets
+        # Best proxy from available data: current_assets + gross_fixed_assets
+        ca_latest = raw_feature_row.get("current_assets")
+        gfa_latest = raw_feature_row.get("gross_fixed_assets")
+        total_assets_latest = (
+            (float(ca_latest or 0) + float(gfa_latest or 0))
+            if (ca_latest or gfa_latest) else None
+        )
+        cl_latest = raw_feature_row.get("current_liabilities")
+        rev_y1 = raw_feature_row.get("revenue")
+        rev_y2 = raw_feature_row.get("revenue_prev1")
+        rev_y3 = raw_feature_row.get("revenue_prev2")
+        # turnover_cagr_5y using 3-year proxy: (Y1/Y3)^(1/2) - 1
+        turnover_cagr = None
+        if rev_y1 and rev_y3 and float(rev_y3) > 0:
+            turnover_cagr = round(((float(rev_y1) / float(rev_y3)) ** (1 / 2)) - 1, 4)
+        elif rev_y1 and rev_y2 and float(rev_y2) > 0:
+            turnover_cagr = round((float(rev_y1) / float(rev_y2)) - 1, 4)
+
         ff_row = FinalFeatureRow(
             snapshot_id=f"SNAP-{raw_feature_row.get('cin') or 'UNKNOWN'}-{datetime.now(timezone.utc).strftime('%Y%m%d')}",
             entity_id=entity_id,
@@ -1086,9 +1110,24 @@ class PPREService:
             legal_case_count=raw_feature_row.get("case_count_total"),
             pending_case_count=raw_feature_row.get("case_count_active"),
             criminal_case_count=raw_feature_row.get("criminal_case_count"),
-            turnover_y1=raw_feature_row.get("revenue"),
-            turnover_y2=raw_feature_row.get("revenue_prev1"),
-            turnover_y3=raw_feature_row.get("revenue_prev2"),
+            # Turnover per year (revenue field = latest year MCA revenue)
+            turnover_y1=rev_y1,
+            turnover_y2=rev_y2,
+            turnover_y3=rev_y3,
+            # Revenue per year (same source, different schema field name)
+            revenue_y1=rev_y1,
+            revenue_y2=rev_y2,
+            revenue_y3=rev_y3,
+            # Net revenue per year (same as revenue — no deductions in MCA data)
+            net_revenue_y1=rev_y1,
+            net_revenue_y2=rev_y2,
+            net_revenue_y3=rev_y3,
+            net_revenue_latest=rev_y1,
+            # Balance sheet fields
+            current_liabilities_latest=cl_latest,
+            total_assets_latest=total_assets_latest,
+            # CAGR
+            turnover_cagr_5y=turnover_cagr,
             revenue_cagr_5y=ratios.get("net_revenue_cagr_5y"),
             net_revenue_cagr_5y=ratios.get("net_revenue_cagr_5y"),
             identity_score=float(identity_ds.weighted_score),
