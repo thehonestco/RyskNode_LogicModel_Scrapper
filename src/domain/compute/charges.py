@@ -14,8 +14,39 @@ PSU_KEYWORDS = {
     "indian bank",
     "ucobank",
     "central bank of india",
+    "indian overseas",
+    "punjab & sind",
+    "idbi",
+    "syndicate bank",
+    "corporation bank",
+    "allahabad bank",
+    "vijaya bank",
+    "oriental bank",
+    "bank of maharashtra",
 }
-PRIVATE_BANK_KEYWORDS = {"hdfc", "icici", "axis", "kotak", "indusind", "yes bank", "idfc", "federal bank"}
+PRIVATE_BANK_KEYWORDS = {
+    "hdfc",
+    "icici",
+    "axis",
+    "kotak",
+    "indusind",
+    "yes bank",
+    "idfc",
+    "federal bank",
+    "rbl",
+    "south indian bank",
+    "karur vysya",
+    "bandhan",
+    "city union",
+    "hsbc",
+    "hongkong",
+    "citi",
+    "standard chartered",
+    "dbs bank",
+    "deutsche bank",
+    "barclays",
+    "jp morgan",
+}
 NBFC_KEYWORDS = {"finance", "capital", "finserv", "credit", "leasing", "housing finance", "investment"}
 
 

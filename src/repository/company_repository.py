@@ -23,7 +23,8 @@ class CompanyRepository(FastCRUDRepository[Company, CompanyCreate, CompanyUpdate
                 ORDER BY s.fetched_at DESC
                 LIMIT 1
             """)
-            result = await self.session.execute(query, {"gstin_json": f'[{"gstin": "{identifier}"}]'})
+            import json
+            result = await self.session.execute(query, {"gstin_json": json.dumps([{"gstin": identifier}])})
         else:
             # CIN lookup
             query = text("""

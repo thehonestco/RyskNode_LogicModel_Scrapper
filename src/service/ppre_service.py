@@ -150,6 +150,67 @@ class PPREService:
         filed = sum(1 for r in returns if r.get("Status") == "Filed")
         return round(filed / len(returns), 4)
 
+    def _parse_gst_turnover_slab(self, payload: dict) -> float:
+        """
+        Extract and parse numeric GST turnover from aggregate turnover slab (aggreTurnOver)
+        in gstRegistrations.
+        """
+        gst_regs = payload.get("gstRegistrations") or []
+        slab_str = ""
+        for reg in gst_regs:
+            if isinstance(reg, dict):
+                # Prefer active registrations
+                if reg.get("sts") == "Active" and reg.get("aggreTurnOver"):
+                    slab_str = reg.get("aggreTurnOver")
+                    break
+                elif not slab_str and reg.get("aggreTurnOver"):
+                    slab_str = reg.get("aggreTurnOver")
+                    
+        if not slab_str:
+            return 0.0
+            
+        s = slab_str.lower().strip()
+        
+        # Parse standard Indian GST slabs:
+        # 1. Slab: Rs. 500 Cr. and above -> 500 Cr (5,000,000,000)
+        # 2. Slab: Rs. 100 Cr. to 500 Cr. -> 300 Cr (3,000,000,000) (midpoint)
+        # 3. Slab: Rs. 25 Cr. to 100 Cr. -> 62.5 Cr (625,000,000) (midpoint)
+        # 4. Slab: Rs. 5 Cr. to 25 Cr. -> 15 Cr (150,000,000) (midpoint)
+        # 5. Slab: Rs. 1.5 Cr. to 5 Cr. -> 3.25 Cr (32,500,000) (midpoint)
+        # 6. Slab: Rs. 40 Lakhs to 1.5 Cr. -> 95 Lakhs (9,500,000) (midpoint)
+        # 7. Slab: Rs. 0 to 40 Lakhs -> 20 Lakhs (2,000,000) (midpoint)
+        
+        if "500 cr" in s:
+            return 5000000000.0
+        elif "100 cr" in s and "500 cr" in s:
+            return 3000000000.0
+        elif "25 cr" in s and "100 cr" in s:
+            return 625000000.0
+        elif "5 cr" in s and "25 cr" in s:
+            return 150000000.0
+        elif "1.5 cr" in s and "5 cr" in s:
+            return 32500000.0
+        elif "40 lakh" in s and "1.5 cr" in s:
+            return 9500000.0
+        elif "0" in s and "40 lakh" in s:
+            return 2000000.0
+            
+        # Regex fallback if formatting differs
+        import re
+        parts = re.findall(r'(\d+(?:\.\d+)?)\s*(cr|lakh)', s)
+        if parts:
+            vals = []
+            for num_str, unit in parts:
+                val = float(num_str)
+                if 'cr' in unit:
+                    val *= 10000000.0
+                elif 'lakh' in unit:
+                    val *= 100000.0
+                vals.append(val)
+            return sum(vals) / len(vals)
+            
+        return 0.0
+
     def _run_part1_sourcing(self, db_row: dict) -> dict[str, Any]:
         """
         Part 1 Pipeline per RA Model Doc & Whiteboard:
@@ -223,17 +284,8 @@ class PPREService:
         # Extract EPFO signals
         epfo_raw = self._extract_epfo(payload)
 
-        # GST turnover from overview — most reliable turnover field
-        gst_turnover = 0.0
-        for gst_field in ["TOT_TURNOVER", "totalTurnover", "turnover"]:
-            val = overview.get(gst_field)
-            if val:
-                try:
-                    gst_turnover = float(str(val).replace(",", ""))
-                    if gst_turnover > 0:
-                        break
-                except (ValueError, TypeError):
-                    pass
+        # GST turnover set to None per user request (it is okay to null this field)
+        gst_turnover = None
 
         # ─────────────────────────────────────────────────────────────────────
         # STEP 2 & 3: HARD GATES (before any scoring)
@@ -822,7 +874,7 @@ class PPREService:
                     or "Unknown",
                     "amount": float(ch.get("amount") or ch.get("CHARGE_AMOUNT") or 0.0),
                     "created": ch.get("dateOfCreation") or ch.get("creationDate") or ch.get("CREATION_DATE") or "N/A",
-                    "status": ch.get("chargeStatus") or ch.get("status") or ch.get("STATUS") or "Active",
+                    "status": str(ch.get("chargeStatus") or ch.get("status") or ch.get("STATUS") or "Active").lower(),
                 }
             )
 
@@ -889,6 +941,7 @@ class PPREService:
             if "CAPITAL" in str(db_row.get("description_of_main_activity") or "").upper()
             else "Services",
             "nic_code": db_row.get("main_activity_group_code") or "74210",
+            "revenue_source": raw_feature_row.get("revenue_source"),
             "authorized_capital": f"{db_row.get('authorized_capital'):,}" if db_row.get("authorized_capital") else "-",
             "paid_up_capital": f"{db_row.get('paid_up_capital'):,}" if db_row.get("paid_up_capital") else "-",
             "registered_address": db_row.get("registered_office_address") or "Not Available",

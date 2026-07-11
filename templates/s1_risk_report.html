@@ -348,7 +348,7 @@ tr.hl td { background: rgba(245,166,35,.05); }
       <td><strong>{{ ch.lender }}</strong></td>
       <td>₹{{ (ch.amount / 100000) | round(2) if ch.amount else '-' }} L</td>
       <td>{{ ch.created }}</td>
-      <td><span class="chip {% if ch.status == 'CLOSED' or ch.status == 'satisfied' %}pass{% else %}warn{% endif %}">{% if ch.status == 'CLOSED' or ch.status == 'satisfied' %}Satisfied{% else %}Active{% endif %}</span></td>
+      <td><span class="chip {% if ch.status.lower() in ['closed', 'satisfied'] %}pass{% else %}warn{% endif %}">{% if ch.status.lower() in ['closed', 'satisfied'] %}Satisfied{% else %}Active{% endif %}</span></td>
       <td>Standard charge registry entry</td>
     </tr>
     {% else %}
