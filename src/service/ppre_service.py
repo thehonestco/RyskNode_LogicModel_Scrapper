@@ -67,15 +67,20 @@ class PPREService:
             year = pl.get("Year")
             if year:
                 years_data.setdefault(year, {})
+                pbt = float(pl.get("PROFIT_BEFORE_TAX") or 0)
+                fin_cost = float(pl.get("FINANCE_COST_CR") or pl.get("INTEREST_EXP_CR") or 0)
+                # EBIT = PBT + Finance Cost (add back interest since PBT is after interest)
+                # Use explicit EBIT field if provider supplies it, else compute
+                ebit = float(pl.get("EBIT")) if pl.get("EBIT") else (pbt + fin_cost)
                 years_data[year].update(
                     {
                         "revenue": float(pl.get("TOTAL_REVENUE_CR") or pl.get("TOTAL_INCOME") or 0),
-                        "ebit": float(pl.get("EBIT") or pl.get("PROFIT_BEFORE_TAX") or 0),
+                        "ebit": ebit,
                         "pat": float(
                             pl.get("PROF_LOS_11_14_C")
-                            or (float(pl.get("PROFIT_BEFORE_TAX") or 0) - float(pl.get("TAX_EXPENSES_CR") or 0))
+                            or (pbt - float(pl.get("TAX_EXPENSES_CR") or 0))
                         ),
-                        "finance_cost": float(pl.get("FINANCE_COST_CR") or 0),
+                        "finance_cost": fin_cost,
                         "depreciation": float(pl.get("DEPRECTN_AMORT_C") or 0),
                     }
                 )
