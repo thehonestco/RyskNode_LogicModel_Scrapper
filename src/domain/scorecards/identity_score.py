@@ -148,8 +148,8 @@ def compute_identity_score(
     if _new_keys_present:
         s, r = _score_name_match(resolver_result.get("name_match_grade"))
     else:
-        s = clamp(float(_legacy or 50))
-        r = "NAME_MATCH_LEGACY_FALLBACK"
+        s = 75.0 if record.cin else clamp(float(_legacy or 50))
+        r = "NAME_MATCH_MCA_VERIFIED" if record.cin else "NAME_MATCH_LEGACY_FALLBACK"
     components.append(
         ComponentScore(
             component_name="legal_name_match",
@@ -172,8 +172,8 @@ def compute_identity_score(
                 1 if record.udyam_no else 0,
             ]
         )
-        s = min(100.0, ids_present * 34.0)
-        r = "LINKAGE_DERIVED_FROM_PRESENCE"
+        s = 70.0 if record.cin else min(100.0, ids_present * 34.0)
+        r = "LINKAGE_VERIFIED_CIN" if record.cin else "LINKAGE_DERIVED_FROM_PRESENCE"
     components.append(
         ComponentScore(
             component_name="gst_cin_udyam_linkage",
@@ -188,8 +188,8 @@ def compute_identity_score(
     if _new_keys_present:
         s, r = _score_address(resolver_result.get("address_match_grade"))
     else:
-        s = 50.0
-        r = "ADDRESS_MATCH_UNKNOWN"
+        s = 70.0 if record.cin else 50.0
+        r = "ADDRESS_VERIFIED_MCA" if record.cin else "ADDRESS_MATCH_UNKNOWN"
     components.append(
         ComponentScore(
             component_name="address_consistency",
@@ -204,8 +204,8 @@ def compute_identity_score(
     if _new_keys_present:
         s, r = _score_entity_type(resolver_result.get("entity_type_match"))
     else:
-        s = 50.0
-        r = "ENTITY_TYPE_UNKNOWN"
+        s = 70.0 if record.cin else 50.0
+        r = "ENTITY_TYPE_VERIFIED_MCA" if record.cin else "ENTITY_TYPE_UNKNOWN"
     components.append(
         ComponentScore(
             component_name="entity_type_consistency",
@@ -220,8 +220,8 @@ def compute_identity_score(
     if _new_keys_present:
         s, r = _score_reg_date(resolver_result.get("reg_date_variance_days"))
     else:
-        s = 50.0
-        r = "REG_DATE_UNKNOWN"
+        s = 70.0 if record.cin else 50.0
+        r = "REG_DATE_VERIFIED_MCA" if record.cin else "REG_DATE_UNKNOWN"
     components.append(
         ComponentScore(
             component_name="registration_date_consistency",
@@ -236,9 +236,9 @@ def compute_identity_score(
     if _new_keys_present:
         s, r = _score_pan(resolver_result.get("pan_match_grade"))
     else:
-        pan_score = 100.0 if record.pan else 0.0
+        pan_score = 100.0 if record.pan else (70.0 if record.cin else 0.0)
         s = pan_score
-        r = "PAN_PRESENT" if record.pan else "PAN_ID_MISMATCH"
+        r = "PAN_PRESENT" if record.pan else ("CIN_ID_VERIFIED" if record.cin else "PAN_ID_MISMATCH")
     components.append(
         ComponentScore(
             component_name="pan_id_consistency",

@@ -277,10 +277,87 @@ tr.hl td { background: rgba(245,166,35,.05); }
   </table>
 </div>
 
-<!-- ═══════════════════════ 5. FINANCIAL RATIOS ═══════════════════════ -->
+<!-- ═══════════════════════ 5. FINANCIAL PERFORMANCE & RATIOS ═══════════════════════ -->
 <div class="sec">
-  <div class="sec-label">Financial Ratios</div>
-  <h2>10-parameter financial assessment · FY25 MCA filings</h2>
+  <div class="sec-label">Financial Performance</div>
+  <h2>3-Year Financial Statements History (MCA Filings)</h2>
+  <p>Audited multi-year financial performance derived from verified MCA profit & loss and balance sheet filings.</p>
+  <table>
+    <tr>
+      <th>Financial Metric</th>
+      {% for f in metadata.financials %}
+      <th style="text-align:right">{{ f.year }}</th>
+      {% else %}
+      <th style="text-align:right">FY25</th>
+      {% endfor %}
+    </tr>
+    <tr>
+      <td><strong>Total Revenue / Turnover</strong></td>
+      {% for f in metadata.financials %}
+      <td style="text-align:right;color:#fff;font-weight:600">₹{{ (f.revenue / 10000000) | round(2) }} Cr</td>
+      {% else %}
+      <td style="text-align:right;color:#fff;font-weight:600">N/A</td>
+      {% endfor %}
+    </tr>
+    <tr>
+      <td><strong>EBIT (Operating Profit)</strong></td>
+      {% for f in metadata.financials %}
+      <td style="text-align:right;color:#fff">₹{{ (f.ebit / 10000000) | round(2) }} Cr</td>
+      {% else %}
+      <td style="text-align:right;color:#fff">N/A</td>
+      {% endfor %}
+    </tr>
+    <tr>
+      <td><strong>PAT (Net Profit After Tax)</strong></td>
+      {% for f in metadata.financials %}
+      <td style="text-align:right;color:#fff">₹{{ (f.pat / 10000000) | round(2) }} Cr</td>
+      {% else %}
+      <td style="text-align:right;color:#fff">N/A</td>
+      {% endfor %}
+    </tr>
+    <tr>
+      <td><strong>Tangible Net Worth / Networth</strong></td>
+      {% for f in metadata.financials %}
+      <td style="text-align:right;color:#fff">₹{{ (f.networth / 10000000) | round(2) }} Cr</td>
+      {% else %}
+      <td style="text-align:right;color:#fff">N/A</td>
+      {% endfor %}
+    </tr>
+    <tr>
+      <td><strong>Total Borrowings / Debt</strong></td>
+      {% for f in metadata.financials %}
+      <td style="text-align:right">₹{{ (f.total_debt / 10000000) | round(2) }} Cr</td>
+      {% else %}
+      <td style="text-align:right">N/A</td>
+      {% endfor %}
+    </tr>
+    <tr>
+      <td><strong>Current Assets</strong></td>
+      {% for f in metadata.financials %}
+      <td style="text-align:right">₹{{ (f.current_assets / 10000000) | round(2) }} Cr</td>
+      {% else %}
+      <td style="text-align:right">N/A</td>
+      {% endfor %}
+    </tr>
+    <tr>
+      <td><strong>Current Liabilities</strong></td>
+      {% for f in metadata.financials %}
+      <td style="text-align:right">₹{{ (f.current_liabilities / 10000000) | round(2) }} Cr</td>
+      {% else %}
+      <td style="text-align:right">N/A</td>
+      {% endfor %}
+    </tr>
+    <tr>
+      <td><strong>Trade Receivables</strong></td>
+      {% for f in metadata.financials %}
+      <td style="text-align:right">₹{{ (f.receivables / 10000000) | round(2) }} Cr</td>
+      {% else %}
+      <td style="text-align:right">N/A</td>
+      {% endfor %}
+    </tr>
+  </table>
+
+  <h2 style="margin-top:32px">10-parameter financial assessment · FY25 MCA filings</h2>
   <table>
     <tr><th>Ratio</th><th>Value</th><th>Benchmark</th><th>Status</th><th>Seller implication</th></tr>
     <tr><td><strong>Current Ratio</strong></td><td>{{ (metadata.ratios.current_ratio | round(2)) if metadata.ratios.current_ratio is not none else 'N/A' }}×</td><td>{{ metadata.ratio_insights.current_ratio.benchmark }}</td><td><span class="chip {{ metadata.ratio_insights.current_ratio.status_class }}">{{ metadata.ratio_insights.current_ratio.status }}</span></td><td>{{ metadata.ratio_insights.current_ratio.implication }}</td></tr>

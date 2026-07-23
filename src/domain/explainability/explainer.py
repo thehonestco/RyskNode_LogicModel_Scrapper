@@ -293,7 +293,14 @@ class CreditExplainer:
                     {
                         "feature": feat,
                         "label": FEATURE_LABELS.get(feat, feat),
-                        "feature_value": float(x_instance[self.feature_names.index(feat)]),
+                        "feature_value": (
+                            None
+                            if (
+                                np.isnan(float(x_instance[self.feature_names.index(feat)]))
+                                or x_instance[self.feature_names.index(feat)] is None
+                            )
+                            else float(x_instance[self.feature_names.index(feat)])
+                        ),
                         "shap_value": round(sv, 5),
                         "direction": "risk_increasing" if sv > 0 else "risk_reducing",
                     }

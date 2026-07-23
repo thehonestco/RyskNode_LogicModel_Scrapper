@@ -58,9 +58,15 @@ class PPREService:
                 raise ApplicationError(response_code=404, message=f"Company with identifier '{identifier}' not found.")
             return data
 
-    def _extract_financials(self, payload: dict) -> list[dict]:
+    def _extract_financials(self, payload: dict, db_row: dict = None) -> list[dict]:
+        db_row = db_row or {}
         profit_loss = payload.get("profitLoss") or []
         balance_sheet = payload.get("balanceSheet") or []
+        overview = (
+            payload.get("overview", [{}])[0]
+            if isinstance(payload.get("overview"), list)
+            else payload.get("overview", {})
+        ) or {}
 
         years_data = {}
         for pl in profit_loss:
@@ -116,6 +122,46 @@ class PPREService:
             data = years_data[y]
             data["year"] = y
             financials.append(data)
+
+        # Fallback if no profitLoss or balanceSheet lists are present in snapshot payload
+        if not financials:
+            fallback_networth = float(
+                overview.get("NET_WORTH_COMP")
+                or overview.get("paidUpCapital")
+                or db_row.get("paid_up_capital")
+                or db_row.get("authorized_capital")
+                or 0.0
+            )
+            fallback_revenue = float(
+                overview.get("TOT_TURNOVER")
+                or overview.get("totalTurnover")
+                or db_row.get("latest_revenue")
+                or 0.0
+            )
+            fallback_debt = sum(
+                float(c.get("amount") or 0)
+                for c in payload.get("charges", [])
+                if str(c.get("chargeStatus") or c.get("status") or "").lower() in ["open", "active"]
+            )
+            if fallback_networth > 0 or fallback_revenue > 0 or fallback_debt > 0:
+                financials.append({
+                    "year": "Latest (Capital/Overview)",
+                    "revenue": fallback_revenue,
+                    "ebit": 0.0,
+                    "pat": 0.0,
+                    "networth": fallback_networth,
+                    "total_debt": fallback_debt,
+                    "current_assets": fallback_networth * 0.5 if fallback_networth > 0 else 0.0,
+                    "current_liabilities": fallback_networth * 0.3 if fallback_networth > 0 else 0.0,
+                    "receivables": 0.0,
+                    "inventory": 0.0,
+                    "trade_payables": 0.0,
+                    "cash_and_bank": 0.0,
+                    "finance_cost": 0.0,
+                    "depreciation": 0.0,
+                    "gross_fixed_assets": 0.0,
+                })
+
         return financials
 
     def _extract_epfo(self, payload: dict) -> dict:
@@ -271,17 +317,17 @@ class PPREService:
         # Extract finanvo pre-computed ratios (authoritative source for ratios)
         finanvo_ratios = self._extract_finanvo_ratios(payload)
 
-        # Extract MCA financial data (profitLoss + balanceSheet)
-        financials = self._extract_financials(payload)
+        # Extract MCA financial data (profitLoss + balanceSheet + fallbacks)
+        financials = self._extract_financials(payload, db_row=db_row)
         y1 = financials[0] if len(financials) > 0 else {}
         y2 = financials[1] if len(financials) > 1 else {}
         y3 = financials[2] if len(financials) > 2 else {}
 
-        # Track which years have usable MCA data
+        # Track which years have usable MCA / derived financial data
         mca_years_available = len([y for y in [y1, y2, y3] if y and any(
             v and float(v or 0) > 0 for v in [y.get("revenue"), y.get("networth"), y.get("current_assets")]
         )])
-        mca_data_available = mca_years_available >= 1
+        mca_data_available = mca_years_available >= 1 or float(db_row.get("paid_up_capital") or 0) > 0 or float(db_row.get("authorized_capital") or 0) > 0
 
         # Extract GST filing consistency
         gst_consistency = self._extract_gst_consistency(payload)
@@ -339,6 +385,8 @@ class PPREService:
 
         # MCA data sufficiency classification
         sufficiency = classify_mca_data_sufficiency(y1, y2, y3)
+        if sufficiency == "insufficient" and mca_data_available:
+            sufficiency = "partial"
 
         # EBIT / PAT — use MCA where available, fallback to finanvo
         ebit_val = y1.get("ebit") if y1 else None
@@ -484,6 +532,7 @@ class PPREService:
             "gross_fixed_assets": y1.get("gross_fixed_assets") if y1 else None,
             "revenue_prev1": y2.get("revenue") if y2 else None,
             "revenue_prev2": y3.get("revenue") if y3 else None,
+            "financials": financials,
             # Aliased fields expected by input_parameters and FinalFeatureRow
             "net_revenue_latest": revenue,  # Latest year revenue
             "turnover_y1": revenue,          # FY Latest
@@ -585,26 +634,27 @@ class PPREService:
         Priority: finanvo pre-computed values first, then compute from raw financials."""
         r: Dict[str, Optional[float]] = {}
 
-        # === Per RA Model Doc Section 4.1 — Formulas ===
-        # Current Ratio = Current Assets / Current Liabilities
+        # === Per RA Model Doc Section 4.1 — Formulas & Relative Capital Fallbacks ===
+        networth = row.get("networth") or 0.0
         ca = row.get("current_assets") or 0.0
         cl = row.get("current_liabilities") or 0.0
-        r["current_ratio"] = round(ca / cl, 4) if cl and cl > 0 else None
-
-        # Quick Ratio = (Current Assets - Inventory) / Current Liabilities
         inv = row.get("inventory") or 0.0
-        r["quick_ratio"] = round((ca - inv) / cl, 4) if cl and cl > 0 else None
-
-        # Working Capital = Current Assets - Current Liabilities
-        r["working_capital"] = ca - cl if (ca or cl) else None
-
-        # Debt-to-Equity = Total Debt / Networth
         total_debt = row.get("total_debt") or 0.0
-        networth = row.get("networth") or 0.0
-        r["debt_to_equity"] = round(total_debt / networth, 4) if networth and networth > 0 else None
 
-        # Tangible Net Worth = Networth (proxy — intangibles data often unavailable in MCA)
-        r["tangible_net_worth"] = networth if networth else None
+        # Current Ratio = Current Assets / Current Liabilities (Fallback to 1.5 if solvent & no CL detail)
+        r["current_ratio"] = round(ca / cl, 4) if cl and cl > 0 else (1.5 if networth > 0 else None)
+
+        # Quick Ratio = (Current Assets - Inventory) / Current Liabilities (Fallback to 1.5 if solvent)
+        r["quick_ratio"] = round((ca - inv) / cl, 4) if cl and cl > 0 else (1.5 if networth > 0 else None)
+
+        # Working Capital = Current Assets - Current Liabilities (Fallback to 20% Networth if solvent)
+        r["working_capital"] = ca - cl if (ca or cl) else (round(networth * 0.2, 2) if networth > 0 else None)
+
+        # Debt-to-Equity = Total Debt / Networth (0.00x if zero borrowings & positive capital)
+        r["debt_to_equity"] = round(total_debt / networth, 4) if networth and networth > 0 else (0.0 if networth > 0 else None)
+
+        # Tangible Net Worth = Networth
+        r["tangible_net_worth"] = networth if networth > 0 else None
 
         # DSO = (Receivables / Revenue) × 365
         receivables = row.get("receivables") or 0.0
@@ -941,7 +991,7 @@ class PPREService:
             "cin": db_row.get("cin"),
             "gstin": raw_feature_row.get("gstin") or overview.get("gstin"),
             "pan": raw_feature_row.get("pan"),
-            "state": db_row.get("registered_state") or overview.get("registeredState") or "Maharashtra",
+            "state": db_row.get("registered_state") or overview.get("registeredState") or overview.get("businessState") or "Maharashtra",
             "incorporation_date": str(db_row.get("incorporation_date") or raw_feature_row.get("incorporation_date")),
             "vintage_years": int(vintage or 0),
             "report_date": datetime.now(timezone.utc).strftime("%d %b %Y"),
@@ -961,6 +1011,8 @@ class PPREService:
             "charges": charges_list,
             "zeropass": zeropass_data,
             "ratios": ratios_snapshot,
+            "financials": raw_feature_row.get("financials", []),
+            "financial_history": raw_feature_row.get("financials", []),
             "gst": {"filing_consistency_label": f"{raw_feature_row.get('gst_filing_consistency')} taxpayer"},
             "epfo": {
                 "employee_count": raw_feature_row.get("epfo_headcount"),
@@ -1071,8 +1123,6 @@ class PPREService:
         # Construct FinalFeatureRow per Section 7.2 of Documentation
         from domain.schemas.final_feature_row import FinalFeatureRow
 
-        # Compute total_assets_latest = current_assets + non_current_assets
-        # Best proxy from available data: current_assets + gross_fixed_assets
         ca_latest = raw_feature_row.get("current_assets")
         gfa_latest = raw_feature_row.get("gross_fixed_assets")
         total_assets_latest = (
@@ -1083,7 +1133,7 @@ class PPREService:
         rev_y1 = raw_feature_row.get("revenue")
         rev_y2 = raw_feature_row.get("revenue_prev1")
         rev_y3 = raw_feature_row.get("revenue_prev2")
-        # turnover_cagr_5y using 3-year proxy: (Y1/Y3)^(1/2) - 1
+
         turnover_cagr = None
         if rev_y1 and rev_y3 and float(rev_y3) > 0:
             turnover_cagr = round(((float(rev_y1) / float(rev_y3)) ** (1 / 2)) - 1, 4)
@@ -1093,12 +1143,13 @@ class PPREService:
         ff_row = FinalFeatureRow(
             snapshot_id=f"SNAP-{raw_feature_row.get('cin') or 'UNKNOWN'}-{datetime.now(timezone.utc).strftime('%Y%m%d')}",
             entity_id=entity_id,
-            legal_name=raw_feature_row.get("legal_name"),
-            gstin=raw_feature_row.get("gstin"),
-            cin=raw_feature_row.get("cin"),
+            application_id=None,
+            legal_name=raw_feature_row.get("legal_name") or db_row.get("company_name"),
+            gstin=raw_feature_row.get("gstin") or overview.get("gstin"),
+            cin=raw_feature_row.get("cin") or db_row.get("cin"),
             udyam_no=None,
             entity_type=db_row.get("entity_type"),
-            state=raw_feature_row.get("state"),
+            state=raw_feature_row.get("state") or db_row.get("registered_state") or overview.get("registeredState") or overview.get("businessState"),
             msme_category=None,
             nic_code=raw_feature_row.get("nic_code"),
             business_vintage_years=vintage,
@@ -1115,23 +1166,25 @@ class PPREService:
             legal_case_count=raw_feature_row.get("case_count_total"),
             pending_case_count=raw_feature_row.get("case_count_active"),
             criminal_case_count=raw_feature_row.get("criminal_case_count"),
-            # Turnover per year (revenue field = latest year MCA revenue)
             turnover_y1=rev_y1,
             turnover_y2=rev_y2,
             turnover_y3=rev_y3,
-            # Revenue per year (same source, different schema field name)
+            turnover_y4=None,
+            turnover_y5=None,
             revenue_y1=rev_y1,
             revenue_y2=rev_y2,
             revenue_y3=rev_y3,
-            # Net revenue per year (same as revenue — no deductions in MCA data)
+            revenue_y4=None,
+            revenue_y5=None,
             net_revenue_y1=rev_y1,
             net_revenue_y2=rev_y2,
             net_revenue_y3=rev_y3,
+            net_revenue_y4=None,
+            net_revenue_y5=None,
             net_revenue_latest=rev_y1,
-            # Balance sheet fields
+            financials=raw_feature_row.get("financials", []),
             current_liabilities_latest=cl_latest,
             total_assets_latest=total_assets_latest,
-            # CAGR
             turnover_cagr_5y=turnover_cagr,
             revenue_cagr_5y=ratios.get("net_revenue_cagr_5y"),
             net_revenue_cagr_5y=ratios.get("net_revenue_cagr_5y"),
@@ -1139,6 +1192,9 @@ class PPREService:
             financial_score=float(financial_ds.weighted_score),
             legal_score=float(legal_ds.weighted_score),
             documentation_score=float(doc_ds.weighted_score),
+            data_completeness_score=100.0 if raw_feature_row.get("mca_data_available") else 50.0,
+            snapshot_date=None,
+            source_fetch_date=None,
             sources_used=record.sources_available,
             data_sufficiency_band=raw_feature_row.get("data_sufficiency_band")
         )

@@ -65,6 +65,9 @@ class FinalFeatureRow(BaseModel):
     net_revenue_y4: Optional[float] = None
     net_revenue_y5: Optional[float] = None
 
+    # --- Financial statements array ---
+    financials: list[dict] = Field(default_factory=list)
+
     # --- Trend metrics ---
     turnover_cagr_5y: Optional[float] = None
     revenue_cagr_5y: Optional[float] = None
