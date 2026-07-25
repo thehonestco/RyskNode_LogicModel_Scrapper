@@ -41,10 +41,8 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Blending weights
-# ---------------------------------------------------------------------------
-
-BLEND_WEIGHTS = {"expert": 0.40, "lgbm": 0.35, "xgb": 0.25}
+# Blending weights per §14 Hardcoded Values Master Register
+BLEND_WEIGHTS = {"lgbm": 0.40, "xgb": 0.30, "expert": 0.30}
 
 # ---------------------------------------------------------------------------
 # Master scale — PD upper boundary per band
