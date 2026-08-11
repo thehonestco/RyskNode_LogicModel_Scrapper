@@ -40,14 +40,17 @@ class BuyerAssessResponse(BaseModel):
     identity_score: float
     legal_score: float
     documentation_score: float
-    xai_summary: Optional[str] = Field(None, description="Short 2-3 sentence executive summary for top cards")
-    xai_summary_text: Optional[str] = Field(None, description="Plain text version of short executive summary")
+    xai_summary: Optional[str] = Field(None, description="Short TraceLayer™ executive summary for top verdict banner")
+    xai_summary_text: Optional[str] = Field(None, description="Plain text version of TraceLayer™ executive summary")
+    dimension_readings: Dict[str, str] = Field(default_factory=dict, description="TraceLayer™ readings per Tri-Core dimension (financial, identity, legal, conduct)")
+    table_enrichments: Dict[str, Any] = Field(default_factory=dict, description="TraceLayer™ derived seller implications and required actions")
+    lime_methodology_note: Optional[str] = Field(None, description="TraceLayer™ model-agnostic calculation methodology note for report footer")
     xai_narrative: str
     xai_narrative_text: Optional[str] = Field(None, description="Plain text version of XAI narrative")
     xai_narrative_lines: List[str] = Field(default_factory=list, description="List of plain text narrative lines/paragraphs")
     shap_top_features: List[Any]
-    shap_ranked: List[Any] = Field(default_factory=list, description="Full SHAP feature attribution list")
-    lime_explanation: Dict[str, Any] = Field(default_factory=dict, description="LIME local threshold rules dictionary")
+    shap_ranked: List[Any] = Field(default_factory=list, description="Full feature attribution list")
+    lime_explanation: Dict[str, Any] = Field(default_factory=dict, description="Local threshold rules dictionary")
     data_sources_used: List[str]
     pipeline_version: str
     metadata: Dict[str, Any] = Field(default_factory=dict)
@@ -68,14 +71,17 @@ class CreditLimitResponse(BaseModel):
     identity_score: float
     legal_score: float
     documentation_score: float
-    xai_summary: Optional[str] = Field(None, description="Short 2-3 sentence executive summary for top cards")
-    xai_summary_text: Optional[str] = Field(None, description="Plain text version of short executive summary")
+    xai_summary: Optional[str] = Field(None, description="Short TraceLayer™ executive summary for top verdict banner")
+    xai_summary_text: Optional[str] = Field(None, description="Plain text version of TraceLayer™ executive summary")
+    dimension_readings: Dict[str, str] = Field(default_factory=dict, description="TraceLayer™ readings per Tri-Core dimension (financial, identity, legal, conduct)")
+    table_enrichments: Dict[str, Any] = Field(default_factory=dict, description="TraceLayer™ derived seller implications and required actions")
+    lime_methodology_note: Optional[str] = Field(None, description="TraceLayer™ model-agnostic calculation methodology note for report footer")
     xai_narrative: str
     xai_narrative_text: Optional[str] = Field(None, description="Plain text version of XAI narrative")
     xai_narrative_lines: List[str] = Field(default_factory=list, description="List of plain text narrative lines/paragraphs")
     shap_top_features: List[Any]
-    shap_ranked: List[Any] = Field(default_factory=list, description="Full SHAP feature attribution list")
-    lime_explanation: Dict[str, Any] = Field(default_factory=dict, description="LIME local threshold rules dictionary")
+    shap_ranked: List[Any] = Field(default_factory=list, description="Full feature attribution list")
+    lime_explanation: Dict[str, Any] = Field(default_factory=dict, description="Local threshold rules dictionary")
     data_sources_used: List[str]
     pipeline_version: str
 

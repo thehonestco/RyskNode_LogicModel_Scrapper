@@ -21,6 +21,10 @@ class ReportService:
         blended_pd_pct = round(blended_pd * 100, 2)
         declined = risk_band in ("D", "UNSCOREABLE")
         
+        dim_readings = assess_data.get("dimension_readings") or metadata.get("readings") or {}
+        tbl_enrichments = assess_data.get("table_enrichments") or {}
+        lime_methodology = assess_data.get("lime_methodology_note") or ""
+
         context = {
             "metadata": metadata,
             "gstin": metadata.get("gstin") or assess_data.get("gstin"),
@@ -30,6 +34,9 @@ class ReportService:
             "declined": declined,
             "xai_summary": assess_data.get("xai_summary") or "",
             "xai_narrative": assess_data.get("xai_narrative") or "",
+            "dimension_readings": dim_readings,
+            "table_enrichments": tbl_enrichments,
+            "lime_methodology_note": lime_methodology,
             "financial_score": assess_data.get("financial_score", 0.0),
             "identity_score": assess_data.get("identity_score", 0.0),
             "legal_score": assess_data.get("legal_score", 0.0),
@@ -57,7 +64,10 @@ class ReportService:
         
         stress_table = ppre_out.get("stress_table") or []
         tenor_schedule = ppre_out.get("tenor_schedule") or []
-        
+        dim_readings = credit_data.get("dimension_readings") or ppre_out.get("dimension_readings") or metadata.get("readings") or {}
+        tbl_enrichments = credit_data.get("table_enrichments") or ppre_out.get("table_enrichments") or {}
+        lime_methodology = credit_data.get("lime_methodology_note") or ppre_out.get("lime_methodology_note") or ""
+
         context = {
             "metadata": metadata,
             "gstin": metadata.get("gstin") or credit_data.get("gstin"),
@@ -70,6 +80,9 @@ class ReportService:
             "max_tenor_days": max_tenor_days,
             "xai_summary": credit_data.get("xai_summary") or "",
             "xai_narrative": credit_data.get("xai_narrative") or "",
+            "dimension_readings": dim_readings,
+            "table_enrichments": tbl_enrichments,
+            "lime_methodology_note": lime_methodology,
             "financial_score": credit_data.get("financial_score", 0.0),
             "identity_score": credit_data.get("identity_score", 0.0),
             "legal_score": credit_data.get("legal_score", 0.0),

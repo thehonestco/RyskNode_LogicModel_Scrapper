@@ -608,6 +608,9 @@ def score_entity(
             )
             xai_summary = xai_report.get("short_summary", "")
             xai_summary_text = xai_report.get("short_summary_text", "")
+            dimension_readings = xai_report.get("dimension_readings", {})
+            table_enrichments = xai_report.get("table_enrichments", {})
+            lime_methodology_note = xai_report.get("lime_methodology_note", "")
             xai_narrative = xai_report.get("detailed_narrative") or xai_report.get("narrative", "")
             xai_narrative_text = xai_report.get("narrative_text", "")
             xai_narrative_lines = xai_report.get("narrative_lines", [])
@@ -624,6 +627,9 @@ def score_entity(
             )
             xai_summary = "RiskBand assessment completed with active monitoring."
             xai_summary_text = xai_summary
+            dimension_readings = {}
+            table_enrichments = {}
+            lime_methodology_note = ""
             xai_narrative_text = xai_narrative
             xai_narrative_lines = [line.strip() for line in xai_narrative.split("\n") if line.strip()]
     else:
@@ -634,6 +640,9 @@ def score_entity(
         )
         xai_summary = "RiskBand assessment completed with active monitoring."
         xai_summary_text = xai_summary
+        dimension_readings = {}
+        table_enrichments = {}
+        lime_methodology_note = ""
         xai_narrative_text = xai_narrative
         xai_narrative_lines = [line.strip() for line in xai_narrative.split("\n") if line.strip()]
 
@@ -672,6 +681,9 @@ def score_entity(
         # Panel E — XAI Explanation
         "xai_summary": xai_summary,
         "xai_summary_text": xai_summary_text,
+        "dimension_readings": dimension_readings,
+        "table_enrichments": table_enrichments,
+        "lime_methodology_note": lime_methodology_note,
         "xai_narrative": xai_narrative,
         "xai_narrative_text": xai_narrative_text,
         "xai_narrative_lines": xai_narrative_lines,
