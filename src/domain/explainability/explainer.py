@@ -1,7 +1,7 @@
 """
 part2/explainability/explainer.py
 =================================
-Buyer Risk Explainability — SHAP + LIME + PDP + Narrative
+Buyer Risk Explainability — SHAP + LIME + PDP + Long Narrative
 ----------------------------------------------------------
 Purpose
 -------
@@ -14,53 +14,12 @@ This module provides **permanent, production-grade explainability** for every
 credit decision produced by the RA scoring pipeline. It wraps the existing
 LightGBM and XGBoost PD models — zero architecture change is required.
 
-This is NOT a one-off debugging tool. Every sanctioned or declined case
-should have an explanation generated and stored alongside the score output.
-
 Three levels of explanation
 ---------------------------
 1. **Global (portfolio)**  — SHAP summary plot + feature importance bar chart.
-   Run monthly / after model retraining. Tells risk committee which Buyer
-   features are driving decisions across the entire portfolio.
-
 2. **Local (per Buyer)** — SHAP waterfall plot + LIME local explanation.
-   Generated at scoring time for each Buyer. Answers: "Why was Buyer XYZ
-   flagged as high risk?" Stored in part2/reports/explanations/.
-
-3. **Narrative** — Plain-English decision rationale auto-generated from SHAP
-   values. Suitable for Seller-facing memo and risk committee reporting.
-   Example output::
-
-       BUYER RISK ASSESSMENT — BUYER_GST_001
-       Decision: EXCEEDS ADVISED  (Band: CCC | Blended PD: 17.9%)
-       Advised Seller Exposure Limit: ₹0
-
-       Primary risk drivers (Buyer):
-         • DSCR 0.90  — below minimum viable threshold       (-38 pts)
-         • Leverage 0.80  — heavy debt load relative to assets (-31 pts)
-         • Payment history 40/100  — poor repayment track record (-22 pts)
-
-       Mitigating factors:
-         • Sector risk 2/5  — moderate sector exposure          (+8 pts)
-
-Regulatory alignment
---------------------
-RBI's Draft Guidelines on Use of AI/ML in Financial Services (2024) require
-financial institutions to maintain explainability for AI-driven credit
-decisions. This module produces auditable, per-case explanation records.
-
-Conceptual lineage
-------------------
-XAI patterns adapted from:
-  Nallakaruppan et al. (2024). "An Explainable AI framework for credit
-  evaluation and analysis." Applied Soft Computing.
-  doi: 10.1016/j.asoc.2024.111307
-  GitHub: https://github.com/Kaif0708/Credit-Risk-Explainability
-
-Key difference: that work applies XAI to binary loan approval on retail
-data. This module applies the same SHAP + LIME pattern to Buyer PD
-regression models with calibrated probability outputs, for trade credit
-counterparty risk assessment.
+3. **Narrative** — Long-form plain-English decision rationale auto-generated from SHAP,
+   LIME threshold effects, domain scores, and reason codes.
 """
 
 from __future__ import annotations
@@ -81,7 +40,6 @@ logger = logging.getLogger(__name__)
 # Optional heavy dependencies — graceful fallback if not installed
 try:
     import shap
-
     _SHAP_AVAILABLE = True
 except ImportError:
     _SHAP_AVAILABLE = False
@@ -89,7 +47,6 @@ except ImportError:
 
 try:
     from lime import lime_tabular
-
     _LIME_AVAILABLE = True
 except ImportError:
     _LIME_AVAILABLE = False
@@ -97,78 +54,353 @@ except ImportError:
 
 try:
     import matplotlib
-
     matplotlib.use("Agg")  # non-interactive backend for server use
     import matplotlib.pyplot as plt
-
     _MPL_AVAILABLE = True
 except ImportError:
     _MPL_AVAILABLE = False
 
 EXPLANATIONS_DIR = Path(__file__).resolve().parents[3] / "reports" / "explanations"
 
-# Feature display names — maps internal Buyer feature column names to human-readable labels
-FEATURE_LABELS: Dict[str, str] = {
-    "dscr": "Debt Service Coverage Ratio",
-    "leverage": "Leverage (Debt/Assets)",
-    "collateral_cover": "Collateral Cover Ratio",
-    "sector_risk": "Sector Risk Score",
-    "payment_history_score": "Payment History Score",
-    "net_revenue": "Net Revenue (Buyer)",
-    "current_ratio": "Current Ratio",
-    "interest_coverage": "Interest Coverage Ratio",
-    "years_in_operation": "Years in Operation",
-    "promoter_stake": "Promoter Stake (%)",
+# ─────────────────────────────────────────────────────────────────────────
+# Full 36-feature label + "what it measures" library
+# ─────────────────────────────────────────────────────────────────────────
+FEATURE_INTERPRETATIONS: Dict[str, Dict[str, str]] = {
+    "identity_score": {"label": "Identity Confidence Score", "meaning": "how strongly the entity's identity (CIN/GSTIN/PAN/director records) was cross-verified across MCA, GST and EPFO sources"},
+    "financial_score": {"label": "Financial Health Score", "meaning": "the composite strength of the entity's balance sheet and P&L fundamentals (liquidity, leverage, growth)"},
+    "legal_score": {"label": "Legal Risk Score", "meaning": "cumulative litigation and regulatory exposure from eCourts, DRT, NCLT and criminal-case records — higher is worse"},
+    "documentation_score": {"label": "Documentation Quality Score", "meaning": "completeness and consistency of the filings and disclosures collected for this entity"},
+    "conduct_score": {"label": "Conduct Score", "meaning": "Part 1's blended behavioural signal across GST filing discipline, MCA charge conduct, eCourts and EPFO history"},
+    "current_ratio": {"label": "Current Ratio", "meaning": "the entity's ability to cover short-term liabilities with short-term assets — a core liquidity buffer"},
+    "quick_ratio": {"label": "Quick Ratio", "meaning": "liquidity excluding inventory — a stricter test of near-term solvency"},
+    "debt_to_equity": {"label": "Debt-to-Equity", "meaning": "how much the entity has borrowed relative to owners' capital — a leverage / balance-sheet risk indicator"},
+    "dso": {"label": "Days Sales Outstanding", "meaning": "how many days it typically takes the entity to collect receivables — a proxy for cash-conversion and collection risk"},
+    "net_revenue_cagr_5y": {"label": "5-Year Revenue CAGR", "meaning": "the trend and durability of the entity's top-line growth"},
+    "working_capital": {"label": "Working Capital", "meaning": "the absolute cushion (current assets minus current liabilities) available to fund day-to-day operations"},
+    "tangible_net_worth": {"label": "Tangible Net Worth", "meaning": "the owned capital base backing the business, net of intangibles — a loss-absorption buffer"},
+    "net_revenue_latest": {"label": "Latest Net Revenue", "meaning": "most recent reported scale of operations"},
+    "turnover_y1": {"label": "Turnover (Year 1)", "meaning": "reported turnover for the most recent fiscal year"},
+    "turnover_y2": {"label": "Turnover (Year 2)", "meaning": "reported turnover one year prior"},
+    "turnover_y3": {"label": "Turnover (Year 3)", "meaning": "reported turnover two years prior, used to establish the growth trend"},
+    "charge_count_active": {"label": "Active MCA Charges", "meaning": "the number of live secured-lending charges registered against the entity with the Registrar of Companies"},
+    "has_any_active_charge": {"label": "Has Any Active Charge", "meaning": "whether the entity currently has any assets pledged as security against borrowing"},
+    "has_recent_charge_90d": {"label": "Recent Charge (90d)", "meaning": "whether a new secured borrowing charge was created in the last 90 days — a signal of fresh leverage being taken on"},
+    "old_unsatisfied_charge_count": {"label": "Old Unsatisfied Charges", "meaning": "charges older than 3 years that remain unsatisfied — often a sign of stalled or defaulted secured debt"},
+    "distinct_lender_count": {"label": "Distinct Lender Count", "meaning": "how many different institutions have lent against this entity — a proxy for banking relationships and reliance on multiple credit lines"},
+    "case_count_total": {"label": "Total eCourts Cases", "meaning": "the entity's overall litigation footprint across all courts"},
+    "case_count_active": {"label": "Active eCourts Cases", "meaning": "litigation that is currently unresolved"},
+    "case_count_drt": {"label": "DRT Cases", "meaning": "cases before a Debt Recovery Tribunal — i.e. a lender has already initiated formal recovery action"},
+    "case_count_nclt": {"label": "NCLT Cases", "meaning": "insolvency-related proceedings before the National Company Law Tribunal — the most severe legal risk signal available"},
+    "case_count_hc": {"label": "High Court Cases", "meaning": "litigation escalated to High Court level"},
+    "criminal_case_count": {"label": "Criminal Cases", "meaning": "criminal proceedings involving the entity or its directors"},
+    "has_insolvency_petition": {"label": "Active Insolvency Petition", "meaning": "whether an NCLT insolvency petition is currently pending — this is a hard-decline trigger elsewhere in the pipeline"},
+    "gst_turnover": {"label": "GST Declared Turnover", "meaning": "revenue as declared in GST returns, used to cross-check MCA/financial figures"},
+    "gst_filing_consistency": {"label": "GST Filing Consistency", "meaning": "how regularly and consistently GST returns have been filed — irregular filing often precedes cash-flow stress"},
+    "high_director_company_count": {"label": "Director on Many Companies", "meaning": "whether a director sits on an unusually high number of other companies — can indicate governance dilution or shell-company patterns"},
+    "max_director_company_count": {"label": "Max Director Company Count", "meaning": "the highest number of directorships held by any single director on record"},
+    "epfo_headcount": {"label": "EPFO Headcount", "meaning": "employee count as reported to EPFO — a scale and genuineness signal"},
+    "pf_filing_regular": {"label": "PF Filing Regularity", "meaning": "whether provident-fund filings are made on time and consistently"},
+    "revenue_per_employee_outlier": {"label": "Revenue/Employee Outlier", "meaning": "whether reported revenue is implausible relative to headcount — a synthetic or shell-entity red flag"},
+    "business_vintage_years": {"label": "Business Vintage", "meaning": "how many years the entity has been operating since incorporation"},
 }
+
+FEATURE_LABELS: Dict[str, str] = {feat: meta["label"] for feat, meta in FEATURE_INTERPRETATIONS.items()}
+
+
+def _feature_label(feat: str) -> str:
+    return FEATURE_INTERPRETATIONS.get(feat, {}).get("label", feat.replace("_", " ").title())
+
+
+def _feature_meaning(feat: str) -> str:
+    return FEATURE_INTERPRETATIONS.get(feat, {}).get("meaning", "a factor in the model's assessment of this entity")
+
+
+def _format_val(feat_name: str, val: Any) -> str:
+    if val is None or pd.isna(val):
+        return "N/A"
+    try:
+        fval = float(val)
+        fname = str(feat_name).lower()
+        if "capital" in fname or "networth" in fname or "revenue" in fname or "assets" in fname or "liabilities" in fname:
+            if abs(fval) >= 1e7:
+                return f"₹{fval / 1e7:,.2f} Cr"
+            elif abs(fval) >= 1e5:
+                return f"₹{fval / 1e5:,.2f} Lakh"
+            else:
+                return f"₹{fval:,.2f}"
+        elif "headcount" in fname or "employee" in fname:
+            return f"{int(fval)} employees"
+        elif "dso" in fname or "dpo" in fname or "vintage" in fname:
+            return f"{fval:.1f} years" if "vintage" in fname else f"{int(fval)} days"
+        elif "score" in fname:
+            return f"{fval:.1f}/100"
+        elif "ratio" in fname or "equity" in fname or "leverage" in fname or "cagr" in fname:
+            return f"{fval:.2%}" if "cagr" in fname else f"{fval:.2f}x"
+        else:
+            return f"{fval:.3g}"
+    except Exception:
+        return str(val)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Long-form Narrative Generator (SHAP + LIME + Domain Scores + Reason Codes)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _domain_score_paragraph(scores: Dict[str, Optional[float]], as_html: bool = True) -> str:
+    parts = []
+    labels = {
+        "financial_score": "financial fundamentals",
+        "identity_score": "identity verification",
+        "legal_score": "legal/litigation exposure",
+        "documentation_score": "documentation completeness",
+        "conduct_score": "behavioural conduct history",
+    }
+    for key, desc in labels.items():
+        val = scores.get(key)
+        if val is None:
+            continue
+        if key == "legal_score":
+            tier = "low" if val <= 25 else "moderate" if val <= 55 else "elevated"
+            parts.append(f"{desc} is {tier} ({val:.0f}/100)")
+        else:
+            tier = "strong" if val >= 75 else "adequate" if val >= 50 else "weak"
+            parts.append(f"{desc} is {tier} ({val:.0f}/100)")
+    if not parts:
+        return ""
+    text = "Across the underlying domain scores, " + "; ".join(parts) + "."
+    return f"<div>{text}</div>" if as_html else text
+
+
+def _lime_section(lime_explanation: Dict, as_html: bool = True) -> str:
+    feats = (lime_explanation or {}).get("features", [])
+    if not feats:
+        return ""
+    if as_html:
+        lines = ["<b>LIME Local Threshold Rules:</b>", "<ul style='margin-top:4px; margin-bottom:12px; padding-left:20px;'>"]
+        for f in feats[:5]:
+            cond = f.get("condition", "")
+            w = f.get("weight", 0.0)
+            sense = "pushes score toward higher risk" if w > 0 else "pushes score toward lower risk"
+            lines.append(f"  <li>When <b>{cond}</b>, this {sense} (local weight <b>{w:+.4f}</b>).</li>")
+        lines.append("</ul>")
+        return "".join(lines)
+    else:
+        lines = ["Locally (specifically for this entity's feature combination), the LIME surrogate model highlights these threshold effects:"]
+        for f in feats[:5]:
+            cond = f.get("condition", "")
+            w = f.get("weight", 0.0)
+            sense = "pushes score toward higher risk" if w > 0 else "pushes score toward lower risk"
+            lines.append(f"  - When {cond}, this {sense} (local weight {w:+.4f}).")
+        return "\n".join(lines)
+
+
+_REASON_CODE_TEXT = {
+    "IDENTITY_GATE_FAILED_UNSCOREABLE": "identity verification could not be completed to a scoreable standard",
+    "DOCUMENTATION_PENALTY_APPLIED_0.80": "a documentation-quality penalty (0.80x) was applied due to incomplete filings",
+    "CRIMINAL_CASE_DETECTED": "at least one criminal case was detected against the entity or its directors",
+    "LEGAL_RISK_SCORE_ELEVATED": "the legal risk score is elevated relative to peers",
+    "DEBT_TO_EQUITY_EXCEEDS_3x": "leverage (debt-to-equity) exceeds 3x, a high-risk threshold",
+    "CURRENT_RATIO_BELOW_1": "current ratio is below 1.0, indicating short-term liabilities exceed short-term assets",
+    "BUSINESS_VINTAGE_BELOW_1_YEAR": "the business has less than one year of operating history",
+    "OLD_UNSATISFIED_CHARGE": "charges older than 3 years remain unsatisfied with ROC",
+    "REVENUE_PER_EMPLOYEE_OUTLIER": "reported revenue is unusually high relative to EPFO headcount",
+    "PF_FILING_IRREGULAR": "provident fund returns are filed irregularly",
+    "GST_NON_FILER": "GST returns are unfiled or severely non-compliant",
+    "GST_FILING_IRREGULAR": "GST returns have minor or major filing gaps",
+    "ECOURTS_INSOLVENCY_PETITION": "an NCLT insolvency petition is recorded on eCourts",
+    "ECOURTS_DRT_CASE": "a Debt Recovery Tribunal case is recorded on eCourts",
+    "CHARGE_LENDER_QUALITY_NBFC_ONLY": "secured borrowings are backed exclusively by NBFC lenders",
+}
+
+
+def _reason_code_section(reason_codes: List[str], as_html: bool = True) -> str:
+    if not reason_codes:
+        text = "No adverse reason codes were triggered for this entity."
+        return f"<i>{text}</i>" if as_html else text
+    if as_html:
+        lines = ["<b>Triggered Risk Flags:</b>", "<ul style='margin-top:4px; margin-bottom:0; padding-left:20px;'>"]
+        for rc in reason_codes:
+            lines.append(f"  <li><b>{rc}</b>: {_REASON_CODE_TEXT.get(rc, 'see pd_mapper.py definition')}</li>")
+        lines.append("</ul>")
+        return "".join(lines)
+    else:
+        lines = ["The following flags were triggered during scoring:"]
+        for rc in reason_codes:
+            lines.append(f"  - {rc}: {_REASON_CODE_TEXT.get(rc, 'see pd_mapper.py definition')}")
+        return "\n".join(lines)
+
+
+def build_short_summary(
+    buyer_id: str,
+    band: str,
+    decision: str,
+    shap_ranked: List[Dict],
+    domain_scores: Optional[Dict[str, Optional[float]]] = None,
+    as_html: bool = True,
+) -> str:
+    """
+    Build a concise 2-3 sentence executive summary for top-level verdict cards.
+    Contains an explicit pointer to the detailed Section 10 (TraceLayer™) report.
+    """
+    risk_factors = [f for f in shap_ranked if f.get("direction") == "risk_increasing"]
+    mitigants = [f for f in shap_ranked if f.get("direction") == "risk_reducing"]
+
+    parts = []
+
+    if mitigants:
+        top_m = [f"<b>{f.get('label') or _feature_label(f['feature'])}</b> ({_format_val(f['feature'], f.get('feature_value'))})" for f in mitigants[:2]]
+        parts.append(f"Key strengths supporting RiskBand™ {band} include {' and '.join(top_m)}.")
+
+    if risk_factors:
+        top_r = [f"<b>{f.get('label') or _feature_label(f['feature'])}</b> ({_format_val(f['feature'], f.get('feature_value'))})" for f in risk_factors[:2]]
+        parts.append(f"Primary risk watchpoints are {' and '.join(top_r)}.")
+    elif not mitigants:
+        parts.append(f"Entity clears baseline risk criteria for Band {band}.")
+
+    parts.append("<i>Detailed signal attributions, LIME threshold rules, and complete domain-score diagnostics are detailed further in Section 10 (TraceLayer™) of this report.</i>")
+
+    text_html = " ".join(parts)
+    if as_html:
+        return text_html
+    else:
+        import re
+        return re.sub(r"<[^>]+>", "", text_html)
+
+
+def build_long_narrative(
+    buyer_id: str,
+    blended_pd: float,
+    band: str,
+    decision: str,
+    advised_limit: float,
+    shap_ranked: List[Dict],
+    lime_explanation: Optional[Dict] = None,
+    domain_scores: Optional[Dict[str, Optional[float]]] = None,
+    reason_codes: Optional[List[str]] = None,
+    max_risk_factors: int = 8,
+    max_mitigants: int = 8,
+    as_html: bool = True,
+) -> str:
+    """
+    Build rich, multi-sentence plain-English narrative (supporting HTML and plain-text).
+    """
+    risk_factors = [f for f in shap_ranked if f.get("direction") == "risk_increasing"]
+    mitigants = [f for f in shap_ranked if f.get("direction") == "risk_reducing"]
+
+    if as_html:
+        lines = []
+        if domain_scores:
+            d_para = _domain_score_paragraph(domain_scores, as_html=True)
+            if d_para:
+                lines.append(d_para)
+                lines.append("<div style='margin-bottom:8px;'></div>")
+
+        if risk_factors:
+            lines.append("<b>Primary Risk Drivers:</b>")
+            lines.append("<ul style='margin-top:4px; margin-bottom:12px; padding-left:20px;'>")
+            for f in risk_factors[:max_risk_factors]:
+                label = f.get("label") or _feature_label(f["feature"])
+                feat = f["feature"]
+                val = f.get("feature_value")
+                sv = f.get("shap_value", 0.0) or 0.0
+                val_str = _format_val(feat, val)
+                meaning = _feature_meaning(feat)
+                lines.append(
+                    f"  <li><b>{label}</b> ({val_str}) — {meaning}. "
+                    f"Increases modelled default probability by <b>+{abs(sv):.2f}%</b>.</li>"
+                )
+            lines.append("</ul>")
+
+        if mitigants:
+            lines.append("<b>Key Mitigating Factors:</b>")
+            lines.append("<ul style='margin-top:4px; margin-bottom:12px; padding-left:20px;'>")
+            for f in mitigants[:max_mitigants]:
+                label = f.get("label") or _feature_label(f["feature"])
+                feat = f["feature"]
+                val = f.get("feature_value")
+                sv = f.get("shap_value", 0.0) or 0.0
+                val_str = _format_val(feat, val)
+                meaning = _feature_meaning(feat)
+                lines.append(
+                    f"  <li><b>{label}</b> ({val_str}) — {meaning}. "
+                    f"Reduces modelled default probability by <b>-{abs(sv):.2f}%</b>.</li>"
+                )
+            lines.append("</ul>")
+
+        if lime_explanation:
+            lime_sec = _lime_section(lime_explanation, as_html=True)
+            if lime_sec:
+                lines.append(lime_sec)
+
+        rc_sec = _reason_code_section(reason_codes or [], as_html=True)
+        if rc_sec:
+            lines.append(rc_sec)
+
+        return "".join(lines)
+
+    else:
+        lines = [f"BUYER RISK ASSESSMENT — {buyer_id}", "=" * 60]
+        dec_upper = decision.upper().replace("_", " ")
+        lines.append(f"Decision: {dec_upper}  |  Band: {band}  |  Blended PD: {blended_pd * 100:.2f}%")
+        lines.append(
+            f"Advised Seller Exposure Limit: ₹{advised_limit:,.0f}"
+            if advised_limit > 0 else
+            "Advised Seller Exposure Limit: ₹0 (declined / not sanctioned)"
+        )
+        lines.append("")
+
+        if domain_scores:
+            d_para = _domain_score_paragraph(domain_scores, as_html=False)
+            if d_para:
+                lines.append(d_para)
+                lines.append("")
+
+        if risk_factors:
+            lines.append("PRIMARY RISK DRIVERS")
+            lines.append("-" * 60)
+            for f in risk_factors[:max_risk_factors]:
+                label = f.get("label") or _feature_label(f["feature"])
+                feat = f["feature"]
+                val = f.get("feature_value")
+                sv = f.get("shap_value", 0.0) or 0.0
+                val_str = _format_val(feat, val)
+                meaning = _feature_meaning(feat)
+                lines.append(
+                    f"• {label} ({val_str}) — {meaning}. "
+                    f"Increases modelled default probability by +{abs(sv):.2f}%."
+                )
+            lines.append("")
+
+        if mitigants:
+            lines.append("KEY MITIGATING FACTORS")
+            lines.append("-" * 60)
+            for f in mitigants[:max_mitigants]:
+                label = f.get("label") or _feature_label(f["feature"])
+                feat = f["feature"]
+                val = f.get("feature_value")
+                sv = f.get("shap_value", 0.0) or 0.0
+                val_str = _format_val(feat, val)
+                meaning = _feature_meaning(feat)
+                lines.append(
+                    f"• {label} ({val_str}) — {meaning}. "
+                    f"Reduces modelled default probability by -{abs(sv):.2f}%."
+                )
+            lines.append("")
+
+        if lime_explanation:
+            lime_sec = _lime_section(lime_explanation, as_html=False)
+            if lime_sec:
+                lines.append(lime_sec)
+                lines.append("")
+
+        lines.append(_reason_code_section(reason_codes or [], as_html=False))
+        return "\n".join(lines)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 class CreditExplainer:
     """
-    Permanent XAI wrapper for the RyskNode Buyer PD models.
-
-    Scores the BUYER — the counterparty whose payment risk the SELLER
-    needs to assess before extending trade credit.
-
-    Parameters
-    ----------
-    lgbm_model : fitted LightGBM model
-        The trained LightGBM Buyer PD model from lgbm_trainer.py.
-    xgb_model : fitted XGBoost model
-        The trained XGBoost Buyer PD model from xgb_trainer.py.
-    feature_names : list[str]
-        Ordered list of Buyer feature column names used during model training.
-    X_train : np.ndarray or pd.DataFrame
-        Training data — required to fit SHAP explainers and LIME background.
-    primary_model : str
-        Which model to use as the primary explainer. 'lgbm' or 'xgb'.
-        Default: 'lgbm' (Tree SHAP is fastest on LightGBM).
-
-    Example
-    -------
-    ::
-
-        from domain.explainability import CreditExplainer
-
-        explainer = CreditExplainer(
-            lgbm_model   = lgbm_model,
-            xgb_model    = xgb_model,
-            feature_names= FEATURE_COLS,
-            X_train      = X_train,
-        )
-
-        # Explain a Buyer at scoring time — called by Seller's risk check
-        report = explainer.explain_buyer(
-            buyer_id     = "BUYER_GST_001",
-            x_instance   = x_row,          # 1-D numpy array of Buyer features
-            blended_pd   = 0.179,
-            band         = "CCC",
-            decision     = "declined",
-        )
-        print(report["narrative"])   # → Seller-facing memo
-
-        # Global portfolio explainability (run monthly)
-        explainer.explain_portfolio(X_test, save_plots=True)
+    Permanent XAI wrapper for the RyskNode Buyer PD models (SHAP + LIME).
     """
 
     def __init__(
@@ -181,8 +413,11 @@ class CreditExplainer:
     ):
         self.lgbm_model = lgbm_model
         self.xgb_model = xgb_model
-        self.feature_names = feature_names
-        self.X_train = np.array(X_train)
+        self.feature_names = list(feature_names)
+        self.X_train = (
+            np.asarray(X_train[self.feature_names].values if isinstance(X_train, pd.DataFrame) and set(self.feature_names).issubset(X_train.columns) else X_train.values if isinstance(X_train, pd.DataFrame) else X_train, dtype=float)
+            if X_train is not None else None
+        )
         self.primary_model = primary_model
 
         self._shap_explainer: Optional[Any] = None
@@ -203,11 +438,16 @@ class CreditExplainer:
         if hasattr(model, "calibrated_classifiers_"):
             model = model.calibrated_classifiers_[0].estimator
             
-        self._shap_explainer = shap.TreeExplainer(
-            model,
-            data=shap.sample(self.X_train, min(100, len(self.X_train))),
-            feature_perturbation="interventional",
-        )
+        if self.X_train is not None:
+            background = shap.sample(self.X_train, min(100, len(self.X_train)))
+            self._shap_explainer = shap.TreeExplainer(
+                model,
+                data=background,
+                feature_perturbation="interventional",
+            )
+        else:
+            self._shap_explainer = shap.TreeExplainer(model)
+
         self._shap_fitted = True
         logger.info("CreditExplainer: SHAP TreeExplainer initialised.")
 
@@ -217,6 +457,10 @@ class CreditExplainer:
             raise ImportError("Install lime: pip install lime")
         if self._lime_explainer is not None:
             return
+        if self.X_train is None:
+            logger.warning("No X_train background provided for LIME — LIME skipped.")
+            return
+
         self._lime_explainer = lime_tabular.LimeTabularExplainer(
             self.X_train,
             feature_names=self.feature_names,
@@ -239,30 +483,15 @@ class CreditExplainer:
         band: str,
         decision: str,
         advised_limit: float = 0.0,
+        domain_scores: Optional[Dict[str, Optional[float]]] = None,
+        reason_codes: Optional[List[str]] = None,
         save: bool = True,
+        as_html: bool = True,
     ) -> Dict:
         """
-        Generate a full local explanation for a single Buyer.
-
-        This explanation is returned to the Seller as the rationale
-        behind the credit decision on their counterparty.
-
-        Parameters
-        ----------
-        buyer_id     : Buyer entity identifier (GSTIN / PAN / CIN or internal ID)
-        x_instance   : 1-D numpy array of Buyer feature values in feature_names order
-        blended_pd   : Buyer's blended PD from openriskscore_blender.py
-        band         : Buyer's master scale band (e.g. "CCC")
-        decision     : "approved" | "declined" | "within_limit" | "exceeds_advised"
-        advised_limit: advised Seller exposure limit from limit_advisor.py (0 if declined)
-        save         : if True, saves JSON + plots to part2/reports/explanations/
-
-        Returns
-        -------
-        dict with keys: buyer_id, shap_values, shap_ranked, lime_explanation,
-                        narrative, plot_paths
+        Generate full local explanation for a Buyer (SHAP + LIME + Narrative).
         """
-        x_instance = np.array(x_instance).flatten()
+        x_instance = np.asarray(x_instance, dtype=float).flatten()
         report: Dict = {
             "buyer_id": buyer_id,
             "generated_at": datetime.now().isoformat(),
@@ -273,7 +502,12 @@ class CreditExplainer:
             "shap_values": {},
             "shap_ranked": [],
             "lime_explanation": {},
+            "short_summary": "",
+            "short_summary_text": "",
+            "detailed_narrative": "",
             "narrative": "",
+            "narrative_text": "",
+            "narrative_lines": [],
             "plot_paths": [],
         }
 
@@ -282,17 +516,17 @@ class CreditExplainer:
             try:
                 self._init_shap()
                 sv = self._shap_explainer(x_instance.reshape(1, -1))
-                shap_vals = sv.values[0] if hasattr(sv, "values") else sv[0]
+                shap_vals = sv.values[0] if hasattr(sv, "values") else (
+                    sv[1][0] if isinstance(sv, list) else sv[0]
+                )
 
-                # Map to feature names
                 shap_dict = {self.feature_names[i]: float(shap_vals[i]) for i in range(len(self.feature_names))}
-                # Rank by absolute impact
                 ranked = sorted(shap_dict.items(), key=lambda x: abs(x[1]), reverse=True)
                 report["shap_values"] = shap_dict
                 report["shap_ranked"] = [
                     {
                         "feature": feat,
-                        "label": FEATURE_LABELS.get(feat, feat),
+                        "label": _feature_label(feat),
                         "feature_value": (
                             None
                             if (
@@ -301,10 +535,10 @@ class CreditExplainer:
                             )
                             else float(x_instance[self.feature_names.index(feat)])
                         ),
-                        "shap_value": round(sv, 5),
-                        "direction": "risk_increasing" if sv > 0 else "risk_reducing",
+                        "shap_value": round(float(sv_val), 5),
+                        "direction": "risk_increasing" if sv_val > 0 else "risk_reducing",
                     }
-                    for feat, sv in ranked
+                    for feat, sv_val in ranked
                 ]
 
                 # Waterfall plot
@@ -316,18 +550,16 @@ class CreditExplainer:
                 logger.warning("SHAP local explanation failed for Buyer %s: %s", buyer_id, e)
 
         # ── LIME local explanation ──────────────────────────────────────
-        if _LIME_AVAILABLE:
+        if _LIME_AVAILABLE and self.X_train is not None:
             try:
                 self._init_lime()
                 model = self.lgbm_model if self.primary_model == "lgbm" else self.xgb_model
 
                 def _predict_fn(X):
-                    """Wrap model to return [P(non-default), P(default)] columns."""
                     if hasattr(model, "predict_proba"):
-                        return model.predict_proba(X)
-                    # Fallback if no predict_proba
-                    pds = np.array(model.predict(X)).flatten()
-                    return np.column_stack([1 - pds, pds])
+                        return np.asarray(model.predict_proba(X))
+                    preds = np.asarray(model.predict(X)).flatten()
+                    return np.column_stack([1 - preds, preds])
 
                 lime_exp = self._lime_explainer.explain_instance(
                     x_instance,
@@ -335,30 +567,72 @@ class CreditExplainer:
                     num_features=min(8, len(self.feature_names)),
                     labels=(1,),
                 )
-                lime_list = lime_exp.as_list(label=1)
+                lime_list = lime_exp.as_list()
                 report["lime_explanation"] = {
-                    "features": [{"condition": cond, "weight": round(weight, 5)} for cond, weight in lime_list]
+                    "features": [{"condition": cond, "weight": round(float(weight), 5)} for cond, weight in lime_list]
                 }
 
-                # LIME plot
                 if _MPL_AVAILABLE and save:
                     plot_path = self._save_lime_plot(buyer_id, lime_exp)
                     report["plot_paths"].append(str(plot_path))
 
             except Exception as e:
-                import traceback; traceback.print_exc(); logger.warning("LIME explanation failed for Buyer %s: %s", buyer_id, e)
+                logger.warning("LIME explanation failed for Buyer %s: %s", buyer_id, e)
 
-        # ── Narrative ───────────────────────────────────────────────
-        report["narrative"] = self._build_narrative(
-            buyer_id, blended_pd, band, decision, advised_limit, report["shap_ranked"]
+        # ── Short Summary & Detailed Narrative ─────────────────────────
+        short_summary_html = build_short_summary(
+            buyer_id=buyer_id,
+            band=band,
+            decision=decision,
+            shap_ranked=report["shap_ranked"],
+            domain_scores=domain_scores,
+            as_html=True,
         )
+        short_summary_text = build_short_summary(
+            buyer_id=buyer_id,
+            band=band,
+            decision=decision,
+            shap_ranked=report["shap_ranked"],
+            domain_scores=domain_scores,
+            as_html=False,
+        )
+
+        html_narrative = build_long_narrative(
+            buyer_id=buyer_id,
+            blended_pd=blended_pd,
+            band=band,
+            decision=decision,
+            advised_limit=advised_limit,
+            shap_ranked=report["shap_ranked"],
+            lime_explanation=report["lime_explanation"],
+            domain_scores=domain_scores,
+            reason_codes=reason_codes,
+            as_html=True,
+        )
+        text_narrative = build_long_narrative(
+            buyer_id=buyer_id,
+            blended_pd=blended_pd,
+            band=band,
+            decision=decision,
+            advised_limit=advised_limit,
+            shap_ranked=report["shap_ranked"],
+            lime_explanation=report["lime_explanation"],
+            domain_scores=domain_scores,
+            reason_codes=reason_codes,
+            as_html=False,
+        )
+        report["short_summary"] = short_summary_html
+        report["short_summary_text"] = short_summary_text
+        report["detailed_narrative"] = html_narrative
+        report["narrative"] = html_narrative
+        report["narrative_text"] = text_narrative
+        report["narrative_lines"] = [line.strip() for line in text_narrative.split("\n") if line.strip()]
 
         if save:
             self._save_explanation(buyer_id, report)
 
         return report
 
-    # Backward-compat alias
     def explain_borrower(self, entity_id: str = "UNKNOWN", **kwargs) -> Dict:
         """Deprecated alias — use explain_buyer() instead."""
         return self.explain_buyer(buyer_id=entity_id, **kwargs)
@@ -374,27 +648,6 @@ class CreditExplainer:
         save_plots: bool = True,
         top_n: int = 10,
     ) -> Dict:
-        """
-        Global portfolio-level Buyer explainability.
-
-        Computes SHAP values for every Buyer in X, producing:
-          - Mean absolute SHAP per feature (global importance ranking)
-          - Summary beeswarm plot (feature vs impact distribution)
-          - Bar chart of top-N Buyer features by mean |SHAP|
-
-        Run this monthly after model retraining or after outcome validation.
-
-        Parameters
-        ----------
-        X           : Buyer feature matrix (n_buyers × n_features)
-        entity_ids  : optional list of Buyer IDs for labelling
-        save_plots  : save PNG plots to part2/reports/explanations/
-        top_n       : number of top features to show in bar chart
-
-        Returns
-        -------
-        dict with keys: feature_importance (ranked), plot_paths
-        """
         if not _SHAP_AVAILABLE:
             raise ImportError("Install shap: pip install shap")
 
@@ -413,7 +666,7 @@ class CreditExplainer:
                 {
                     "rank": i + 1,
                     "feature": feat,
-                    "label": FEATURE_LABELS.get(feat, feat),
+                    "label": _feature_label(feat),
                     "mean_abs_shap": round(v, 6),
                 }
                 for i, (feat, v) in enumerate(ranked)
@@ -431,7 +684,6 @@ class CreditExplainer:
             beeswarm_path = self._save_shap_summary(sv, X)
             result["plot_paths"].append(str(beeswarm_path))
 
-        # Save JSON
         EXPLANATIONS_DIR.mkdir(parents=True, exist_ok=True)
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
         out = EXPLANATIONS_DIR / f"portfolio_explanation_{ts}.json"
@@ -452,25 +704,6 @@ class CreditExplainer:
         n_points: int = 50,
         save: bool = True,
     ) -> Optional[Path]:
-        """
-        Partial Dependency Plot for a single Buyer feature.
-
-        Shows how the model's predicted Buyer PD changes as feature_name is
-        varied across its range, holding all other Buyer features at their
-        observed values. Useful for risk committee presentations:
-        "As Buyer DSCR falls below 1.0, payment default probability rises non-linearly."
-
-        Parameters
-        ----------
-        X            : Buyer feature matrix (n_buyers × n_features)
-        feature_name : Buyer column name to vary (must be in feature_names)
-        n_points     : number of grid points to evaluate
-        save         : save PNG to part2/reports/explanations/
-
-        Returns
-        -------
-        Path to saved PNG or None
-        """
         if not _MPL_AVAILABLE:
             logger.warning("matplotlib not available — PDP skipped.")
             return None
@@ -493,7 +726,7 @@ class CreditExplainer:
         fig, ax = plt.subplots(figsize=(8, 4))
         ax.plot(feat_vals, pdp_preds, color="#01696f", linewidth=2)
         ax.fill_between(feat_vals, pdp_preds, alpha=0.08, color="#01696f")
-        label = FEATURE_LABELS.get(feature_name, feature_name)
+        label = _feature_label(feature_name)
         ax.set_xlabel(label, fontsize=11)
         ax.set_ylabel("Avg Buyer PD (Predicted)", fontsize=11)
         ax.set_title(f"Partial Dependency Plot — Buyer {label}", fontsize=12)
@@ -510,57 +743,6 @@ class CreditExplainer:
             logger.info("PDP saved → %s", path)
         plt.close(fig)
         return path
-
-    # ─────────────────────────────────────────────────────────────────────────
-    # Narrative builder
-    # ─────────────────────────────────────────────────────────────────────────
-
-    @staticmethod
-    def _build_narrative(
-        buyer_id: str,
-        blended_pd: float,
-        band: str,
-        decision: str,
-        advised_limit: float,
-        shap_ranked: List[Dict],
-    ) -> str:
-        """
-        Build a concise, HTML-friendly narrative for the UI templates.
-        """
-        lines = []
-        
-        # We drop the large text header because the UI template already has it.
-        # Just focus on the drivers and mitigants in HTML list format.
-        
-        risk_factors = [f for f in shap_ranked if f["direction"] == "risk_increasing"]
-        mitigants = [f for f in shap_ranked if f["direction"] == "risk_reducing"]
-
-        if not shap_ranked:
-            return "<i>Detailed risk attributions unavailable.</i>"
-
-        if risk_factors:
-            lines.append("<b>Primary Risk Drivers:</b>")
-            lines.append("<ul style='margin-top:4px; margin-bottom:12px; padding-left:20px;'>")
-            for f in risk_factors[:4]:
-                label = f["label"]
-                val = f["feature_value"]
-                sv = f["shap_value"]
-                val_str = "N/A" if (val is None or pd.isna(val)) else f"{val:.3g}"
-                lines.append(f"  <li><b>{label}</b> ({val_str}) increases default probability by <b>{sv:+.2f}%</b></li>")
-            lines.append("</ul>")
-
-        if mitigants:
-            lines.append("<b>Key Mitigating Factors:</b>")
-            lines.append("<ul style='margin-top:4px; margin-bottom:0; padding-left:20px;'>")
-            for f in mitigants[:3]:
-                label = f["label"]
-                val = f["feature_value"]
-                sv = f["shap_value"]
-                val_str = "N/A" if (val is None or pd.isna(val)) else f"{val:.3g}"
-                lines.append(f"  <li><b>{label}</b> ({val_str}) reduces default probability by <b>{abs(sv):.2f}%</b></li>")
-            lines.append("</ul>")
-
-        return "".join(lines)
 
     # ─────────────────────────────────────────────────────────────────────────
     # Plot savers (internal)
@@ -631,10 +813,6 @@ class CreditExplainer:
             plt.close("all")
         return path
 
-    # ─────────────────────────────────────────────────────────────────────────
-    # Persist explanation JSON
-    # ─────────────────────────────────────────────────────────────────────────
-
     def _save_explanation(self, buyer_id: str, report: Dict) -> None:
         EXPLANATIONS_DIR.mkdir(parents=True, exist_ok=True)
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -642,3 +820,4 @@ class CreditExplainer:
         with open(path, "w") as fh:
             json.dump(report, fh, indent=2, default=str)
         logger.info("Buyer explanation saved → %s", path)
+

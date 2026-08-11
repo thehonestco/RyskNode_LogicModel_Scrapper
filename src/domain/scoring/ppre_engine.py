@@ -557,25 +557,22 @@ def score_entity(
 
     # -------------------------------------------------------------------------
     # Step 9: XAI Explanation  (Panel E)
-    # Domain-knowledge narrative (always directionally correct) per §17.3
-    # SHAP from synthetic-trained models may have inverted feature directions;
-    # the domain-rule XAI is built from the actual financial ratios and scores.
+    # SHAP + LIME + Long Narrative using reference dataset background
     # -------------------------------------------------------------------------
     xai_narrative = ""
     shap_ranked = []
     lime_explanation: Dict = {}
     xai_plot_paths = []
 
-    conduct_reasons = feature_row.get("conduct_reasons", [])
+    domain_scores = {
+        "financial_score": pd_map.governance_score,
+        "identity_score": feature_row.get("identity_score"),
+        "legal_score": feature_row.get("legal_score"),
+        "documentation_score": feature_row.get("documentation_score"),
+        "conduct_score": feature_row.get("conduct_score"),
+    }
+    all_reason_codes = list(pd_map.reason_codes) + list(feature_row.get("conduct_reasons", []))
 
-    # Primary XAI: domain-knowledge rule-based narrative
-    xai_narrative, shap_ranked = build_domain_xai_narrative(
-        feature_row=feature_row,
-        pd_map=pd_map,
-        conduct_reasons=conduct_reasons,
-    )
-
-    # Supplementary: LIME local explanation (model-agnostic, for audit trail)
     if lgbm_art and X_train is not None:
         try:
             explainer = CreditExplainer(
@@ -597,7 +594,6 @@ def score_entity(
                 if evaluated_limit >= _req
                 else "exceeds_advised"
             )
-            # Only call for LIME — skip SHAP waterfall (narrative already done)
             xai_report = explainer.explain_buyer(
                 buyer_id=str(feature_row.get("entity_id", "UNKNOWN")),
                 x_instance=x_instance,
@@ -605,13 +601,41 @@ def score_entity(
                 band=pd_map.pd_band,
                 decision=_decision,
                 advised_limit=evaluated_limit,
+                domain_scores=domain_scores,
+                reason_codes=all_reason_codes,
                 save=True,
+                as_html=True,
             )
+            xai_summary = xai_report.get("short_summary", "")
+            xai_summary_text = xai_report.get("short_summary_text", "")
+            xai_narrative = xai_report.get("detailed_narrative") or xai_report.get("narrative", "")
+            xai_narrative_text = xai_report.get("narrative_text", "")
+            xai_narrative_lines = xai_report.get("narrative_lines", [])
+            shap_ranked = xai_report.get("shap_ranked", [])
             lime_explanation = xai_report.get("lime_explanation", {})
             xai_plot_paths = xai_report.get("plot_paths", [])
 
         except Exception as e:
-            logger.debug("[PPRE] LIME explanation skipped (non-fatal): %s", e)
+            logger.warning("[PPRE] CreditExplainer failed (non-fatal): %s", e)
+            xai_narrative, shap_ranked = build_domain_xai_narrative(
+                feature_row=feature_row,
+                pd_map=pd_map,
+                conduct_reasons=feature_row.get("conduct_reasons", []),
+            )
+            xai_summary = "RiskBand assessment completed with active monitoring."
+            xai_summary_text = xai_summary
+            xai_narrative_text = xai_narrative
+            xai_narrative_lines = [line.strip() for line in xai_narrative.split("\n") if line.strip()]
+    else:
+        xai_narrative, shap_ranked = build_domain_xai_narrative(
+            feature_row=feature_row,
+            pd_map=pd_map,
+            conduct_reasons=feature_row.get("conduct_reasons", []),
+        )
+        xai_summary = "RiskBand assessment completed with active monitoring."
+        xai_summary_text = xai_summary
+        xai_narrative_text = xai_narrative
+        xai_narrative_lines = [line.strip() for line in xai_narrative.split("\n") if line.strip()]
 
     # -------------------------------------------------------------------------
     # Step 10: Assemble and return full output
@@ -646,7 +670,11 @@ def score_entity(
         "stress_table": [vars(r) for r in stress_results],
         "stress_table_text": stress_table_text,
         # Panel E — XAI Explanation
+        "xai_summary": xai_summary,
+        "xai_summary_text": xai_summary_text,
         "xai_narrative": xai_narrative,
+        "xai_narrative_text": xai_narrative_text,
+        "xai_narrative_lines": xai_narrative_lines,
         "shap_ranked": shap_ranked,
         "lime_explanation": lime_explanation,
         "reason_codes": pd_map.reason_codes,

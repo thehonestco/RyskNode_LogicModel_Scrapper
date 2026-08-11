@@ -1,4 +1,4 @@
-import requests
+import urllib.request
 import json
 import sys
 
@@ -14,25 +14,27 @@ def test_json_api(cin, endpoint):
         "credit_period_days": 30,
         "include_xai": True
     }
-    headers = {"Content-Type": "application/json"}
+    data_bytes = json.dumps(payload).encode('utf-8')
+    req = urllib.request.Request(url, data=data_bytes, headers={"Content-Type": "application/json"})
     
     print(f"Testing POST {url} for {cin}...")
     try:
-        response = requests.post(url, json=payload, headers=headers)
-        print(f"Status Code: {response.status_code}")
-        if response.status_code == 200:
-            data = response.json()
-            inner_data = data.get("data", {})
-            print(f"  Response Code: {data.get('response_code')}")
-            print(f"  Risk Band: {inner_data.get('risk_band')}")
-            print(f"  Pralyon Score: {inner_data.get('pralyon_score')}")
-            print(f"  Blended PD: {inner_data.get('blended_pd')}")
-            if "evaluated_limit" in inner_data:
-                print(f"  Evaluated Limit: {inner_data.get('evaluated_limit')}")
-            return True
-        else:
-            print(f"  Error: {response.text}")
-            return False
+        with urllib.request.urlopen(req) as response:
+            status_code = response.getcode()
+            print(f"Status Code: {status_code}")
+            if status_code == 200:
+                data = json.loads(response.read().decode('utf-8'))
+                inner_data = data.get("data", {})
+                print(f"  Response Code: {data.get('response_code')}")
+                print(f"  Risk Band: {inner_data.get('risk_band')}")
+                print(f"  Pralyon Score: {inner_data.get('pralyon_score')}")
+                print(f"  Blended PD: {inner_data.get('blended_pd')}")
+                if "evaluated_limit" in inner_data:
+                    print(f"  Evaluated Limit: {inner_data.get('evaluated_limit')}")
+                return True
+            else:
+                print(f"  Error status: {status_code}")
+                return False
     except Exception as e:
         print(f"  Exception: {e}")
         return False
@@ -47,25 +49,26 @@ def test_report_api(cin, endpoint):
         "credit_period_days": 30,
         "include_xai": True
     }
-    headers = {"Content-Type": "application/json"}
+    data_bytes = json.dumps(payload).encode('utf-8')
+    req = urllib.request.Request(url, data=data_bytes, headers={"Content-Type": "application/json"})
     
     print(f"Testing POST {url} for {cin}...")
     try:
-        response = requests.post(url, json=payload, headers=headers)
-        print(f"Status Code: {response.status_code}")
-        if response.status_code == 200:
-            html = response.text
-            print(f"  HTML Size: {len(html)} characters")
-            # Verify no template errors
-            if "jinja2" in html.lower() or "undefined" in html.lower() or "exception" in html.lower():
-                print("  WARNING: Found potential Jinja2 or Undefined errors in HTML!")
-                return False
+        with urllib.request.urlopen(req) as response:
+            status_code = response.getcode()
+            print(f"Status Code: {status_code}")
+            if status_code == 200:
+                html = response.read().decode('utf-8')
+                print(f"  HTML Size: {len(html)} characters")
+                if "jinja2" in html.lower() or "undefined" in html.lower() or "exception" in html.lower():
+                    print("  WARNING: Found potential Jinja2 or Undefined errors in HTML!")
+                    return False
+                else:
+                    print("  HTML clean of common Jinja2 errors.")
+                    return True
             else:
-                print("  HTML clean of common Jinja2 errors.")
-                return True
-        else:
-            print(f"  Error: {response.text}")
-            return False
+                print(f"  Error status: {status_code}")
+                return False
     except Exception as e:
         print(f"  Exception: {e}")
         return False

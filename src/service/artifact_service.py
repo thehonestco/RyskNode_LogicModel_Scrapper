@@ -68,7 +68,16 @@ class ArtifactService:
             )
             self.artifacts["lgd_art"] = joblib.load(adir / "lgd.pkl") if (adir / "lgd.pkl").exists() else None
             self.artifacts["meta"] = joblib.load(adir / "meta.pkl") if (adir / "meta.pkl").exists() else {}
-            self.artifacts["X_train"] = joblib.load(adir / "X_train.pkl") if (adir / "X_train.pkl").exists() else None
+            if (adir / "lime_reference_dataset.csv").exists():
+                import pandas as pd
+                self.artifacts["X_train"] = pd.read_csv(adir / "lime_reference_dataset.csv")
+            elif (project_root / "docs" / "lime_reference_dataset.csv").exists():
+                import pandas as pd
+                self.artifacts["X_train"] = pd.read_csv(project_root / "docs" / "lime_reference_dataset.csv")
+            elif (adir / "X_train.pkl").exists():
+                self.artifacts["X_train"] = joblib.load(adir / "X_train.pkl")
+            else:
+                self.artifacts["X_train"] = None
             self.loaded = True
             logger.info("PPRE artifacts loaded successfully.")
         except Exception as e:

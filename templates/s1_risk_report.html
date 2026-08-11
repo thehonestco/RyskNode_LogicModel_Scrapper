@@ -169,7 +169,7 @@ tr.hl td { background: rgba(245,166,35,.05); }
   <div class="vb-badge">{% if declined %}❌ DECLINED{% else %}⚠ {{ risk_band }} — {{ metadata.policy_tier }}{% endif %}</div>
   <div class="vb-text">
     <h2>{% if declined %}ZeroPass™ hard-stop gate triggered — assessment stopped{% else %}Buyer clears all ZeroPass™ gates. Exposure supported with active monitoring conditions.{% endif %}</h2>
-    <p>{{ xai_narrative | safe }}</p>
+    <p>{% if xai_summary %}{{ xai_summary | safe }}{% else %}{{ xai_narrative | safe }}{% endif %}</p>
   </div>
 </div>
 
