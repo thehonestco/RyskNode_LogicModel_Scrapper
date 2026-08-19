@@ -1,9 +1,7 @@
-import asyncio
 import logging
 import os
 
-import inject
-from fastapi import BackgroundTasks, Depends, HTTPException
+from fastapi import HTTPException
 from fastapi.responses import PlainTextResponse
 
 from api.schema.sync import SyncRequest
@@ -11,124 +9,62 @@ from common.base import constants
 from common.base.router import APIRouter
 from common.base.utils import respond
 from common.schema.base import ResponseSchema
-from service.data_gov_sync_service import DataGovSyncService
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1", tags=["Sync"])
 
 
-def run_sync_in_thread(
-    statecode: str | None,
-    sync_service: DataGovSyncService,
-    offset: int | None = None,
-    resume_only_on_interruption: bool = False,
-) -> None:
-    """
-    Synchronous wrapper to execute the async sync_state inside a new thread event loop.
-    This is required to make the background task fully compatible with fastapi-bgtasks-dashboard,
-    which executes background tasks in worker threads.
-    """
-    from app.dependency import create_isolated_uow, dispose_isolated_uow
-
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    uow = create_isolated_uow(sync_service.settings)
-    try:
-        loop.run_until_complete(
-            sync_service.sync_state(
-                state=statecode,
-                uow=uow,
-                offset=offset,
-                resume_only_on_interruption=resume_only_on_interruption,
-            )
-        )
-    except Exception as e:
-        logger.error(f"Error executing sync task in background: {e}", exc_info=True)
-    finally:
-        try:
-            loop.run_until_complete(dispose_isolated_uow(uow))
-        except Exception as dispose_err:
-            logger.error(f"Error disposing UOW engine in thread: {dispose_err}")
-        loop.close()
-
-
 @router.post("/sync/data-gov", response_model=ResponseSchema)
-async def sync_data_gov(
-    request: SyncRequest,
-    background_tasks: BackgroundTasks,
-    sync_service: DataGovSyncService = Depends(lambda: inject.instance(DataGovSyncService)),
-):
+async def sync_data_gov(request: SyncRequest):
     """
-    Trigger the synchronization process of Registrars of Companies (RoC) Company Master Data
-    from data.gov.in as a background task.
-    If statecode is provided in the request body, only that state is synchronized.
-    If statecode is missing/omitted, all states are synchronized page-by-page.
+    Trigger the synchronization of RoC Company Master Data from data.gov.in
+    as a background Celery task.
+
+    Returns a ``task_id`` that can be used to poll status via
+    ``GET /api/v1/tasks/{task_id}``.
     """
-    if sync_service._thread_lock.locked():
-        logger.warning("Rejecting concurrent sync request: another sync is already in progress.")
-        from common.base.error import ApplicationError
+    from asyncworker.tasks import sync_data_gov_state
 
-        raise ApplicationError(
-            response_code=constants.HTTP_409_CONFLICT,
-            message="Another synchronization task is already in progress.",
-        )
-
-    # Schedule the background task using BackgroundTasks.
-    # We use a synchronous wrapper run_sync_in_thread that manages its own event loop.
-    # This ensures full compatibility with the third-party fastapi-bgtasks-dashboard
-    # (which executes tasks in separate OS threads) without raising RuntimeWarnings.
-    background_tasks.add_task(
-        run_sync_in_thread,
-        request.statecode,
-        sync_service,
-        request.offset,
+    task = sync_data_gov_state.delay(
+        statecode=request.statecode,
+        offset=request.offset,
     )
 
     return respond(
         code=constants.HTTP_200_OK,
-        message="Synchronization started in the background.",
+        message="Synchronization task queued.",
         data={
-            "status": "Processing in background",
+            "task_id": task.id,
+            "status": "QUEUED",
             "target_state": request.statecode or "All States",
         },
     )
 
 
 @router.post("/sync/continue", response_model=ResponseSchema)
-async def continue_sync_data_gov(
-    request: SyncRequest,
-    background_tasks: BackgroundTasks,
-    sync_service: DataGovSyncService = Depends(lambda: inject.instance(DataGovSyncService)),
-):
+async def continue_sync_data_gov(request: SyncRequest):
     """
-    Trigger the synchronization continuation.
-    Loads the last report for the requested statecode/All States.
-    - If status is Completed, starts from 0 to refresh/update old records.
-    - Otherwise (Stopped, Failed, Running), resumes from the last successfully synced offset.
+    Continue / resume a previous synchronization.
+
+    Loads the last report for the requested statecode/All States:
+    - If the previous sync completed, starts fresh from offset 0.
+    - If it was interrupted (Stopped/Failed), resumes from last offset.
     """
-    if sync_service._thread_lock.locked():
-        logger.warning("Rejecting concurrent sync request: another sync is already in progress.")
-        from common.base.error import ApplicationError
+    from asyncworker.tasks import sync_data_gov_state
 
-        raise ApplicationError(
-            response_code=constants.HTTP_409_CONFLICT,
-            message="Another synchronization task is already in progress.",
-        )
-
-    background_tasks.add_task(
-        run_sync_in_thread,
-        request.statecode,
-        sync_service,
-        None,  # Dynamic offset from latest report
-        True,  # resume_only_on_interruption = True
+    task = sync_data_gov_state.delay(
+        statecode=request.statecode,
+        offset=None,  # dynamic offset determined from latest report
+        resume_only_on_interruption=True,
     )
 
     return respond(
         code=constants.HTTP_200_OK,
-        message="Continuation/Resume synchronization started in the background.",
+        message="Continuation/Resume synchronization task queued.",
         data={
-            "status": "Processing in background",
+            "task_id": task.id,
+            "status": "QUEUED",
             "target_state": request.statecode or "All States",
             "mode": "Continuation",
         },
@@ -136,24 +72,29 @@ async def continue_sync_data_gov(
 
 
 @router.post("/sync/stop", response_model=ResponseSchema)
-async def stop_sync_data_gov(
-    sync_service: DataGovSyncService = Depends(lambda: inject.instance(DataGovSyncService)),
-):
+async def stop_sync_data_gov(task_id: str | None = None):
     """
-    Stop the currently running background synchronization task.
+    Revoke a running synchronization task.
+
+    Args:
+        task_id: The Celery task ID to revoke (from the sync/continue response).
+                 If not provided, returns an error.
     """
-    if not sync_service._thread_lock.locked():
+    if not task_id:
         return respond(
             code=constants.HTTP_200_OK,
-            message="No synchronization task is currently running.",
-            data={"status": "Inactive"},
+            message="No task_id provided. Use the task_id from the sync/continue response.",
+            data={"status": "NO_ACTION"},
         )
 
-    sync_service._stop_requested = True
+    from asyncworker import app as celery_app
+
+    celery_app.control.revoke(task_id, terminate=True, signal="SIGTERM")
+
     return respond(
         code=constants.HTTP_200_OK,
-        message="Stop request received. The synchronization task will stop cleanly after processing the current page/retries.",
-        data={"status": "Stopping"},
+        message=f"Revoke signal sent for task {task_id}.",
+        data={"task_id": task_id, "status": "REVOKING"},
     )
 
 
@@ -182,11 +123,10 @@ async def list_reports():
                         "filename": file,
                         "created_at": str(
                             os.path.basename(file).split("_")[-1].replace(".md", "")
-                        ),  # parse/approximate timestamp from name
+                        ),
                         "size_bytes": stat.st_size,
                     }
                 )
-        # Sort by filename descending (newest first)
         reports.sort(key=lambda x: x["filename"], reverse=True)
         return respond(code=constants.HTTP_200_OK, data=reports)
     except Exception as e:
@@ -197,9 +137,8 @@ async def list_reports():
 @router.get("/sync/reports/{report_name}", response_class=PlainTextResponse)
 async def get_report_content(report_name: str):
     """
-    Retrieve the markdown content of a specific statewise synchronization report.
+    Retrieve the markdown content of a specific synchronization report.
     """
-    # Strict path sanitization to prevent directory traversal
     safe_name = os.path.basename(report_name)
     if safe_name != report_name or not report_name.endswith(".md"):
         raise HTTPException(status_code=400, detail="Invalid report filename.")
@@ -217,3 +156,4 @@ async def get_report_content(report_name: str):
     except Exception as e:
         logger.error(f"Error reading report {report_name}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to read report: {e}")
+

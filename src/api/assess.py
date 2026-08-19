@@ -18,7 +18,11 @@ async def assess_buyer_json(
     request: BuyerAssessRequest,
     ppre_service: PPREService = Depends(lambda: inject.instance(PPREService)),
 ):
-    """S1 Buyer Risk Assessment JSON API."""
+    """
+    S1 Buyer Risk Assessment JSON API (Synchronous).
+
+    Directly executes the assessment in-process and returns the full JSON result.
+    """
     result = await ppre_service.assess_buyer(
         entity_id=request.entity_id,
         seller_id=request.seller_id,
@@ -26,11 +30,9 @@ async def assess_buyer_json(
         state_code=request.state_code,
         include_xai=request.include_xai,
     )
-    # The output from assess_buyer contains internal fields like _ppre_output,
-    # but we can filter it using Pydantic or respond directly.
-    # We validate via BuyerAssessResponse to ensure correct schema.
     response_obj = BuyerAssessResponse.model_validate(result)
     return respond(code=constants.HTTP_200_OK, data=response_obj.model_dump())
+
 
 
 @router.post("/assess/report", response_class=HTMLResponse)
@@ -49,3 +51,4 @@ async def assess_buyer_report(
     )
     html_content = report_service.render_s1_report(result)
     return HTMLResponse(content=html_content, status_code=200)
+

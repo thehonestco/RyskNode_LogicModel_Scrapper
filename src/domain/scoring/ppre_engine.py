@@ -364,6 +364,7 @@ def score_entity(
     avg_monthly_purchase_volume: Optional[float] = None,
     credit_period_days: int = 30,
     ead: Optional[float] = None,
+    include_xai: bool = True,
 ) -> Dict:
     """
     Score a single Buyer entity end-to-end using the
@@ -573,7 +574,7 @@ def score_entity(
     }
     all_reason_codes = list(pd_map.reason_codes) + list(feature_row.get("conduct_reasons", []))
 
-    if lgbm_art and X_train is not None:
+    if lgbm_art and X_train is not None and include_xai:
         try:
             explainer = CreditExplainer(
                 lgbm_model=lgbm_art,

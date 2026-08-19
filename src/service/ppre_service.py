@@ -848,6 +848,9 @@ class PPREService:
                 },
             }
 
+        if state_code:
+            raw_feature_row["state"] = state_code
+
         ratios = self._derive_ratios(raw_feature_row)
         vintage = self._derive_business_vintage(raw_feature_row)
         record = self._build_normalized_record(raw_feature_row)
@@ -893,6 +896,7 @@ class PPREService:
             avg_monthly_purchase_volume=avg_monthly_purchase_volume,
             credit_period_days=credit_period_days,
             ead=ead,
+            include_xai=include_xai,
         )
 
         # Calculate pralyon score (credit score mapped from blended_pd / band)
@@ -992,10 +996,12 @@ class PPREService:
 
         metadata = {
             "company_name": db_row.get("company_name"),
+            "trade_name": trade_name or db_row.get("company_name"),
             "cin": db_row.get("cin"),
             "gstin": raw_feature_row.get("gstin") or overview.get("gstin"),
             "pan": raw_feature_row.get("pan"),
-            "state": db_row.get("registered_state") or overview.get("registeredState") or overview.get("businessState") or "Maharashtra",
+            "state": state_code or db_row.get("registered_state") or overview.get("registeredState") or overview.get("businessState") or "Maharashtra",
+            "state_code": state_code or db_row.get("registered_state"),
             "incorporation_date": str(db_row.get("incorporation_date") or raw_feature_row.get("incorporation_date")),
             "vintage_years": int(vintage or 0),
             "report_date": datetime.now(timezone.utc).strftime("%d %b %Y"),
