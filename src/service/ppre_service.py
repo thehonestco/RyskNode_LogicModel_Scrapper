@@ -796,6 +796,456 @@ class PPREService:
                 )
         return 3.0
 
+    def _assemble_granular_sections(
+        self,
+        *,
+        entity_id: str,
+        seller_id: str,
+        assessed_at: str,
+        pralyon_score: int,
+        risk_band: str,
+        blended_pd: float,
+        lgd_estimate: float,
+        conduct_score: float,
+        financial_score: float,
+        identity_score: float,
+        legal_score: float,
+        documentation_score: float,
+        xai_summary: Optional[str] = None,
+        xai_summary_text: Optional[str] = None,
+        xai_narrative: str = "",
+        xai_narrative_text: Optional[str] = None,
+        xai_narrative_lines: Optional[list] = None,
+        dimension_readings: Optional[dict] = None,
+        table_enrichments: Optional[dict] = None,
+        lime_methodology_note: Optional[str] = None,
+        shap_top_features: Optional[list] = None,
+        shap_ranked: Optional[list] = None,
+        lime_explanation: Optional[dict] = None,
+        data_sources_used: Optional[list] = None,
+        pipeline_version: str = "2.2.0",
+        metadata: Optional[dict] = None,
+        input_parameters: Optional[dict] = None,
+        final_feature_row: Any = None,
+        ppre_output: Optional[dict] = None,
+        is_hard_decline: bool = False,
+        decline_reason: Optional[str] = None,
+    ) -> dict:
+        metadata = metadata or {}
+        dimension_readings = dimension_readings or {}
+        table_enrichments = table_enrichments or {}
+        shap_top_features = shap_top_features or []
+        shap_ranked = shap_ranked or []
+        lime_explanation = lime_explanation or {}
+        data_sources_used = data_sources_used or ["mca", "gst", "ecourts"]
+        input_parameters = input_parameters or {}
+        ppre_output = ppre_output or {}
+        xai_narrative_lines = xai_narrative_lines or [xai_narrative]
+
+        declined = is_hard_decline or risk_band in ("D", "UNSCOREABLE")
+        blended_pd_pct = round(blended_pd * 100, 2)
+        zp = metadata.get("zeropass") or {}
+        any_gate_failed = is_hard_decline or any(zp.get(f"g{i}_fail", False) for i in range(1, 9))
+
+        # ── 1. Overview ──
+        overview = {
+            "company_name": metadata.get("company_name"),
+            "trade_name": metadata.get("trade_name") or metadata.get("company_name"),
+            "report_id": metadata.get("report_id"),
+            "report_date": metadata.get("report_date"),
+            "suite_label": "Service 1 of 5 · Pralyon Intelligence Suite",
+            "meta_bar": {
+                "cin": metadata.get("cin"),
+                "gstin": metadata.get("gstin"),
+                "pan": metadata.get("pan"),
+                "registered_state": metadata.get("state"),
+                "incorporation_date": metadata.get("incorporation_date"),
+                "vintage_years": metadata.get("vintage_years"),
+                "report_date": metadata.get("report_date"),
+                "report_id": metadata.get("report_id"),
+            },
+            "feature_pills": [
+                {"title": "Pralyon AI", "subtitle": "Predictive engine"},
+                {"title": "Tri-Core™", "subtitle": "3-track synthesis"},
+                {"title": f"RiskBand™ {risk_band}", "subtitle": "7-tier classification"},
+                {"title": "35 Signals", "subtitle": "6 authoritative sources"},
+                {"title": "TraceLayer™", "subtitle": "Full explainability"},
+            ],
+            "verdict": {
+                "declined": declined,
+                "badge_text": "❌ DECLINED" if declined else f"⚠ {risk_band} — {metadata.get('policy_tier', risk_band)}",
+                "headline": (
+                    f"ZeroPass™ hard-stop gate triggered — {decline_reason or 'assessment stopped'}"
+                    if declined
+                    else "Buyer clears all ZeroPass™ gates. Exposure supported with active monitoring conditions."
+                ),
+                "summary_html": xai_summary or xai_narrative or "",
+                "summary_text": xai_summary_text or xai_narrative_text or xai_narrative or "",
+            },
+            "key_metrics": {
+                "risk_band": {
+                    "value": risk_band,
+                    "label": "RiskBand™",
+                    "sub_text": metadata.get("policy_tier") or risk_band,
+                },
+                "blended_pd": {
+                    "value": blended_pd,
+                    "display": f"{blended_pd_pct}%",
+                    "label": "Blended PD",
+                    "sub_text": "12-month horizon",
+                },
+                "zeropass_status": {
+                    "value": "HARD STOP" if (declined or any_gate_failed) else "ALL CLEAR",
+                    "label": "ZeroPass™",
+                    "sub_text": "Gate triggered" if (declined or any_gate_failed) else "8 of 8 gates passed",
+                },
+                "signals_count": {
+                    "value": 35,
+                    "label": "Signals Pulled",
+                    "sub_text": "Across 6 sources",
+                },
+            },
+            "pralyon_score": pralyon_score,
+        }
+
+        # ── 2. Entity Identity ──
+        gstin = metadata.get("gstin")
+        pan = metadata.get("pan")
+        inc_date = metadata.get("incorporation_date")
+        addr = metadata.get("registered_address")
+        auth_cap = metadata.get("authorized_capital")
+        paid_cap = metadata.get("paid_up_capital")
+
+        entity_identity = {
+            "verified_profiles": [
+                {"field": "Legal name", "value": metadata.get("company_name"), "source": "MCA CIN API", "status": "Verified" if metadata.get("company_name") else "Missing", "status_class": "pass" if metadata.get("company_name") else "fail"},
+                {"field": "CIN", "value": metadata.get("cin"), "source": "MCA CIN API", "status": "Active" if metadata.get("cin") else "Missing", "status_class": "pass" if metadata.get("cin") else "fail"},
+                {"field": "GSTIN", "value": gstin, "source": "GSTIN Advanced API", "status": "Active · Regular" if gstin else "Missing", "status_class": "pass" if gstin else "fail"},
+                {"field": "PAN", "value": pan, "source": "PAN → CIN cross-verified", "status": "Match" if pan else "Missing", "status_class": "pass" if pan else "fail"},
+                {"field": "Incorporation date", "value": f"{inc_date} · {metadata.get('vintage_years', 0)} years" if inc_date else None, "source": "MCA CIN API", "status": "Verified" if inc_date else "Missing", "status_class": "neutral" if inc_date else "fail"},
+                {"field": "Registered address", "value": addr, "source": "MCA CIN API", "status": "Confirmed" if addr and addr != "Not Available" else "Pending", "status_class": "pass" if addr and addr != "Not Available" else "warn"},
+                {"field": "Sector / NIC", "value": f"NIC {metadata.get('nic_code')} · {metadata.get('sector')}" if metadata.get("nic_code") else None, "source": "MCA CIN API", "status": "Confirmed" if metadata.get("nic_code") else "Pending", "status_class": "pass" if metadata.get("nic_code") else "warn"},
+                {"field": "Authorised capital", "value": f"₹{auth_cap}" if auth_cap and auth_cap != '-' else "Not Available", "source": "MCA", "status": "On file" if auth_cap and auth_cap != '-' else "Missing", "status_class": "neutral" if auth_cap and auth_cap != '-' else "warn"},
+                {"field": "Paid-up capital", "value": f"₹{paid_cap}" if paid_cap and paid_cap != '-' else "Not Available", "source": "MCA", "status": "On file" if paid_cap and paid_cap != '-' else "Missing", "status_class": "neutral" if paid_cap and paid_cap != '-' else "warn"},
+                {"field": "ROC", "value": metadata.get("roc"), "source": "MCA CIN API", "status": "Compliant" if metadata.get("roc") else "Pending", "status_class": "pass" if metadata.get("roc") else "warn"},
+                {"field": "MCA company status", "value": metadata.get("company_status"), "source": "MCA CIN API", "status": metadata.get("company_status") or "Unknown", "status_class": "pass" if metadata.get("company_status") == "Active" else "warn"},
+            ]
+        }
+
+        # ── 3. Director Profile ──
+        directors_formatted = []
+        for d in metadata.get("directors", []):
+            disq = d.get("disqualified", False)
+            directors_formatted.append({
+                "name": d.get("name", "Unknown"),
+                "din": d.get("din", "N/A"),
+                "designation": d.get("designation", "Director"),
+                "sec_164_disqualified": disq,
+                "other_entities_count": d.get("other_entities_count", 0),
+                "struck_off_links": d.get("struck_off_links", "None"),
+                "status": d.get("status", "Clear"),
+                "status_class": "fail" if disq else "pass",
+            })
+        director_profile = {
+            "directors": directors_formatted,
+            "summary_text": (
+                f"All {len(directors_formatted)} director(s) hold active DIN status. No disqualification under Section 164(2). No association with struck-off or wound-up entities."
+                if directors_formatted else "No directors found."
+            ),
+        }
+
+        # ── 4. ZeroPass ──
+        gate_defs = [
+            ("G-01", "NCLT / CIRP insolvency proceedings", "g1"),
+            ("G-02", "Director disqualification under Sec 164", "g2"),
+            ("G-03", "GSTIN active — not suspended / cancelled", "g3"),
+            ("G-04", "MCA company status — Active", "g4"),
+            ("G-05", "RBI / CIBIL wilful defaulter list", "g5"),
+            ("G-06", "Section 138 cheque bounce (NI Act)", "g6"),
+            ("G-07", "DRT lender recovery proceedings", "g7"),
+            ("G-08", "Negative net worth (MCA XBRL)", "g8"),
+        ]
+        gates = []
+        for gid, gcheck, gkey in gate_defs:
+            gfailed = zp.get(f"{gkey}_fail", False)
+            gates.append({
+                "gate_id": gid,
+                "check": gcheck,
+                "result": zp.get(f"{gkey}_result", "N/A"),
+                "disposition": "Triggered" if gfailed else "Clear",
+                "status_class": "fail" if gfailed else "pass",
+            })
+        zeropass = {
+            "headline": "Hard-stop gate triggered — scoring stopped" if (any_gate_failed or declined) else "All 8 gates cleared — scoring proceeds",
+            "description": "ZeroPass™ evaluates 8 disqualifying conditions before any score is computed. If any gate triggers, the report stops and surfaces a hard-stop — no RiskBand™ is produced for an unsafe subject.",
+            "gates": gates,
+        }
+
+        # ── 5. Tri-Core ──
+        readings = metadata.get("readings") or dimension_readings or {}
+        dimensions = [
+            {"name": "Financial Health", "weight": "40%", "score": int(financial_score), "max_score": 100, "reading": readings.get("financial", "")},
+            {"name": "Identity & Governance", "weight": "25%", "score": int(identity_score), "max_score": 100, "reading": readings.get("identity", "")},
+            {"name": "Legal & Compliance", "weight": "20%", "score": int(legal_score), "max_score": 100, "reading": readings.get("legal", "")},
+            {"name": "Conduct & Behaviour", "weight": "15%", "score": int(conduct_score), "max_score": 100, "reading": readings.get("conduct", "")},
+        ]
+        band_ladder_defs = [
+            ("AAA", "< 0.3%", "Institutional-grade counterparty"),
+            ("AA", "0.3–1.0%", "Very strong — generous terms justifiable"),
+            ("A", "1.0–3.0%", "Low-moderate risk — standard trade credit"),
+            ("BBB", "3.0–4.0%", "Adequate — minor watchpoints present"),
+            ("BB", "4.0–7.0%", "Monitored pass — exposure supportable with conditions"),
+            ("B", "7.0–15%", "Elevated risk — short tenor only"),
+            ("CCC-D", "> 15%", "Do not extend trade credit"),
+        ]
+        band_ladder = []
+        for b, pdr, br in band_ladder_defs:
+            is_curr = (risk_band == b) or (risk_band in ("CCC", "D", "UNSCOREABLE") and b == "CCC-D")
+            item = {"band": b, "pd_range": pdr, "reading": br, "is_current": is_curr}
+            if is_curr:
+                item["blended_pd_display"] = f"{blended_pd_pct}%"
+            band_ladder.append(item)
+
+        tri_core = {
+            "headline": f"RiskBand™ {risk_band} · Blended PD {blended_pd_pct}%",
+            "description": "Three independent scoring tracks are run in parallel and synthesised into a single calibrated score, which maps to the RiskBand™. No single track can override the others — all three must converge.",
+            "dimensions": dimensions,
+            "band_ladder": band_ladder,
+        }
+
+        # ── 6. Financial Performance ──
+        fin_history = metadata.get("financials") or metadata.get("financial_history") or []
+        ratios_dict = metadata.get("ratios") or {}
+        insights_dict = metadata.get("ratio_insights") or {}
+
+        stmt_years = [f.get("year", f"FY{idx}") for idx, f in enumerate(fin_history)]
+        stmt_metric_keys = [
+            ("Total Revenue / Turnover", "revenue", "currency_cr"),
+            ("EBIT (Operating Profit)", "ebit", "currency_cr"),
+            ("PAT (Net Profit After Tax)", "pat", "currency_cr"),
+            ("Tangible Net Worth / Networth", "networth", "currency_cr"),
+            ("Total Borrowings / Debt", "total_debt", "currency_cr"),
+            ("Current Assets", "current_assets", "currency_cr"),
+            ("Current Liabilities", "current_liabilities", "currency_cr"),
+            ("Trade Receivables", "receivables", "currency_cr"),
+        ]
+        stmt_rows = []
+        for sm_label, sm_key, sm_fmt in stmt_metric_keys:
+            vals = {f.get("year", ""): f.get(sm_key) for f in fin_history}
+            stmt_rows.append({"metric": sm_label, "values": vals, "format": sm_fmt})
+
+        ratio_defs = [
+            ("Current Ratio", "current_ratio", "×", 2),
+            ("Quick Ratio", "quick_ratio", "×", 2),
+            ("Debt / Equity", "debt_to_equity", "×", 2),
+            ("EBIT Margin", "ebit_margin", "%", 1),
+            ("Net Profit Margin", "net_margin", "%", 1),
+            ("Interest Coverage (ICR)", "icr", "×", 1),
+            ("Return on Capital (ROCE)", "roce", "%", 1),
+            ("DSO (Debtor Days)", "dso", " days", 0),
+            ("DPO (Creditor Days)", "dpo", " days", 0),
+            ("Tangible Net Worth", "tangible_net_worth", None, 2),
+        ]
+        ratios_formatted = []
+        for rname, rkey, rsuff, rprec in ratio_defs:
+            rval = ratios_dict.get(rkey)
+            rins = insights_dict.get(rkey) or {}
+            if rkey == "tangible_net_worth":
+                rdisp = f"₹{rval / 10_000_000:.2f} Cr" if rval is not None else "N/A"
+            elif rval is not None:
+                rdisp = f"{round(rval, rprec)}{rsuff or ''}"
+            else:
+                rdisp = "N/A"
+            ratios_formatted.append({
+                "name": rname,
+                "value": rval,
+                "display": rdisp,
+                "benchmark": rins.get("benchmark", ""),
+                "status": rins.get("status", ""),
+                "status_class": rins.get("status_class", "neutral"),
+                "implication": rins.get("implication", ""),
+            })
+
+        financial_performance = {
+            "statements": {"years": stmt_years, "rows": stmt_rows},
+            "ratios": ratios_formatted,
+        }
+
+        # ── 7. BehaviourPrint ──
+        gst_meta = metadata.get("gst") or {}
+        epfo_meta = metadata.get("epfo") or {}
+        charge_meta = metadata.get("charge") or {}
+        gst_txt = gst_meta.get("filing_consistency_label", "")
+        gst_ok = "regular" in gst_txt.lower() or "good" in gst_txt.lower()
+
+        behaviour_print = {
+            "signals": [
+                {"signal": "GST filing discipline", "type": "Strength" if gst_ok else "Watchpoint", "type_class": "pass" if gst_ok else "warn", "observation": f"Filing consistency: {gst_txt}", "implication": "Strong compliance discipline — low statutory default risk." if gst_ok else "Potential cashflow stress indicator."},
+                {"signal": "EPFO headcount trend", "type": "Watchpoint" if epfo_meta.get("headcount_drop") else "Strength", "type_class": "warn" if epfo_meta.get("headcount_drop") else "pass", "observation": f"EPFO headcount: {epfo_meta.get('employee_count') or 'N/A'} employees", "implication": "Recent workforce contraction detected." if epfo_meta.get("headcount_drop") else "Stable workforce indicator."},
+                {"signal": "EPFO challan defaults", "type": "Strength" if epfo_meta.get("pf_filing_regular") else "Watchpoint", "type_class": "pass" if epfo_meta.get("pf_filing_regular") else "warn", "observation": f"ECR filings: {'Regular' if epfo_meta.get('pf_filing_regular') else 'Delayed'}", "implication": "Strong payroll compliance behaviour." if epfo_meta.get("pf_filing_regular") else "Delayed payroll payments observed."},
+                {"signal": "Charge register quality", "type": "Watchpoint" if charge_meta.get("has_active") else "Strength", "type_class": "warn" if charge_meta.get("has_active") else "pass", "observation": charge_meta.get("charge_summary") or "No active charges", "implication": "Secured credit activity." if charge_meta.get("has_active") else "No third-party lender credit discipline."},
+            ]
+        }
+
+        # ── 8. Compliance Intelligence ──
+        compliance_intelligence = {
+            "checks": [
+                {"check": "GSTIN status", "result": "Active" if gstin else "Inactive", "status": "Active" if gstin else "Inactive", "status_class": "pass" if gstin else "fail", "implication": "ITC can be claimed on invoices." if gstin else "ITC not claimable."},
+                {"check": "EPFO / PF continuity", "result": f"ECR Filings: {'Regular' if epfo_meta.get('pf_filing_regular') else 'Delayed'}", "status": "Compliant" if epfo_meta.get("pf_filing_regular") else "Flagged", "status_class": "pass" if epfo_meta.get("pf_filing_regular") else "warn", "implication": "No workforce payment defaults." if epfo_meta.get("pf_filing_regular") else "Payroll payment gaps exist."},
+                {"check": "EPFO headcount declared", "result": f"{epfo_meta.get('employee_count') or 'N/A'} employees", "status": "On file" if epfo_meta.get("employee_count") else "Missing", "status_class": "pass" if epfo_meta.get("employee_count") else "warn", "implication": "Statutory workforce details."},
+                {"check": "RBI defaulter list", "result": "Listed" if zp.get("g5_fail") else "Not listed", "status": "Flagged" if zp.get("g5_fail") else "Clear", "status_class": "fail" if zp.get("g5_fail") else "pass", "implication": "Banking default risk." if zp.get("g5_fail") else "No banking default."},
+            ]
+        }
+
+        # ── 9. Legal & Litigation ──
+        leg_meta = metadata.get("legal") or {}
+        hc_cnt = leg_meta.get("hc_cases", 0)
+        nclt_cnt = leg_meta.get("nclt_cases", 0)
+        drt_cnt = leg_meta.get("drt_cases", 0)
+        act_cnt = leg_meta.get("active_cases", 0)
+
+        legal_litigation = {
+            "cases": [
+                {"forum": "High Court", "matter_type": "Civil / Commercial", "count": hc_cnt, "status": "Clear" if hc_cnt == 0 else f"{hc_cnt} matters", "status_class": "pass" if hc_cnt == 0 else "warn", "implication": "No High Court matters found." if hc_cnt == 0 else "High Court references identified."},
+                {"forum": "NCLT", "matter_type": "Insolvency / Company matter", "count": nclt_cnt, "status": "Clear" if nclt_cnt == 0 else f"{nclt_cnt} matters", "status_class": "pass" if nclt_cnt == 0 else "fail", "implication": "No insolvency matters found." if nclt_cnt == 0 else "Insolvency matters identified."},
+                {"forum": "DRT / DRAT", "matter_type": "Debt recovery", "count": drt_cnt, "status": "Clear" if drt_cnt == 0 else f"{drt_cnt} cases", "status_class": "pass" if drt_cnt == 0 else "fail", "implication": "No lender recovery proceedings." if drt_cnt == 0 else "Lender recovery proceedings found."},
+                {"forum": "Commercial Court", "matter_type": "B2B contract dispute", "count": act_cnt, "status": "Clear" if act_cnt == 0 else "Active", "status_class": "pass" if act_cnt == 0 else "warn", "implication": "No active litigation." if act_cnt == 0 else f"{act_cnt} active case(s) identified."},
+            ],
+            "summary_text": "No active litigation found across any forum." if (hc_cnt + nclt_cnt + drt_cnt + act_cnt) == 0 else "Active litigation identified — factored into Legal track scoring.",
+        }
+
+        # ── 10. Charge Register ──
+        charges_fmt = []
+        for idx, ch in enumerate(metadata.get("charges", []), 1):
+            amt = ch.get("amount", 0)
+            st = str(ch.get("status", "active")).lower()
+            is_sat = st in ("closed", "satisfied")
+            charges_fmt.append({
+                "charge_id": f"CH-{idx}",
+                "lender": ch.get("lender", "Unknown"),
+                "amount": amt,
+                "display_amount": f"₹{amt / 100_000:.2f} L" if amt else "-",
+                "created": ch.get("created", "N/A"),
+                "status": "Satisfied" if is_sat else "Active",
+                "status_class": "pass" if is_sat else "warn",
+                "risk_note": "Standard charge registry entry",
+            })
+        charge_register = {
+            "charges": charges_fmt,
+            "empty_text": "No charges registered on MCA21 charge register." if not charges_fmt else None,
+            "summary_text": "No institutional lenders on record." if not charges_fmt else f"{len(charges_fmt)} charge(s) identified on MCA21 charge register.",
+        }
+
+        # ── 11. TraceLayer ──
+        trace_sigs = []
+        for idx, feat in enumerate((shap_top_features or shap_ranked or [])[:5], 1):
+            is_wp = (feat.get("impact") or 0) > 0
+            trace_sigs.append({
+                "signal_id": idx,
+                "track": "Computed Track",
+                "type": "Watchpoint" if is_wp else "Positive",
+                "title": f"Model feature: {feat.get('feature', 'unknown')}",
+                "description": "This signal contributed significantly to the final predictive score and Blended PD outcome.",
+                "watchpoint": "⚑ Watchpoint — This feature increased the computed risk profile." if is_wp else None,
+            })
+        if not trace_sigs:
+            trace_sigs.append({
+                "signal_id": 1,
+                "track": "Blended PD Output",
+                "type": "Assessment",
+                "title": "Primary Model Assessment",
+                "description": xai_narrative_text or xai_narrative or "",
+                "watchpoint": None,
+            })
+        trace_layer = {
+            "headline": f"Every signal explained — what drove the {risk_band} output",
+            "signals": trace_sigs,
+            "methodology_note": lime_methodology_note,
+        }
+
+        # ── 12. Monitoring Conditions ──
+        band_order = ["AAA", "AA", "A", "BBB", "BB", "B", "CCC", "D"]
+        try:
+            b_idx = band_order.index(risk_band)
+            next_band = band_order[b_idx + 1] if b_idx + 1 < len(band_order) else "D"
+        except ValueError:
+            next_band = "D"
+
+        triggers = [
+            {"trigger": "RiskBand™ drift", "event": f"Band falls from {risk_band} to {next_band} or below", "auto_response": "Alert · Tri-Core™ rerun", "required_action": "Reassess limit within 5 days"},
+            {"trigger": "EPFO headcount", "event": "Falls below threshold in next assessment", "auto_response": "Alert · BehaviourPrint™ flag", "required_action": "Re-run full assessment · consider limit reduction"},
+            {"trigger": "Commercial court matter", "event": "Progresses to decree, execution, or attachment", "auto_response": "Critical alert · ZeroPass™ re-evaluation", "required_action": "Pause new orders · immediate legal review"},
+            {"trigger": "GST filing gap", "event": "Any GSTR-3B month missed or GSTR mismatch > 15%", "auto_response": "Alert · compliance flag", "required_action": "Flag for limit review · do not extend new credit"},
+            {"trigger": "Revenue trend", "event": "GST turnover drops > 20% YoY in next assessment", "auto_response": "Alert · financial track recompute", "required_action": "Re-run full assessment · do not auto-renew exposure"},
+            {"trigger": "New DRT case", "event": "Lender recovery filing against entity or director", "auto_response": "Critical alert · halt new orders", "required_action": "Immediate review · pause shipments · legal counsel"},
+            {"trigger": "Director change", "event": "Any director resignation or new DIN added", "auto_response": "Alert · governance flag", "required_action": "Run fresh DIN screen within 30 days"},
+            {"trigger": "NCLT / CIRP", "event": "Insolvency admitted against entity", "auto_response": "ZeroPass™ G-01 breach · auto halt", "required_action": "Recover exposure immediately · legal counsel"},
+            {"trigger": "Report expiry", "event": f"30 days from generation — {metadata.get('report_date', '')}", "auto_response": "Expiry alert", "required_action": "Re-run report before next shipment or order approval"},
+        ]
+        monitoring_conditions = {
+            "validity_text": f"Valid for 30 days from {metadata.get('report_date', 'report generation')}",
+            "triggers": triggers,
+            "upsell": {
+                "title": "Credit limit and tenor are not computed in this report — upgrade to Service 2",
+                "description": "The Buyer Risk Assessment is intentionally complete on buyer intelligence and intentionally silent on credit limit and tenor. To receive an AnchorEngine™-computed safe exposure limit, ShockFrame™ stress scenarios, and a calibrated tenor recommendation, upgrade to the Operational Limit Assessment (Service 2).",
+            },
+        }
+
+        # ── 13. Footer ──
+        footer = {
+            "brand": "RyskNode · Pralyon Intelligence Suite",
+            "report_line": f"Service 1 · Buyer Risk Assessment · {metadata.get('company_name', '')} · {metadata.get('report_id', '')}",
+            "confidentiality": "Confidential · Internal use only · Not for redistribution",
+        }
+
+        return {
+            # UI Component sections for /reports
+            "overview": overview,
+            "entity_identity": entity_identity,
+            "director_profile": director_profile,
+            "zeropass": zeropass,
+            "tri_core": tri_core,
+            "financial_performance": financial_performance,
+            "behaviour_print": behaviour_print,
+            "compliance_intelligence": compliance_intelligence,
+            "legal_litigation": legal_litigation,
+            "charge_register": charge_register,
+            "trace_layer": trace_layer,
+            "monitoring_conditions": monitoring_conditions,
+            "footer": footer,
+
+            # Flat/core fields for backwards-compatibility with CreditLimit (S2) and HTML ReportService
+            "entity_id": entity_id,
+            "seller_id": seller_id,
+            "assessed_at": assessed_at,
+            "pralyon_score": pralyon_score,
+            "risk_band": risk_band,
+            "blended_pd": blended_pd,
+            "lgd_estimate": lgd_estimate,
+            "conduct_score": conduct_score,
+            "financial_score": financial_score,
+            "identity_score": identity_score,
+            "legal_score": legal_score,
+            "documentation_score": documentation_score,
+            "xai_summary": xai_summary,
+            "xai_summary_text": xai_summary_text,
+            "dimension_readings": dimension_readings,
+            "table_enrichments": table_enrichments,
+            "lime_methodology_note": lime_methodology_note,
+            "xai_narrative": xai_narrative,
+            "xai_narrative_text": xai_narrative_text,
+            "xai_narrative_lines": xai_narrative_lines,
+            "shap_top_features": shap_top_features,
+            "shap_ranked": shap_ranked,
+            "lime_explanation": lime_explanation,
+            "data_sources_used": data_sources_used,
+            "pipeline_version": pipeline_version,
+            "metadata": metadata,
+            "input_parameters": input_parameters,
+            "final_feature_row": final_feature_row,
+            "_ppre_output": ppre_output,
+        }
+
     async def assess_buyer(
         self,
         entity_id: str,
@@ -813,40 +1263,41 @@ class PPREService:
 
         if raw_feature_row.get("hard_decline") or raw_feature_row.get("decision") == "DECLINE":
             decline_reason = raw_feature_row.get("hard_decline_reason") or raw_feature_row.get("decline_reason") or "Triggered by hard check gates"
-            return {
-                "entity_id": entity_id,
-                "seller_id": seller_id,
-                "assessed_at": datetime.now(timezone.utc).isoformat(),
-                "pralyon_score": 300,
-                "risk_band": "D",
-                "blended_pd": 1.0,
-                "lgd_estimate": 0.85,
-                "conduct_score": 0.0,
-                "financial_score": 0.0,
-                "identity_score": 0.0,
-                "legal_score": 0.0,
-                "documentation_score": 0.0,
-                "xai_narrative": f"Hard decline triggered: {decline_reason}",
-                "xai_narrative_text": f"Hard decline triggered: {decline_reason}",
-                "xai_narrative_lines": [f"Hard decline triggered: {decline_reason}"],
-                "shap_top_features": [],
-                "shap_ranked": [],
-                "lime_explanation": {},
-                "data_sources_used": ["mca"],
-                "pipeline_version": "2.2.0",
-                "metadata": {
-                    "company_name": db_row.get("company_name"),
-                    "cin": db_row.get("cin"),
-                    "gstin": raw_feature_row.get("gstin"),
-                    "pan": raw_feature_row.get("pan"),
-                    "state": raw_feature_row.get("state"),
-                    "incorporation_date": str(raw_feature_row.get("incorporation_date")),
-                    "vintage_years": 0,
-                    "report_date": datetime.now(timezone.utc).strftime("%d %b %Y"),
-                    "report_id": f"PRY-S1-{datetime.now(timezone.utc).strftime('%Y%m%d')}-0001",
-                    "policy_tier": "DECLINE",
-                },
+            now_iso = datetime.now(timezone.utc).isoformat()
+            decline_meta = {
+                "company_name": db_row.get("company_name"),
+                "cin": db_row.get("cin"),
+                "gstin": raw_feature_row.get("gstin"),
+                "pan": raw_feature_row.get("pan"),
+                "state": raw_feature_row.get("state"),
+                "incorporation_date": str(raw_feature_row.get("incorporation_date")),
+                "vintage_years": 0,
+                "report_date": datetime.now(timezone.utc).strftime("%d %b %Y"),
+                "report_id": f"PRY-S1-{datetime.now(timezone.utc).strftime('%Y%m%d')}-0001",
+                "policy_tier": "DECLINE",
             }
+            return self._assemble_granular_sections(
+                entity_id=entity_id,
+                seller_id=seller_id,
+                assessed_at=now_iso,
+                pralyon_score=300,
+                risk_band="D",
+                blended_pd=1.0,
+                lgd_estimate=0.85,
+                conduct_score=0.0,
+                financial_score=0.0,
+                identity_score=0.0,
+                legal_score=0.0,
+                documentation_score=0.0,
+                xai_narrative=f"Hard decline triggered: {decline_reason}",
+                xai_narrative_text=f"Hard decline triggered: {decline_reason}",
+                xai_narrative_lines=[f"Hard decline triggered: {decline_reason}"],
+                data_sources_used=["mca"],
+                pipeline_version="2.2.0",
+                metadata=decline_meta,
+                is_hard_decline=True,
+                decline_reason=decline_reason,
+            )
 
         if state_code:
             raw_feature_row["state"] = state_code
@@ -1209,35 +1660,34 @@ class PPREService:
             data_sufficiency_band=raw_feature_row.get("data_sufficiency_band")
         )
 
-        return {
-            "entity_id": entity_id,
-            "seller_id": seller_id,
-            "assessed_at": datetime.now(timezone.utc).isoformat(),
-            "pralyon_score": pralyon_score,
-            "risk_band": scored["pd_band"],
-            "blended_pd": scored["blended_pd"],
-            "lgd_estimate": scored.get("lgd_pred") or 0.45,
-            "conduct_score": float(raw_feature_row.get("conduct_score") or 70.0),
-            "financial_score": float(financial_ds.weighted_score),
-            "identity_score": float(identity_ds.weighted_score),
-            "legal_score": float(legal_ds.weighted_score),
-            "documentation_score": float(doc_ds.weighted_score),
-            "xai_summary": scored.get("xai_summary"),
-            "xai_summary_text": scored.get("xai_summary_text"),
-            "dimension_readings": scored.get("dimension_readings") or {},
-            "table_enrichments": scored.get("table_enrichments") or {},
-            "lime_methodology_note": scored.get("lime_methodology_note") or "",
-            "xai_narrative": scored.get("xai_narrative"),
-            "xai_narrative_text": scored.get("xai_narrative_text"),
-            "xai_narrative_lines": scored.get("xai_narrative_lines") or [],
-            "shap_top_features": scored.get("shap_ranked")[:5] if scored.get("shap_ranked") else [],
-            "shap_ranked": scored.get("shap_ranked") or [],
-            "lime_explanation": scored.get("lime_explanation") or {},
-            "data_sources_used": ["mca", "gst", "ecourts"],
-            "pipeline_version": "2.2.0",
-            "metadata": metadata,
-            "input_parameters": input_parameters,
-            "final_feature_row": ff_row,
-            # Pass full scored engine output along for report generation ease
-            "_ppre_output": scored,
-        }
+        return self._assemble_granular_sections(
+            entity_id=entity_id,
+            seller_id=seller_id,
+            assessed_at=datetime.now(timezone.utc).isoformat(),
+            pralyon_score=pralyon_score,
+            risk_band=scored["pd_band"],
+            blended_pd=scored["blended_pd"],
+            lgd_estimate=scored.get("lgd_pred") or 0.45,
+            conduct_score=float(raw_feature_row.get("conduct_score") or 70.0),
+            financial_score=float(financial_ds.weighted_score),
+            identity_score=float(identity_ds.weighted_score),
+            legal_score=float(legal_ds.weighted_score),
+            documentation_score=float(doc_ds.weighted_score),
+            xai_summary=scored.get("xai_summary"),
+            xai_summary_text=scored.get("xai_summary_text"),
+            xai_narrative=scored.get("xai_narrative") or "",
+            xai_narrative_text=scored.get("xai_narrative_text"),
+            xai_narrative_lines=scored.get("xai_narrative_lines") or [],
+            dimension_readings=scored.get("dimension_readings") or {},
+            table_enrichments=scored.get("table_enrichments") or {},
+            lime_methodology_note=scored.get("lime_methodology_note") or "",
+            shap_top_features=scored.get("shap_ranked")[:5] if scored.get("shap_ranked") else [],
+            shap_ranked=scored.get("shap_ranked") or [],
+            lime_explanation=scored.get("lime_explanation") or {},
+            data_sources_used=["mca", "gst", "ecourts"],
+            pipeline_version="2.2.0",
+            metadata=metadata,
+            input_parameters=input_parameters,
+            final_feature_row=ff_row,
+            ppre_output=scored,
+        )

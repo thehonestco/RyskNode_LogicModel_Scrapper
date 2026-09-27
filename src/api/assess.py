@@ -21,7 +21,8 @@ async def assess_buyer_json(
     """
     S1 Buyer Risk Assessment JSON API (Synchronous).
 
-    Directly executes the assessment in-process and returns the full JSON result.
+    Directly executes the assessment and returns the granular, UI-ready payload
+    organized by sections (overview, entity_identity, director_profile, etc.).
     """
     result = await ppre_service.assess_buyer(
         entity_id=request.entity_id,
@@ -32,7 +33,6 @@ async def assess_buyer_json(
     )
     response_obj = BuyerAssessResponse.model_validate(result)
     return respond(code=constants.HTTP_200_OK, data=response_obj.model_dump())
-
 
 
 @router.post("/assess/report", response_class=HTMLResponse)
@@ -51,4 +51,3 @@ async def assess_buyer_report(
     )
     html_content = report_service.render_s1_report(result)
     return HTMLResponse(content=html_content, status_code=200)
-
