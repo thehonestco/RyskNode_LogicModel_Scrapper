@@ -18,7 +18,11 @@ async def credit_limit_json(
     request: CreditLimitRequest,
     ppre_service: PPREService = Depends(lambda: inject.instance(PPREService)),
 ):
-    """S2 Credit Limit Assessment JSON API."""
+    """
+    S2 Credit Limit Assessment JSON API (Synchronous).
+
+    Directly executes the assessment in-process and returns the full JSON result.
+    """
     result = await ppre_service.assess_buyer(
         entity_id=request.entity_id,
         seller_id=request.seller_id,
@@ -40,6 +44,7 @@ async def credit_limit_json(
     return respond(code=constants.HTTP_200_OK, data=response_obj.model_dump())
 
 
+
 @router.post("/credit-limit/report", response_class=HTMLResponse)
 async def credit_limit_report(
     request: CreditLimitRequest,
@@ -57,3 +62,4 @@ async def credit_limit_report(
     )
     html_content = report_service.render_s2_report(result, requested_amount=request.requested_amount)
     return HTMLResponse(content=html_content, status_code=200)
+

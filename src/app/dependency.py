@@ -61,11 +61,8 @@ def get_session_maker() -> async_sessionmaker[AsyncSession]:
 
 
 def configure_dependency(binder: inject.Binder):
-    from common.adapter.falcon_biz import FalconBizScraper
-    from common.adapter.tracxn import TracxnScraper
     from common.service.unit_of_work import AbstractUnitOfWork, FastCRUDUnitOfWork
     from service.data_gov_sync_service import DataGovSyncService
-    from service.scrape_service import ScrapeService
 
     settings = get_settings()
     engine = get_sql_engine()
@@ -85,20 +82,6 @@ def configure_dependency(binder: inject.Binder):
     # Bind Unit of Work as a provider to allow fresh instances when needed,
     # but we will favor reusing them in batch operations.
     binder.bind_to_provider(AbstractUnitOfWork, FastCRUDUnitOfWork)
-
-    # Bind Scrapers
-    binder.bind(FalconBizScraper, FalconBizScraper())
-    binder.bind(TracxnScraper, TracxnScraper())
-
-    # Bind ScrapeService
-    def get_scrape_service():
-        return ScrapeService(
-            uow=inject.instance(AbstractUnitOfWork),
-            falcon_scraper=inject.instance(FalconBizScraper),
-            tracxn_scraper=inject.instance(TracxnScraper),
-        )
-
-    binder.bind_to_constructor(ScrapeService, get_scrape_service)
 
     # Bind DataGovSyncService
     def get_data_gov_sync_service():
