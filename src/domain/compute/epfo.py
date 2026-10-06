@@ -39,8 +39,8 @@ def derive_epfo_conduct_signals(
             (sector_bucket or "").upper(),
             SECTOR_REVENUE_PER_EMPLOYEE_NORM["DEFAULT"],
         )
-        rev_per_emp = revenue / headcount
-        if rev_per_emp > norm * 5:
+        rev_per_emp_lakhs = (revenue / 100_000.0) / headcount
+        if rev_per_emp_lakhs > norm * 5:
             outlier = True
             notes.append("REVENUE_PER_EMPLOYEE_OUTLIER")
 
@@ -51,5 +51,6 @@ def derive_epfo_conduct_signals(
         "epfo_headcount": headcount,
         "pf_filing_regular": pf_regular,
         "revenue_per_employee_outlier": outlier,
+        "headcount_drop": bool(epfo_raw.get("headcount_drop", False)),
         "source_notes": notes,
     }

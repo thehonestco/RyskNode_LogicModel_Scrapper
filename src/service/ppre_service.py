@@ -166,32 +166,59 @@ class PPREService:
 
     def _extract_epfo(self, payload: dict) -> dict:
         epfo_list = payload.get("annexureEPFO", []) or payload.get("epfoDetails", []) or []
-        valid_records = [r for r in epfo_list if r.get("no_of_employee")]
+        valid_records = []
+        for r in epfo_list:
+            emp_str = str(r.get("no_of_employee") or "").replace(",", "").strip()
+            if emp_str.isdigit() and int(emp_str) > 0:
+                due_val = str(r.get("due_date") or r.get("date_of_credit") or "").strip()
+                valid_records.append({**r, "_emp": int(emp_str), "_due": due_val})
+
         if not valid_records:
             return {"employee_count": None, "pf_filing_regular": None}
 
-        latest_record = valid_records[0]
-        try:
-            headcount = int(latest_record.get("no_of_employee", "0").replace(",", ""))
-        except ValueError:
-            headcount = 0
+        # Sort chronologically descending by due date / credit date
+        valid_records.sort(key=lambda x: x["_due"], reverse=True)
 
-        pf_filing_regular = True
-        for r in valid_records[:12]:
-            remarks = str(r.get("remarks", "")).lower()
-            delay_val = 0
-            if r.get("delay_period"):
-                try:
-                    cleaned_delay = "".join(c for c in str(r.get("delay_period")) if c.isdigit())
-                    if cleaned_delay:
-                        delay_val = int(cleaned_delay)
-                except ValueError:
-                    pass
-            if remarks == "delayed" or delay_val > 15:
-                pf_filing_regular = False
-                break
+        # Group records by month (wage_month or YYYY-MM) to distinguish primary monthly ECR from supplement exclusions
+        months: dict[str, list] = {}
+        for r in valid_records:
+            wm = str(r.get("wage_month") or r["_due"][:7] or "UNKNOWN")
+            months.setdefault(wm, []).append(r)
 
-        return {"employee_count": headcount, "pf_filing_regular": pf_filing_regular}
+        # Authoritative current headcount = primary monthly filing (max employee count) of most recent month
+        latest_wm = list(months.keys())[0]
+        latest_primary = max(months[latest_wm], key=lambda x: x["_emp"])
+        headcount = latest_primary["_emp"]
+
+        # Assess filing regularity over the latest 12 available months of primary monthly filings
+        months_to_check = list(months.keys())[:12]
+        timely_months = 0
+        for wm in months_to_check:
+            primary = max(months[wm], key=lambda x: x["_emp"])
+            remarks = str(primary.get("remarks") or "").strip().lower()
+            delay_raw = str(primary.get("delay_period") or "").strip()
+            # Negative numbers like '(3)' denote early filing before due date
+            is_delayed = remarks == "delayed"
+            if not is_delayed and delay_raw.isdigit() and int(delay_raw) > 15:
+                is_delayed = True
+            if not is_delayed:
+                timely_months += 1
+
+        pf_filing_regular = (timely_months / len(months_to_check)) >= 0.8 if months_to_check else True
+
+        # Check workforce trend drop (headcount fell by > 15% YoY)
+        headcount_drop = False
+        if len(months) >= 2:
+            yoy_wm = list(months.keys())[min(11, len(months) - 1)]
+            yoy_primary = max(months[yoy_wm], key=lambda x: x["_emp"])
+            if yoy_primary["_emp"] > 0 and headcount < yoy_primary["_emp"] * 0.85:
+                headcount_drop = True
+
+        return {
+            "employee_count": headcount,
+            "pf_filing_regular": pf_filing_regular,
+            "headcount_drop": headcount_drop,
+        }
 
     def _extract_gst_consistency(self, payload: dict) -> float:
         gst_list = payload.get("annexureGST") or []
@@ -261,6 +288,271 @@ class PPREService:
             return sum(vals) / len(vals)
             
         return 0.0
+
+    def _extract_consolidated_financials(self, payload: dict) -> list[dict]:
+        """Extract multi-year consolidated financials if available."""
+        pl_cons = payload.get("profitLossConsolidated") or []
+        bs_cons = payload.get("balanceSheetConsolidated") or []
+        if not pl_cons and not bs_cons:
+            return []
+        mock_payload = {"profitLoss": pl_cons, "balanceSheet": bs_cons}
+        return self._extract_financials(mock_payload, db_row={})
+
+    def _extract_court_cases(self, payload: dict) -> dict:
+        """Extract and normalize all litigation records across eCourts, courtsData, legalCases, and ncltCases."""
+        ec = payload.get("eCourts") or []
+        ec_cases = ec.get("cases", []) if isinstance(ec, dict) else (ec if isinstance(ec, list) else [])
+        cd_cases = payload.get("courtsData") or []
+        if not isinstance(cd_cases, list):
+            cd_cases = []
+        lc_cases = payload.get("legalCases") or []
+        if not isinstance(lc_cases, list):
+            lc_cases = []
+        nclt_cases = payload.get("ncltCases") or []
+        if not isinstance(nclt_cases, list):
+            nclt_cases = []
+
+        all_raw = []
+        for c in ec_cases:
+            all_raw.append({"source": "ecourts", "data": c})
+        for c in cd_cases:
+            all_raw.append({"source": "courts_data", "data": c})
+        for c in lc_cases:
+            all_raw.append({"source": "legal_cases", "data": c})
+        for c in nclt_cases:
+            all_raw.append({"source": "nclt", "data": c})
+
+        detailed_cases = []
+        hc_count = 0
+        nclt_count = 0
+        drt_count = 0
+        active_count = 0
+        criminal_count = 0
+        high_value_count = 0
+        recent_cases_12m = 0
+        recent_cases_24m = 0
+        cheque_bounce_cases = []
+        has_cheque_bounce_against = False
+        complainant_138_count = 0
+        nclt_active_against = False
+        nclt_disposed_count = 0
+
+        now_dt = datetime.now(timezone.utc)
+        seen_cnrs = set()
+
+        for item in all_raw:
+            d = item["data"]
+            if not isinstance(d, dict):
+                continue
+
+            cnr = str(d.get("cnr") or d.get("filingNumber") or d.get("caseNo") or d.get("registrationNumber") or "").strip()
+            court_name = str(d.get("courtName") or d.get("highCourtName") or d.get("court") or "").strip()
+            case_type = str(d.get("caseType") or d.get("caseTypeName") or d.get("type") or "").strip()
+            case_status_raw = str(d.get("caseStatus") or d.get("status") or "").strip()
+            acts = str(d.get("underActs") or d.get("actsAndSections") or "").strip()
+            sections = str(d.get("underSections") or "").strip()
+            category = str(d.get("businessCategory") or d.get("caseCategory") or "").strip()
+            oparty = str(d.get("oparty") or d.get("respondents") or "").strip()
+            petitioner = str(d.get("name") or d.get("petitioners") or "").strip()
+            filing_date = str(d.get("filingDate") or d.get("registrationDate") or d.get("date") or "").strip()
+            risk_tag = str(d.get("algoRisk") or "").strip() or None
+
+            # Normalise status
+            is_active = any(kw in case_status_raw.lower() for kw in ["pending", "admitted", "pre-admission", "open", "active"])
+            status = "Pending" if is_active else ("Disposed" if any(kw in case_status_raw.lower() for kw in ["disposed", "rejected", "dismissed", "settled"]) else (case_status_raw or "Pending"))
+
+            # Forum classification
+            c_lower = court_name.lower() + " " + case_type.lower()
+            if "high court" in c_lower or "hc" in c_lower:
+                hc_count += 1
+            if "nclt" in c_lower or "nclat" in c_lower or "ibc" in c_lower or "insolvency" in c_lower:
+                nclt_count += 1
+                if is_active:
+                    party_type = str(d.get("type") or d.get("party_type") or "")
+                    if party_type == "1" or "respondent" in c_lower:
+                        nclt_active_against = True
+                else:
+                    nclt_disposed_count += 1
+            if "drt" in c_lower or "debt recovery" in c_lower:
+                drt_count += 1
+            if is_active:
+                active_count += 1
+
+            # Cheque Bounce (NI Act Sec 138)
+            is_138 = (
+                "negotiable" in acts.lower()
+                or "138" in sections
+                or "cheque bounce" in category.lower()
+                or "cheque bounce" in case_type.lower()
+            )
+            if is_138:
+                party_type = str(d.get("type") or d.get("party_type") or "")
+                is_accused = party_type == "1" or "accused" in c_lower or "respondent" in c_lower
+                if is_active and is_accused:
+                    has_cheque_bounce_against = True
+                elif party_type == "0" or not is_accused:
+                    complainant_138_count += 1
+                cheque_bounce_cases.append({
+                    "cnr": cnr,
+                    "court": court_name,
+                    "status": status,
+                    "is_active": is_active,
+                    "is_accused": is_accused,
+                })
+
+            # High value / severe risk identification
+            risk_lower = (risk_tag or "").lower()
+            if "high" in risk_lower or "drt" in c_lower or (is_active and nclt_active_against):
+                high_value_count += 1
+
+            # Criminal detection (only count where entity is accused/respondent)
+            if any(kw in c_lower or kw in acts.lower() or kw in category.lower() for kw in ["criminal", "fir", "ipc", "crpc", "cr.pc"]):
+                party_type = str(d.get("type") or d.get("party_type") or "")
+                is_accused = party_type == "1" or "accused" in c_lower or "respondent" in c_lower
+                if is_accused and not is_138:
+                    criminal_count += 1
+
+            # Recent cases timeline calculation
+            if filing_date:
+                try:
+                    f_dt = datetime.strptime(filing_date[:10], "%Y-%m-%d").replace(tzinfo=timezone.utc)
+                    days_diff = (now_dt - f_dt).days
+                    if 0 <= days_diff <= 365:
+                        recent_cases_12m += 1
+                    if 0 <= days_diff <= 730:
+                        recent_cases_24m += 1
+                except Exception:
+                    pass
+
+            # Deduplicate by CNR or case title
+            dedup_key = cnr or f"{court_name}-{case_type}-{filing_date}"
+            if dedup_key and dedup_key not in seen_cnrs and len(detailed_cases) < 15:
+                seen_cnrs.add(dedup_key)
+                detailed_cases.append({
+                    "cnr": cnr or None,
+                    "court": court_name or "Court",
+                    "case_type": case_type or category or "Matter",
+                    "matter_type": "NI Act 138" if is_138 else ("Insolvency / IBC" if ("nclt" in c_lower or "ibc" in c_lower) else ("Criminal" if "criminal" in c_lower else "Civil / Commercial")),
+                    "parties": f"{petitioner} vs {oparty}" if petitioner and oparty else (petitioner or oparty or "Parties on record"),
+                    "status": status,
+                    "filing_date": filing_date or None,
+                    "risk_tag": risk_tag,
+                    "status_class": "warn" if is_active else "pass",
+                })
+
+        detailed_cases.sort(key=lambda x: 0 if x.get("status") == "Pending" else 1)
+
+        return {
+            "detailed_cases": detailed_cases[:10],
+            "total_cases": len(all_raw),
+            "hc_cases": hc_count,
+            "nclt_cases": nclt_count,
+            "drt_cases": drt_count,
+            "active_cases": active_count,
+            "criminal_cases": criminal_count,
+            "high_value_cases": high_value_count,
+            "recent_cases_12m": recent_cases_12m,
+            "recent_cases_24m": recent_cases_24m,
+            "cheque_bounce_cases": cheque_bounce_cases,
+            "has_cheque_bounce_against": has_cheque_bounce_against,
+            "complainant_138_count": complainant_138_count,
+            "nclt_active_against": nclt_active_against,
+            "nclt_disposed_count": nclt_disposed_count,
+        }
+
+    def _extract_msme_delays(self, payload: dict) -> dict:
+        """Extract MSME Samadhaan vendor delay complaints."""
+        msme_list = payload.get("msmePaymentDelays") or []
+        if not isinstance(msme_list, list):
+            return {"count": 0, "total_amount": 0.0, "display_amount": "₹0", "suppliers": []}
+
+        total_amt = 0.0
+        suppliers = []
+        for item in msme_list:
+            if isinstance(item, dict):
+                amt = float(item.get("amount_due") or item.get("Amount due") or 0.0)
+                total_amt += amt
+                sname = item.get("supplier_name") or item.get("Supplier Name")
+                if sname and len(suppliers) < 5:
+                    suppliers.append({"name": sname, "amount": amt, "date": item.get("Date")})
+
+        disp = f"₹{total_amt / 10000000:.2f} Cr" if total_amt >= 10000000 else (f"₹{total_amt / 100000:.2f} L" if total_amt > 0 else "₹0")
+        return {
+            "count": len(msme_list),
+            "total_amount": total_amt,
+            "display_amount": disp,
+            "suppliers": suppliers,
+        }
+
+    def _extract_aml_screening(self, payload: dict) -> dict:
+        """Extract Anti-Money Laundering & PEP screening records."""
+        aml = payload.get("aml_entity") or {}
+        if not isinstance(aml, dict):
+            return {"result": "NO_MATCH_FOUND", "pep_result": "NO_MATCH_FOUND", "screened_on": None, "has_match": False}
+
+        res = aml.get("result") or "NO_MATCH_FOUND"
+        pep = aml.get("pepResult") or "NO_MATCH_FOUND"
+        meta = aml.get("metaDetails") or {}
+        screened_on = meta.get("screenedOn")
+        has_match = (res not in ("NO_MATCH_FOUND", "CLEAR", None, "")) or (pep not in ("NO_MATCH_FOUND", "CLEAR", None, ""))
+
+        return {
+            "result": res,
+            "pep_result": pep,
+            "screened_on": screened_on,
+            "has_match": has_match,
+        }
+
+    def _extract_charge_summary(self, payload: dict, charges_list: list) -> dict:
+        """Extract pre-aggregated charge summary from finanvo chargeSummary section."""
+        cs = payload.get("chargeSummary") or {}
+        if not isinstance(cs, dict):
+            cs = {}
+
+        open_cnt = cs.get("openChargeCount")
+        if open_cnt is None:
+            open_cnt = sum(1 for c in charges_list if c.get("status") in ["open", "active"])
+
+        sat_cnt = cs.get("satisfiedChargeCount")
+        if sat_cnt is None:
+            sat_cnt = sum(1 for c in charges_list if c.get("status") in ["closed", "satisfied"])
+
+        tot_cnt = cs.get("totalChargeCount") or (open_cnt + sat_cnt)
+
+        total_open_amt = float(cs.get("totalOpenRegisteredAmount") or cs.get("knownOpenRegisteredAmount") or 0.0)
+        if total_open_amt == 0.0 and charges_list:
+            total_open_amt = sum(float(c.get("amount") or 0.0) for c in charges_list if c.get("status") in ["open", "active"])
+
+        disp = f"₹{total_open_amt / 10000000:.2f} Cr" if total_open_amt >= 10000000 else (f"₹{total_open_amt / 100000:.2f} L" if total_open_amt > 0 else "-")
+
+        return {
+            "open_charge_count": int(open_cnt),
+            "satisfied_charge_count": int(sat_cnt),
+            "total_charge_count": int(tot_cnt),
+            "total_open_registered_amount": total_open_amt,
+            "display_total_open_amount": disp,
+        }
+
+    def _extract_auditors_remarks(self, payload: dict) -> dict:
+        """Extract CARO statutory auditor qualifications."""
+        ar_list = payload.get("auditorsRemarks") or []
+        if not isinstance(ar_list, list) or not ar_list:
+            return {"has_adverse": False, "summary": "Unqualified standard audit opinion"}
+
+        latest = ar_list[0] if isinstance(ar_list[0], dict) else {}
+        adverse_notes = []
+        for k, v in latest.items():
+            val = str(v).upper()
+            if val in ["ADVE", "QUAL", "YES"] and k in ["FRAUD_NOTICED", "STATUTORY_DUES", "TERM_LOANS"]:
+                adverse_notes.append(f"{k.replace('_', ' ').title()}: {val}")
+
+        has_adverse = len(adverse_notes) > 0
+        summary = (
+            f"CARO audit qualifications: {', '.join(adverse_notes)}"
+            if has_adverse
+            else "Clean statutory auditor remarks across CARO reporting parameters"
+        )
+        return {"has_adverse": has_adverse, "summary": summary}
 
     def _run_part1_sourcing(self, db_row: dict) -> dict[str, Any]:
         """
@@ -410,23 +702,30 @@ class PPREService:
             sector_bucket=overview.get("businessState"),
         )
 
-        # eCourts signals
-        # Note: Court cases data skip per user instruction, but process what we have
-        ecourts_raw = {"cases": payload.get("legalCases", []) or []}
+        # Comprehensive litigation extraction across eCourts, courtsData, legalCases, ncltCases
+        court_info = self._extract_court_cases(payload)
+        ecourts_raw = {
+            "case_count_total": court_info["total_cases"],
+            "case_count_active": court_info["active_cases"],
+            "case_count_drt": court_info["drt_cases"],
+            "case_count_nclt": court_info["nclt_cases"],
+            "case_count_hc": court_info["hc_cases"],
+            "has_insolvency_petition": court_info["nclt_active_against"],
+        }
         ecourts_signals = derive_ecourts_conduct_signals(ecourts_raw)
+        criminal_case_count = court_info["criminal_cases"]
 
-        # Criminal case count — DISTINCT from High Court cases
-        # Per doc: criminal_case_count >= 1 → down 2 notches in pd_mapper
-        # We extract this specifically from case types with "criminal" in label
-        legal_cases = payload.get("legalCases", []) or []
-        criminal_case_count = 0
-        for case in legal_cases:
-            case_type = str(case.get("caseType") or case.get("type") or "").lower()
-            if any(kw in case_type for kw in ["criminal", "fir", "ipc", "crpc", "cr.pc"]):
-                criminal_case_count += 1
-        # Fallback: if ecourts explicitly marks criminal cases
-        if ecourts_signals.get("criminal_case_count"):
-            criminal_case_count = max(criminal_case_count, ecourts_signals["criminal_case_count"])
+        # Extract MSME delayed payment complaints
+        msme_info = self._extract_msme_delays(payload)
+
+        # Extract AML & PEP screening
+        aml_info = self._extract_aml_screening(payload)
+
+        # Extract statutory auditor remarks
+        auditor_info = self._extract_auditors_remarks(payload)
+
+        # Extract consolidated multi-year financials
+        cons_financials = self._extract_consolidated_financials(payload)
 
         # GST conduct signals
         gst_filing_label = (
@@ -561,6 +860,9 @@ class PPREService:
             # CRITICAL: criminal_case_count is SEPARATE from HC cases
             # Per RA Model: criminal_case_count >= 1 → band downgrades 2 notches
             "criminal_case_count": criminal_case_count,
+            "high_value_case_count": court_info.get("high_value_cases", 0),
+            "recent_cases_12m": court_info.get("recent_cases_12m", 0),
+            "recent_cases_24m": court_info.get("recent_cases_24m", 0),
             # GST signals
             "gst_turnover": gst_turnover,
             "gst_sector_bucket": overview.get("businessState") or overview.get("businessCategory"),
@@ -570,10 +872,17 @@ class PPREService:
             "epfo_headcount": epfo_signals.get("epfo_headcount"),
             "pf_filing_regular": epfo_signals.get("pf_filing_regular"),
             "revenue_per_employee_outlier": epfo_signals.get("revenue_per_employee_outlier"),
+            "epfo_headcount_drop": epfo_signals.get("headcount_drop", False),
             # Conduct score
             "conduct_score": conduct_score,
             # Finanvo pre-computed ratios (used in _derive_ratios as override)
             "_finanvo_ratios": finanvo_ratios,
+            # Enhanced data sections
+            "court_info": court_info,
+            "msme_info": msme_info,
+            "aml_info": aml_info,
+            "auditor_info": auditor_info,
+            "consolidated_financials": cons_financials,
         }
 
     def _extract_finanvo_ratios(self, payload: dict) -> dict:
@@ -756,6 +1065,8 @@ class PPREService:
             sources.append("mca")
         if (row.get("case_count_total") or 0) > 0:
             sources.append("ecourts")
+        if (row.get("epfo_headcount") or 0) > 0:
+            sources.append("epfo")
         
         return NormalizedRecord(
             entity_id=str(row.get("entity_key", "UNKNOWN")),
@@ -932,6 +1243,18 @@ class PPREService:
             ]
         }
 
+        aml_meta = metadata.get("aml") or {}
+        if aml_meta:
+            aml_res = aml_meta.get("result") or "NO_MATCH_FOUND"
+            aml_has_match = aml_meta.get("has_match", False)
+            entity_identity["verified_profiles"].append({
+                "field": "AML & Sanctions screening",
+                "value": "Clean · No adverse watchlist hit" if not aml_has_match else f"Match: {aml_res}",
+                "source": "Global Sanctions & PEP Register",
+                "status": "Verified Clean" if not aml_has_match else "Adverse Match",
+                "status_class": "pass" if not aml_has_match else "fail",
+            })
+
         # ── 3. Director Profile ──
         directors_formatted = []
         for d in metadata.get("directors", []):
@@ -945,6 +1268,8 @@ class PPREService:
                 "struck_off_links": d.get("struck_off_links", "None"),
                 "status": d.get("status", "Clear"),
                 "status_class": "fail" if disq else "pass",
+                "shareholding_pct": d.get("shareholding_pct"),
+                "remuneration": d.get("remuneration"),
             })
         director_profile = {
             "directors": directors_formatted,
@@ -1066,8 +1391,19 @@ class PPREService:
                 "implication": rins.get("implication", ""),
             })
 
+        cons_fin_history = metadata.get("consolidated_financials") or []
+        consolidated_statements = None
+        if cons_fin_history:
+            cons_years = [f.get("year", f"FY{idx}") for idx, f in enumerate(cons_fin_history)]
+            cons_rows = []
+            for sm_label, sm_key, sm_fmt in stmt_metric_keys:
+                vals = {f.get("year", ""): f.get(sm_key) for f in cons_fin_history}
+                cons_rows.append({"metric": sm_label, "values": vals, "format": sm_fmt})
+            consolidated_statements = {"years": cons_years, "rows": cons_rows}
+
         financial_performance = {
             "statements": {"years": stmt_years, "rows": stmt_rows},
+            "consolidated_statements": consolidated_statements,
             "ratios": ratios_formatted,
         }
 
@@ -1075,43 +1411,139 @@ class PPREService:
         gst_meta = metadata.get("gst") or {}
         epfo_meta = metadata.get("epfo") or {}
         charge_meta = metadata.get("charge") or {}
+        msme_meta = metadata.get("msme") or {}
+        auditor_meta = metadata.get("auditor_info") or {}
+
         gst_txt = gst_meta.get("filing_consistency_label", "")
         gst_ok = "regular" in gst_txt.lower() or "good" in gst_txt.lower()
 
+        behaviour_signals = [
+            {"signal": "GST filing discipline", "type": "Strength" if gst_ok else "Watchpoint", "type_class": "pass" if gst_ok else "warn", "observation": f"Filing consistency: {gst_txt}", "implication": "Strong compliance discipline — low statutory default risk." if gst_ok else "Potential cashflow stress indicator."},
+            {"signal": "EPFO headcount trend", "type": "Watchpoint" if epfo_meta.get("headcount_drop") else "Strength", "type_class": "warn" if epfo_meta.get("headcount_drop") else "pass", "observation": f"EPFO headcount: {epfo_meta.get('employee_count') or 'N/A'} employees", "implication": "Recent workforce contraction detected." if epfo_meta.get("headcount_drop") else "Stable workforce indicator."},
+            {"signal": "EPFO challan defaults", "type": "Strength" if epfo_meta.get("pf_filing_regular") else "Watchpoint", "type_class": "pass" if epfo_meta.get("pf_filing_regular") else "warn", "observation": f"ECR filings: {'Regular' if epfo_meta.get('pf_filing_regular') else 'Delayed'}", "implication": "Strong payroll compliance behaviour." if epfo_meta.get("pf_filing_regular") else "Delayed payroll payments observed."},
+            {"signal": "Charge register quality", "type": "Watchpoint" if charge_meta.get("has_active") else "Strength", "type_class": "warn" if charge_meta.get("has_active") else "pass", "observation": charge_meta.get("charge_summary") or "No active charges", "implication": "Secured credit activity." if charge_meta.get("has_active") else "No third-party lender credit discipline."},
+        ]
+
+        if msme_meta.get("count", 0) > 0:
+            msme_cnt = msme_meta.get("count", 0)
+            msme_disp = msme_meta.get("display_amount", "₹0")
+            behaviour_signals.append({
+                "signal": "MSME vendor payment discipline",
+                "type": "Watchpoint",
+                "type_class": "warn",
+                "observation": f"{msme_cnt} delayed payment filing(s) on MSME Samadhaan ({msme_disp} total)",
+                "implication": "Vendors reporting payment delays under Section 15 of MSMED Act.",
+            })
+        else:
+            behaviour_signals.append({
+                "signal": "MSME vendor payment discipline",
+                "type": "Strength",
+                "type_class": "pass",
+                "observation": "Nil vendor delay complaints on MSME Samadhaan portal",
+                "implication": "Prompt settlement cycle with MSME vendors.",
+            })
+
+        if auditor_meta.get("has_adverse"):
+            behaviour_signals.append({
+                "signal": "Statutory auditor remarks (CARO)",
+                "type": "Watchpoint",
+                "type_class": "warn",
+                "observation": auditor_meta.get("summary", "CARO qualifications noted"),
+                "implication": "Auditor noted qualifications or adverse notes in statutory audit report.",
+            })
+        else:
+            behaviour_signals.append({
+                "signal": "Statutory auditor remarks (CARO)",
+                "type": "Strength",
+                "type_class": "pass",
+                "observation": auditor_meta.get("summary", "Clean statutory auditor remarks across CARO reporting parameters"),
+                "implication": "Clean financial hygiene confirmed by independent auditor.",
+            })
+
         behaviour_print = {
-            "signals": [
-                {"signal": "GST filing discipline", "type": "Strength" if gst_ok else "Watchpoint", "type_class": "pass" if gst_ok else "warn", "observation": f"Filing consistency: {gst_txt}", "implication": "Strong compliance discipline — low statutory default risk." if gst_ok else "Potential cashflow stress indicator."},
-                {"signal": "EPFO headcount trend", "type": "Watchpoint" if epfo_meta.get("headcount_drop") else "Strength", "type_class": "warn" if epfo_meta.get("headcount_drop") else "pass", "observation": f"EPFO headcount: {epfo_meta.get('employee_count') or 'N/A'} employees", "implication": "Recent workforce contraction detected." if epfo_meta.get("headcount_drop") else "Stable workforce indicator."},
-                {"signal": "EPFO challan defaults", "type": "Strength" if epfo_meta.get("pf_filing_regular") else "Watchpoint", "type_class": "pass" if epfo_meta.get("pf_filing_regular") else "warn", "observation": f"ECR filings: {'Regular' if epfo_meta.get('pf_filing_regular') else 'Delayed'}", "implication": "Strong payroll compliance behaviour." if epfo_meta.get("pf_filing_regular") else "Delayed payroll payments observed."},
-                {"signal": "Charge register quality", "type": "Watchpoint" if charge_meta.get("has_active") else "Strength", "type_class": "warn" if charge_meta.get("has_active") else "pass", "observation": charge_meta.get("charge_summary") or "No active charges", "implication": "Secured credit activity." if charge_meta.get("has_active") else "No third-party lender credit discipline."},
-            ]
+            "signals": behaviour_signals,
         }
 
         # ── 8. Compliance Intelligence ──
+        compliance_checks = [
+            {"check": "GSTIN status", "result": "Active" if gstin else "Inactive", "status": "Active" if gstin else "Inactive", "status_class": "pass" if gstin else "fail", "implication": "ITC can be claimed on invoices." if gstin else "ITC not claimable."},
+            {"check": "EPFO / PF continuity", "result": f"ECR Filings: {'Regular' if epfo_meta.get('pf_filing_regular') else 'Delayed'}", "status": "Compliant" if epfo_meta.get("pf_filing_regular") else "Flagged", "status_class": "pass" if epfo_meta.get("pf_filing_regular") else "warn", "implication": "No workforce payment defaults." if epfo_meta.get("pf_filing_regular") else "Payroll payment gaps exist."},
+            {"check": "EPFO headcount declared", "result": f"{epfo_meta.get('employee_count') or 'N/A'} employees", "status": "On file" if epfo_meta.get("employee_count") else "Missing", "status_class": "pass" if epfo_meta.get("employee_count") else "warn", "implication": "Statutory workforce details."},
+            {"check": "RBI defaulter list", "result": "Listed" if zp.get("g5_fail") else "Not listed", "status": "Flagged" if zp.get("g5_fail") else "Clear", "status_class": "fail" if zp.get("g5_fail") else "pass", "implication": "Banking default risk." if zp.get("g5_fail") else "No banking default."},
+        ]
+
+        if aml_meta:
+            aml_res = aml_meta.get("result") or "NO_MATCH_FOUND"
+            aml_has_match = aml_meta.get("has_match", False)
+            compliance_checks.append({
+                "check": "AML / PEP & Global Sanctions",
+                "result": "No Match Found · Clear" if not aml_has_match else f"Adverse Match: {aml_res}",
+                "status": "Clear" if not aml_has_match else "Flagged",
+                "status_class": "pass" if not aml_has_match else "fail",
+                "implication": "Cleared global watchlists and anti-money laundering databases." if not aml_has_match else "Match found on global sanction or watchlists.",
+            })
+
+        msme_count = msme_meta.get("count", 0)
+        compliance_checks.append({
+            "check": "MSME Samadhaan compliance",
+            "result": f"{msme_count} delayed payment applications ({msme_meta.get('display_amount', '')})" if msme_count > 0 else "Nil delay filings",
+            "status": "Watchpoint" if msme_count > 0 else "Compliant",
+            "status_class": "warn" if msme_count > 0 else "pass",
+            "implication": "Delayed payments to micro/small suppliers under Section 15 of MSMED Act." if msme_count > 0 else "Compliant with MSMED Act 45-day payment guidelines.",
+        })
+
         compliance_intelligence = {
-            "checks": [
-                {"check": "GSTIN status", "result": "Active" if gstin else "Inactive", "status": "Active" if gstin else "Inactive", "status_class": "pass" if gstin else "fail", "implication": "ITC can be claimed on invoices." if gstin else "ITC not claimable."},
-                {"check": "EPFO / PF continuity", "result": f"ECR Filings: {'Regular' if epfo_meta.get('pf_filing_regular') else 'Delayed'}", "status": "Compliant" if epfo_meta.get("pf_filing_regular") else "Flagged", "status_class": "pass" if epfo_meta.get("pf_filing_regular") else "warn", "implication": "No workforce payment defaults." if epfo_meta.get("pf_filing_regular") else "Payroll payment gaps exist."},
-                {"check": "EPFO headcount declared", "result": f"{epfo_meta.get('employee_count') or 'N/A'} employees", "status": "On file" if epfo_meta.get("employee_count") else "Missing", "status_class": "pass" if epfo_meta.get("employee_count") else "warn", "implication": "Statutory workforce details."},
-                {"check": "RBI defaulter list", "result": "Listed" if zp.get("g5_fail") else "Not listed", "status": "Flagged" if zp.get("g5_fail") else "Clear", "status_class": "fail" if zp.get("g5_fail") else "pass", "implication": "Banking default risk." if zp.get("g5_fail") else "No banking default."},
-            ]
+            "checks": compliance_checks,
         }
 
         # ── 9. Legal & Litigation ──
+        court_info = metadata.get("court_info") or {}
         leg_meta = metadata.get("legal") or {}
-        hc_cnt = leg_meta.get("hc_cases", 0)
-        nclt_cnt = leg_meta.get("nclt_cases", 0)
-        drt_cnt = leg_meta.get("drt_cases", 0)
-        act_cnt = leg_meta.get("active_cases", 0)
+        hc_cnt = court_info.get("hc_cases", leg_meta.get("hc_cases", 0))
+        nclt_cnt = court_info.get("nclt_cases", leg_meta.get("nclt_cases", 0))
+        drt_cnt = court_info.get("drt_cases", leg_meta.get("drt_cases", 0))
+        act_cnt = court_info.get("active_cases", leg_meta.get("active_cases", 0))
+        s138_cases = court_info.get("cheque_bounce_cases", [])
+        s138_cnt = len(s138_cases)
+        has_138_against = court_info.get("has_cheque_bounce_against", False)
+        comp_138 = court_info.get("complainant_138_count", 0)
+
+        legal_cases = [
+            {"forum": "High Court", "matter_type": "Civil / Commercial", "count": hc_cnt, "status": "Clear" if hc_cnt == 0 else f"{hc_cnt} matters", "status_class": "pass" if hc_cnt == 0 else "warn", "implication": "No High Court matters found." if hc_cnt == 0 else "High Court references identified."},
+            {"forum": "NCLT", "matter_type": "Insolvency / Company matter", "count": nclt_cnt, "status": "Clear" if nclt_cnt == 0 else f"{nclt_cnt} matters", "status_class": "pass" if nclt_cnt == 0 else "fail", "implication": "No insolvency matters found." if nclt_cnt == 0 else "Insolvency matters identified."},
+            {"forum": "DRT / DRAT", "matter_type": "Debt recovery", "count": drt_cnt, "status": "Clear" if drt_cnt == 0 else f"{drt_cnt} cases", "status_class": "pass" if drt_cnt == 0 else "fail", "implication": "No lender recovery proceedings." if drt_cnt == 0 else "Lender recovery proceedings found."},
+            {"forum": "Commercial / Civil Court", "matter_type": "B2B contract dispute", "count": act_cnt, "status": "Clear" if act_cnt == 0 else "Active", "status_class": "pass" if act_cnt == 0 else "warn", "implication": "No active litigation." if act_cnt == 0 else f"{act_cnt} active case(s) identified."},
+        ]
+
+        if s138_cnt > 0:
+            legal_cases.append({
+                "forum": "Cheque Bounce (Sec 138 NI Act)",
+                "matter_type": "Negotiable Instruments Act",
+                "count": s138_cnt,
+                "status": "Accused / Flagged" if has_138_against else f"Complainant ({comp_138})",
+                "status_class": "fail" if has_138_against else "pass",
+                "implication": "Active dishonour proceedings against entity." if has_138_against else "Entity recovering receivables as complainant.",
+            })
+        else:
+            legal_cases.append({
+                "forum": "Cheque Bounce (Sec 138 NI Act)",
+                "matter_type": "Negotiable Instruments Act",
+                "count": 0,
+                "status": "Clear",
+                "status_class": "pass",
+                "implication": "Nil Section 138 proceedings detected.",
+            })
+
+        detailed_cases = court_info.get("detailed_cases", [])
 
         legal_litigation = {
-            "cases": [
-                {"forum": "High Court", "matter_type": "Civil / Commercial", "count": hc_cnt, "status": "Clear" if hc_cnt == 0 else f"{hc_cnt} matters", "status_class": "pass" if hc_cnt == 0 else "warn", "implication": "No High Court matters found." if hc_cnt == 0 else "High Court references identified."},
-                {"forum": "NCLT", "matter_type": "Insolvency / Company matter", "count": nclt_cnt, "status": "Clear" if nclt_cnt == 0 else f"{nclt_cnt} matters", "status_class": "pass" if nclt_cnt == 0 else "fail", "implication": "No insolvency matters found." if nclt_cnt == 0 else "Insolvency matters identified."},
-                {"forum": "DRT / DRAT", "matter_type": "Debt recovery", "count": drt_cnt, "status": "Clear" if drt_cnt == 0 else f"{drt_cnt} cases", "status_class": "pass" if drt_cnt == 0 else "fail", "implication": "No lender recovery proceedings." if drt_cnt == 0 else "Lender recovery proceedings found."},
-                {"forum": "Commercial Court", "matter_type": "B2B contract dispute", "count": act_cnt, "status": "Clear" if act_cnt == 0 else "Active", "status_class": "pass" if act_cnt == 0 else "warn", "implication": "No active litigation." if act_cnt == 0 else f"{act_cnt} active case(s) identified."},
-            ],
-            "summary_text": "No active litigation found across any forum." if (hc_cnt + nclt_cnt + drt_cnt + act_cnt) == 0 else "Active litigation identified — factored into Legal track scoring.",
+            "cases": legal_cases,
+            "detailed_cases": detailed_cases,
+            "summary_text": (
+                "No active litigation found across any forum."
+                if (hc_cnt + nclt_cnt + drt_cnt + act_cnt + (1 if has_138_against else 0)) == 0
+                else f"Litigation analysis across {len(detailed_cases) or (hc_cnt + nclt_cnt + drt_cnt + act_cnt)} matter(s) on record — factored into Legal track scoring."
+            ),
         }
 
         # ── 10. Charge Register ──
@@ -1130,10 +1562,17 @@ class PPREService:
                 "status_class": "pass" if is_sat else "warn",
                 "risk_note": "Standard charge registry entry",
             })
+        charge_summary = metadata.get("charge_summary")
+        summary_text = (
+            f"{charge_summary['open_charge_count']} active charge(s) totaling {charge_summary['display_total_open_amount']} on MCA21."
+            if charge_summary and charge_summary.get("open_charge_count")
+            else ("No institutional lenders on record." if not charges_fmt else f"{len(charges_fmt)} charge(s) identified on MCA21 charge register.")
+        )
         charge_register = {
+            "summary": charge_summary,
             "charges": charges_fmt,
             "empty_text": "No charges registered on MCA21 charge register." if not charges_fmt else None,
-            "summary_text": "No institutional lenders on record." if not charges_fmt else f"{len(charges_fmt)} charge(s) identified on MCA21 charge register.",
+            "summary_text": summary_text,
         }
 
         # ── 11. TraceLayer ──
@@ -1321,8 +1760,10 @@ class PPREService:
             legal_case_count=raw_feature_row.get("case_count_total"),
             pending_case_count=raw_feature_row.get("case_count_active"),
             criminal_case_count=raw_feature_row.get("criminal_case_count"),
-            high_value_case_count=raw_feature_row.get("criminal_case_count"),
+            high_value_case_count=raw_feature_row.get("high_value_case_count"),
             business_vintage_years=vintage,
+            recent_cases_24m=raw_feature_row.get("recent_cases_24m"),
+            recent_cases_12m=raw_feature_row.get("recent_cases_12m"),
         )
         doc_ds = compute_documentation_score(record, 10.0)
 
@@ -1364,13 +1805,63 @@ class PPREService:
         )
 
         # Parse directors
+        shareholding_map = {}
+        for sh in payload.get("directorShareholding", []):
+            if isinstance(sh, dict):
+                sh_din = (sh.get("din") or "").strip()
+                sh_name = (sh.get("fullName") or "").strip().lower()
+                pct_str = str(sh.get("shareholdingPer") or "0").replace("%", "").strip()
+                try:
+                    pct_val = float(pct_str)
+                except (ValueError, TypeError):
+                    pct_val = 0.0
+                if sh_din:
+                    shareholding_map[sh_din] = pct_val
+                if sh_name and sh_name not in shareholding_map:
+                    shareholding_map[sh_name] = pct_val
+
+        remun_map = {}
+        remun_raw = payload.get("directorsRemuneration", [])
+        remun_items = []
+        if isinstance(remun_raw, list):
+            for item in remun_raw:
+                if isinstance(item, list):
+                    remun_items.extend(item)
+                elif isinstance(item, dict):
+                    remun_items.append(item)
+        for rm in remun_items:
+            if isinstance(rm, dict):
+                rm_din = (rm.get("DIN") or "").strip()
+                rm_name = (rm.get("NAME") or "").strip().lower()
+                tot_val = rm.get("TOTAL") or rm.get("TOTAL_AMOUNT") or rm.get("GROSS_SALARY") or 0
+                try:
+                    tot_float = float(tot_val)
+                except (ValueError, TypeError):
+                    tot_float = 0.0
+                if rm_din and (rm_din not in remun_map or tot_float > 0):
+                    remun_map[rm_din] = tot_float
+                if rm_name and (rm_name not in remun_map or tot_float > 0):
+                    remun_map[rm_name] = tot_float
+
         directors_list = []
         for d in payload.get("directors", []):
             disqualified = d.get("disqualified") or False
+            d_din = (d.get("din") or d.get("directorDin") or "").strip()
+            d_name = (d.get("fullName") or d.get("name") or d.get("directorName") or "Unknown").strip()
+            d_name_l = d_name.lower()
+
+            sh_pct = shareholding_map.get(d_din) if d_din else None
+            if sh_pct is None:
+                sh_pct = shareholding_map.get(d_name_l)
+
+            remun = remun_map.get(d_din) if d_din else None
+            if remun is None:
+                remun = remun_map.get(d_name_l)
+
             directors_list.append(
                 {
-                    "name": d.get("fullName") or d.get("name") or d.get("directorName") or "Unknown",
-                    "din": d.get("din") or d.get("directorDin") or "N/A",
+                    "name": d_name,
+                    "din": d_din or "N/A",
                     "designation": d.get("designation")
                     if d.get("designation") not in (None, "", "-")
                     else d.get("role") or "Director",
@@ -1378,6 +1869,8 @@ class PPREService:
                     "other_entities_count": d.get("other_entities_count") or 0,
                     "struck_off_links": "Yes" if disqualified else "None",
                     "status": "Flagged" if disqualified else "Clear",
+                    "shareholding_pct": round(sh_pct, 2) if sh_pct is not None else None,
+                    "remuneration": remun,
                 }
             )
 
@@ -1396,27 +1889,69 @@ class PPREService:
                     "status": str(ch.get("chargeStatus") or ch.get("status") or ch.get("STATUS") or "Active").lower(),
                 }
             )
+        charge_summary = self._extract_charge_summary(payload, charges_list)
+
+        court_info = raw_feature_row.get("court_info") or {}
+        aml_info = raw_feature_row.get("aml_info") or {}
 
         # ZeroPass mock checks mapping actual raw flags if present
+        is_wilful = raw_feature_row.get("is_wilful_defaulter", False)
+        has_aml_match = aml_info.get("has_match", False)
+
+        has_138_against = court_info.get("has_cheque_bounce_against", False)
+        comp_138 = court_info.get("complainant_138_count", 0)
+
+        nclt_active_against = bool(court_info.get("nclt_active_against", False))
+        nclt_disposed = court_info.get("nclt_disposed_count", 0)
+        nclt_total = court_info.get("nclt_cases", 0)
+
+        drt_cases = court_info.get("drt_cases", raw_feature_row.get("case_count_drt") or 0)
+
         zeropass_data = {
-            "g1_result": "No NCLT / CIRP insolvency proceedings"
-            if (raw_feature_row.get("case_count_nclt") or 0) == 0
-            else f"{raw_feature_row.get('case_count_nclt')} NCLT matters identified",
-            "g1_fail": raw_feature_row.get("has_insolvency_petition", False),
+            "g1_result": (
+                "Triggered — Active NCLT / CIRP insolvency petition against entity"
+                if nclt_active_against
+                else (
+                    f"Clear — {nclt_disposed} disposed/resolved NCLT matter(s), nil active CIRP"
+                    if nclt_disposed > 0
+                    else (
+                        f"Clear — {nclt_total} applicant/appeal matter(s), nil active CIRP against entity"
+                        if nclt_total > 0
+                        else "No NCLT / CIRP insolvency proceedings"
+                    )
+                )
+            ),
+            "g1_fail": nclt_active_against,
             "g2_result": "All clear — both directors",
             "g2_fail": False,
             "g3_result": "Active",
             "g3_fail": False,
             "g4_result": "Active",
             "g4_fail": False,
-            "g5_result": "Not listed" if not raw_feature_row.get("is_wilful_defaulter") else "Listed",
-            "g5_fail": raw_feature_row.get("is_wilful_defaulter", False),
-            "g6_result": "Nil active proceedings",
-            "g6_fail": False,
+            "g5_result": (
+                "Listed on RBI Wilful Defaulter register"
+                if is_wilful
+                else (
+                    "Adverse AML / PEP / Sanctions screening match"
+                    if has_aml_match
+                    else "Not listed · Clean AML / Sanctions screen"
+                )
+            ),
+            "g5_fail": is_wilful or has_aml_match,
+            "g6_result": (
+                "Triggered — Active Sec 138 cheque bounce against entity"
+                if has_138_against
+                else (
+                    f"Clear — Nil proceedings against entity (Complainant in {comp_138} recovery matter)"
+                    if comp_138 > 0
+                    else "Nil active proceedings"
+                )
+            ),
+            "g6_fail": has_138_against,
             "g7_result": "No DRT recovery proceedings"
-            if (raw_feature_row.get("case_count_drt") or 0) == 0
-            else f"{raw_feature_row.get('case_count_drt')} cases",
-            "g7_fail": (raw_feature_row.get("case_count_drt") or 0) > 0,
+            if drt_cases == 0
+            else f"{drt_cases} cases",
+            "g7_fail": drt_cases > 0,
             "g8_result": f"Positive TNW — ₹{(raw_feature_row.get('networth') or 0) / 10000000:.2f} Cr"
             if (raw_feature_row.get("networth") or 0) > 0
             else "Negative / Eroded Net Worth",
@@ -1470,6 +2005,12 @@ class PPREService:
             "company_status": db_row.get("company_status") or "Active",
             "directors": directors_list,
             "charges": charges_list,
+            "charge_summary": charge_summary,
+            "court_info": court_info,
+            "msme": raw_feature_row.get("msme_info"),
+            "aml": aml_info,
+            "auditor_info": raw_feature_row.get("auditor_info"),
+            "consolidated_financials": raw_feature_row.get("consolidated_financials"),
             "zeropass": zeropass_data,
             "ratios": ratios_snapshot,
             "financials": raw_feature_row.get("financials", []),
@@ -1478,22 +2019,31 @@ class PPREService:
             "epfo": {
                 "employee_count": raw_feature_row.get("epfo_headcount"),
                 "pf_filing_regular": raw_feature_row.get("pf_filing_regular"),
-                "headcount_drop": (raw_feature_row.get("epfo_headcount") or 0) < 150,
+                "headcount_drop": bool(raw_feature_row.get("epfo_headcount_drop", False)),
             },
             "charge": {
                 "has_active": raw_feature_row.get("has_any_active_charge", False),
                 "charge_summary": f"{raw_feature_row.get('charge_count_active', 0)} active charges",
             },
             "legal": {
+                "total_cases": raw_feature_row.get("case_count_total", 0),
+                "active_cases": raw_feature_row.get("case_count_active", 0),
                 "hc_cases": raw_feature_row.get("case_count_hc", 0),
                 "nclt_cases": raw_feature_row.get("case_count_nclt", 0),
                 "drt_cases": raw_feature_row.get("case_count_drt", 0),
-                "active_cases": raw_feature_row.get("case_count_active", 0),
+                "criminal_cases": raw_feature_row.get("criminal_case_count", 0),
+                "high_value_cases": raw_feature_row.get("high_value_case_count", 0),
+                "recent_cases_12m": raw_feature_row.get("recent_cases_12m", 0),
+                "recent_cases_24m": raw_feature_row.get("recent_cases_24m", 0),
             },
             "readings": {
                 "financial": f"Score {int(financial_ds.weighted_score)}/100. Derived from FY25 financials: D/E {ratios.get('debt_to_equity') or 0:.2f}x, CR {ratios.get('current_ratio') or 0:.2f}x. Operating vintage of {vintage} years indicates established market presence.",
                 "identity": f"Score {int(identity_ds.weighted_score)}/100. MCA Profile and GSTIN cross-verified. Key managerial personnel ({len(directors_list)} active directors) validated with no Sec 164 disqualifications.",
-                "legal": f"Score {int(legal_ds.weighted_score)}/100. Legal track reflects {raw_feature_row.get('case_count_active', 0)} active commercial disputes. No NCLT/CIRP insolvency proceedings detected.",
+                "legal": (
+                    f"Score {int(legal_ds.weighted_score)}/100. Legal track reflects {court_info.get('total_cases', raw_feature_row.get('case_count_total', 0))} matters ({raw_feature_row.get('case_count_active', 0)} active). Clear of adverse insolvency proceedings."
+                    if not nclt_active_against
+                    else f"Score {int(legal_ds.weighted_score)}/100. Active NCLT / CIRP insolvency petition pending."
+                ),
                 "conduct": f"Score {int(raw_feature_row.get('conduct_score') or 70.0)}/100. BehaviourPrint™ incorporates GST filing discipline and EPFO workforce compliance history."
             },
             "ratio_insights": {

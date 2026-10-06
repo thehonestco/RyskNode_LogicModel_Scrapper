@@ -92,6 +92,8 @@ class DirectorEntry(BaseModel):
     sec_164_disqualified: bool = False
     other_entities_count: int = 0
     struck_off_links: str = "None"
+    shareholding_pct: Optional[float] = None
+    remuneration: Optional[float] = None
     status: str = "Clear"
     status_class: str = "pass"
 
@@ -151,6 +153,7 @@ class RatioRow(BaseModel):
 
 class FinancialPerformance(BaseModel):
     statements: Statements = Field(default_factory=Statements)
+    consolidated_statements: Optional[Statements] = None
     ratios: List[RatioRow] = Field(default_factory=list)
 
 class BehaviourSignal(BaseModel):
@@ -181,8 +184,20 @@ class LegalCase(BaseModel):
     status_class: str = "pass"
     implication: str = ""
 
+class DetailedCourtCase(BaseModel):
+    cnr: Optional[str] = None
+    court: str = ""
+    case_type: str = ""
+    matter_type: str = ""
+    parties: str = ""
+    status: str = "Pending"
+    filing_date: Optional[str] = None
+    risk_tag: Optional[str] = None
+    status_class: str = "warn"
+
 class LegalLitigation(BaseModel):
     cases: List[LegalCase] = Field(default_factory=list)
+    detailed_cases: List[DetailedCourtCase] = Field(default_factory=list)
     summary_text: str = ""
 
 class ChargeEntry(BaseModel):
@@ -195,7 +210,15 @@ class ChargeEntry(BaseModel):
     status_class: str = "warn"
     risk_note: str = "Standard charge registry entry"
 
+class ChargeSummaryInfo(BaseModel):
+    open_charge_count: int = 0
+    satisfied_charge_count: int = 0
+    total_charge_count: int = 0
+    total_open_registered_amount: Optional[float] = None
+    display_total_open_amount: str = "-"
+
 class ChargeRegister(BaseModel):
+    summary: Optional[ChargeSummaryInfo] = None
     charges: List[ChargeEntry] = Field(default_factory=list)
     empty_text: Optional[str] = None
     summary_text: str = ""
