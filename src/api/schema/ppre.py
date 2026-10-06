@@ -62,6 +62,7 @@ class KeyMetrics(BaseModel):
     blended_pd: MetricTile = Field(default_factory=MetricTile)
     zeropass_status: MetricTile = Field(default_factory=MetricTile)
     signals_count: MetricTile = Field(default_factory=MetricTile)
+    credit_score: Optional[MetricTile] = None
 
 class Overview(BaseModel):
     company_name: Optional[str] = None
@@ -74,6 +75,7 @@ class Overview(BaseModel):
     verdict: VerdictInfo = Field(default_factory=VerdictInfo)
     key_metrics: KeyMetrics = Field(default_factory=KeyMetrics)
     pralyon_score: int = 300
+    credit_score: Optional[int] = None
 
 class VerifiedProfileRow(BaseModel):
     field: str
@@ -130,6 +132,7 @@ class BandLadderEntry(BaseModel):
 class TriCore(BaseModel):
     headline: str = ""
     description: str = ""
+    credit_score: Optional[int] = None
     dimensions: List[DimensionScore] = Field(default_factory=list)
     band_ladder: List[BandLadderEntry] = Field(default_factory=list)
 
@@ -312,10 +315,31 @@ class CreditLimitResponse(BaseModel):
 
     # S2 limit and schedules
     evaluated_limit: float
-    recommended_tenor: int
+    recommended_tenor: Optional[int] = 30
     advance_required: float
     tenor_schedule: List[Dict[str, Any]]
     stress_table: List[Dict[str, Any]]
+    stress_table_text: Optional[str] = None
+
+    # Section 20 Limit breakdown & Scoring metrics
+    credit_score: Optional[int] = Field(None, description="Credit score on 300-850 CIBIL-like scale")
+    band_before_override: Optional[str] = Field(None, description="Risk band before hard overrides")
+    legal_health_score: Optional[float] = Field(None, description="100 - legal_risk_score")
+    advised_limit: Optional[float] = Field(None, description="Advised safe credit limit (INR)")
+    evaluated_clean_limit: Optional[float] = Field(None, description="Clean limit at recommended tenor (INR)")
+    base_limit: Optional[float] = Field(None, description="Base limit from minimum of anchors (INR)")
+    binding_anchor: Optional[str] = Field(None, description="Binding constraint anchor: revenue, tnw, or purchase_volume")
+    all_anchors: Optional[Dict[str, Any]] = Field(default_factory=dict, description="All anchor values for transparency")
+    tenor_multiplier: Optional[float] = Field(None, description="Applied tenor discount factor")
+    tenor_bucket_days: Optional[int] = Field(None, description="Snapped tenor bucket in days")
+    haircut_applied: Optional[bool] = Field(None, description="Whether declining turnover haircut was applied")
+    volatility_haircut: Optional[bool] = Field(None, description="Whether volatility haircut was applied")
+    terms_vs_profile: Optional[str] = Field(None, description="within_limit, exceeds_advised, not_requested, or unscoreable")
+    recommended_tenor_days: Optional[int] = Field(None, description="Recommended safe tenor in days")
+    tenor_recommendation_note: Optional[str] = Field(None, description="Plain-English tenor recommendation note")
+    advance_pct_of_request: Optional[float] = Field(None, description="Advance percentage of requested amount")
+    advance_recommendation: Optional[str] = Field(None, description="Advance collection recommendation text")
+    tenor_best_evaluated_days: Optional[int] = Field(None, description="Best evaluated safe tenor bucket")
 
     metadata: Dict[str, Any] = Field(default_factory=dict)
     input_parameters: Dict[str, Any] = Field(default_factory=dict, description="The 36 feature columns used as input to the ML scoring engine")

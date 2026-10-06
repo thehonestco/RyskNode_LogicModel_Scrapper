@@ -32,14 +32,6 @@ async def credit_limit_json(
         ead=request.ead,
     )
 
-    # Map S2 specific fields from _ppre_output to root level for Pydantic validation
-    ppre_out = result.get("_ppre_output") or {}
-    result["evaluated_limit"] = ppre_out.get("evaluated_limit") or 0.0
-    result["recommended_tenor"] = ppre_out.get("recommended_tenor") or 30
-    result["advance_required"] = ppre_out.get("advance_required") or 0.0
-    result["tenor_schedule"] = ppre_out.get("tenor_schedule") or []
-    result["stress_table"] = ppre_out.get("stress_table") or []
-
     response_obj = CreditLimitResponse.model_validate(result)
     return respond(code=constants.HTTP_200_OK, data=response_obj.model_dump())
 

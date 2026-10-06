@@ -1215,8 +1215,14 @@ class PPREService:
                     "label": "Signals Pulled",
                     "sub_text": "Across 6 sources",
                 },
+                "credit_score": {
+                    "value": ppre_output.get("credit_score"),
+                    "label": "Credit Score",
+                    "sub_text": "300–850 Scale",
+                },
             },
             "pralyon_score": pralyon_score,
+            "credit_score": ppre_output.get("credit_score"),
         }
 
         # ── 2. Entity Identity ──
@@ -1334,6 +1340,7 @@ class PPREService:
         tri_core = {
             "headline": f"RiskBand™ {risk_band} · Blended PD {blended_pd_pct}%",
             "description": "Three independent scoring tracks are run in parallel and synthesised into a single calibrated score, which maps to the RiskBand™. No single track can override the others — all three must converge.",
+            "credit_score": ppre_output.get("credit_score"),
             "dimensions": dimensions,
             "band_ladder": band_ladder,
         }
@@ -1683,6 +1690,37 @@ class PPREService:
             "input_parameters": input_parameters,
             "final_feature_row": final_feature_row,
             "_ppre_output": ppre_output,
+
+            # S2 limit and schedules (promoted from ppre_output for CreditLimitResponse & RA model compliance)
+            "evaluated_limit": ppre_output.get("evaluated_limit", 0.0),
+            "advised_limit": ppre_output.get("advised_limit", ppre_output.get("evaluated_limit", 0.0)),
+            "evaluated_clean_limit": ppre_output.get("evaluated_clean_limit", 0.0),
+            "recommended_tenor": ppre_output.get("recommended_tenor", 30),
+            "recommended_tenor_days": ppre_output.get("recommended_tenor_days", 30),
+            "advance_required": ppre_output.get("advance_required", 0.0),
+            "advance_pct_of_request": ppre_output.get("advance_pct_of_request"),
+            "advance_recommendation": ppre_output.get("advance_recommendation"),
+            "tenor_schedule": ppre_output.get("tenor_schedule", []),
+            "tenor_note": ppre_output.get("tenor_note", ""),
+            "tenor_recommendation_note": ppre_output.get("tenor_recommendation_note", ""),
+            "tenor_best_evaluated_days": ppre_output.get("tenor_best_evaluated_days"),
+            "stress_table": ppre_output.get("stress_table", []),
+            "stress_table_text": ppre_output.get("stress_table_text", ""),
+            "credit_score": ppre_output.get("credit_score"),
+            "band_before_override": ppre_output.get("band_before_override"),
+            "legal_health_score": ppre_output.get("legal_health_score"),
+            "override_flags": ppre_output.get("override_flags", []),
+            "reason_codes": ppre_output.get("reason_codes", []),
+            "base_limit": ppre_output.get("base_limit"),
+            "binding_anchor": ppre_output.get("binding_anchor"),
+            "all_anchors": ppre_output.get("all_anchors"),
+            "tenor_multiplier": ppre_output.get("tenor_multiplier"),
+            "tenor_bucket_days": ppre_output.get("tenor_bucket_days"),
+            "haircut_applied": ppre_output.get("haircut_applied"),
+            "volatility_haircut": ppre_output.get("volatility_haircut"),
+            "terms_vs_profile": ppre_output.get("terms_vs_profile"),
+            "el_pct": ppre_output.get("el_pct"),
+            "el_amount": ppre_output.get("el_amount"),
         }
 
     async def assess_buyer(

@@ -73,6 +73,19 @@ _RISK_HIGH_THRESHOLDS = {
     "criminal_case_count": 0,
 }
 
+# CIBIL-like credit score scale (300-850) per RA Model doc §13.7 & §20.3
+CREDIT_SCORE_MAP: Dict[str, int] = {
+    "AAA": 820,
+    "AA": 780,
+    "A": 740,
+    "BBB": 680,
+    "BB": 620,
+    "B": 560,
+    "CCC": 480,
+    "D": 300,
+    "UNSCOREABLE": 300,
+}
+
 
 def _fmt_val(feat: str, val) -> str:
     """Format feature value in human-readable financial terms."""
@@ -518,7 +531,8 @@ def score_entity(
                 # Raw LGBMRegressor
                 lgd_pred = float(lgd_art.predict(X_7)[0])
             el_pct = round(blended_pd * lgd_pred, 6)
-            el_amount = round(el_pct * (ead or 0), 2)
+            ead_basis = ead if ead is not None else (requested_amount if requested_amount is not None else None)
+            el_amount = round(el_pct * ead_basis, 2) if ead_basis is not None else None
         except Exception as e:
             logger.warning("[PPRE] LGD prediction failed: %s", e)
 
@@ -541,6 +555,9 @@ def score_entity(
         blended_pd=blended_pd,
     )
     evaluated_limit = limit_result["advised_limit"]
+    if el_amount is None and el_pct is not None and evaluated_limit:
+        el_amount = round(el_pct * evaluated_limit, 2)
+    credit_score = CREDIT_SCORE_MAP.get(pd_map.pd_band, 300)
 
     # -------------------------------------------------------------------------
     # Step 8: Financial Stress Test  (Panel D — informational only)
@@ -662,7 +679,9 @@ def score_entity(
         "pralyon_risk_score": pd_map.governance_score,
         "governance_score": pd_map.governance_score,
         "pd_band": pd_map.pd_band,
+        "band_before_override": pd_map.band_before_override,
         "data_penalty": pd_map.data_penalty,
+        "legal_health_score": pd_map.legal_health_score,
         "override_flags": pd_map.override_flags,
         # Panel B — Default Probability + LGD + EL
         "blended_pd": round(blended_pd, 6),
@@ -670,12 +689,28 @@ def score_entity(
         "lgd_pred": lgd_pred,
         "el_pct": el_pct,
         "el_amount": el_amount,
+        "credit_score": credit_score,
         # Panel C — 3-Anchor Limit Advisory (sanctioned limit)
+        "advised_limit": evaluated_limit,
         "evaluated_limit": evaluated_limit,
-        "recommended_tenor": limit_result["recommended_tenor_days"],
+        "evaluated_clean_limit": limit_result.get("evaluated_clean_limit", evaluated_limit),
+        "base_limit": limit_result.get("base_limit"),
+        "binding_anchor": limit_result.get("binding_anchor"),
+        "all_anchors": limit_result.get("all_anchors"),
+        "tenor_multiplier": limit_result.get("tenor_multiplier"),
+        "tenor_bucket_days": limit_result.get("tenor_bucket_days"),
+        "haircut_applied": limit_result.get("haircut_applied"),
+        "volatility_haircut": limit_result.get("volatility_haircut"),
+        "terms_vs_profile": limit_result.get("terms_vs_profile"),
+        "recommended_tenor": limit_result.get("recommended_tenor_days") or limit_result.get("credit_period_days") or 30,
+        "recommended_tenor_days": limit_result.get("recommended_tenor_days") or limit_result.get("credit_period_days") or 30,
         "advance_required": limit_result["advance_required"],
+        "advance_pct_of_request": limit_result.get("advance_pct_of_request"),
+        "advance_recommendation": limit_result.get("advance_recommendation"),
         "tenor_schedule": limit_result["tenor_schedule"],
         "tenor_note": limit_result["tenor_recommendation_note"],
+        "tenor_recommendation_note": limit_result["tenor_recommendation_note"],
+        "tenor_best_evaluated_days": limit_result.get("tenor_best_evaluated_days"),
         # Panel D — Financial Stress Test
         "stress_table": [vars(r) for r in stress_results],
         "stress_table_text": stress_table_text,
