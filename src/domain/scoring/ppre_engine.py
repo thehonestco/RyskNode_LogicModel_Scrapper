@@ -508,12 +508,30 @@ def score_entity(
         except Exception as e:
             logger.warning("[PPRE] XGBoost prediction failed: %s", e)
 
-    pd_lr = pds.get("lr", 0.05)
-    pd_lgbm = pds.get("lgbm", 0.05)
-    pd_xgb = pds.get("xgb", 0.05)
+    pd_lr = pds.get("lr", 0.0)
+    pd_lgbm = pds.get("lgbm", 0.0)
+    pd_xgb = pds.get("xgb", 0.0)
 
     # Blend per §14 Hardcoded Values Master Register: LGBM=0.40, XGB=0.30, SC=0.30
-    blended_pd = float(pd_lgbm * 0.40 + pd_xgb * 0.30 + pd_lr * 0.30)
+    if pds:
+        # At least one model produced a PD — blend available models proportionally
+        # Weights sum to 1.0 for whichever models fired; missing models contribute 0
+        total_weight = (0.40 if "lgbm" in pds else 0.0) + (0.30 if "xgb" in pds else 0.0) + (0.30 if "lr" in pds else 0.0)
+        blended_pd = float(pd_lgbm * 0.40 + pd_xgb * 0.30 + pd_lr * 0.30) / total_weight
+    else:
+        # No ML models loaded — derive proxy PD from governance_score band to maintain
+        # consistency between pd_band and blended_pd (avoid constant 0.05 mismatch).
+        # Maps each band to its approximate midpoint PD.
+        _BAND_MIDPOINT_PD = {
+            "AAA": 0.001, "AA": 0.003, "A": 0.007, "BBB": 0.015,
+            "BB": 0.035, "B": 0.075, "CCC": 0.150, "D": 0.500, "UNSCOREABLE": 1.0,
+        }
+        blended_pd = _BAND_MIDPOINT_PD.get(pd_map.pd_band, 0.050)
+        logger.info(
+            "[PPRE] No ML models loaded — blended_pd derived from band %s → %.4f",
+            pd_map.pd_band, blended_pd,
+        )
+    blended_pd = float(blended_pd)
 
     # -------------------------------------------------------------------------
     # Step 6: LGD
@@ -583,7 +601,7 @@ def score_entity(
     xai_plot_paths = []
 
     domain_scores = {
-        "financial_score": pd_map.governance_score,
+        "financial_score": feature_row.get("financial_score"),  # actual financial scorecard score (0-100)
         "identity_score": feature_row.get("identity_score"),
         "legal_score": feature_row.get("legal_score"),
         "documentation_score": feature_row.get("documentation_score"),

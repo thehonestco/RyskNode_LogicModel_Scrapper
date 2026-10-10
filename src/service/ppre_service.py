@@ -45,6 +45,24 @@ logger = logging.getLogger(__name__)
 from service.artifact_service import ArtifactService
 
 
+def _parse_safe_float(v, default=0.0) -> float:
+    if v is None:
+        return default
+    if isinstance(v, (int, float)):
+        return float(v)
+    s = str(v).strip().replace(",", "")
+    if not s or s in ("-", "--", "N/A", "null"):
+        return default
+    if s.startswith("-"):
+        s = "-" + s[1:].strip()
+    elif s.startswith("(") and s.endswith(")"):
+        s = "-" + s[1:-1].strip()
+    try:
+        return float(s)
+    except (ValueError, TypeError):
+        return default
+
+
 class PPREService:
     def __init__(self, uow: AbstractUnitOfWork, artifact_service: ArtifactService):
         self.uow = uow
@@ -68,26 +86,44 @@ class PPREService:
             else payload.get("overview", {})
         ) or {}
 
+        def _safe_float(v, default=0.0) -> float:
+            if v is None:
+                return default
+            if isinstance(v, (int, float)):
+                return float(v)
+            s = str(v).strip().replace(",", "")
+            if not s or s in ("-", "--", "N/A", "null"):
+                return default
+            if s.startswith("-"):
+                s = "-" + s[1:].strip()
+            elif s.startswith("(") and s.endswith(")"):
+                s = "-" + s[1:-1].strip()
+            try:
+                return float(s)
+            except (ValueError, TypeError):
+                return default
+
         years_data = {}
         for pl in profit_loss:
             year = pl.get("Year")
             if year:
                 years_data.setdefault(year, {})
-                pbt = float(pl.get("PROFIT_BEFORE_TAX") or 0)
-                fin_cost = float(pl.get("FINANCE_COST_CR") or pl.get("INTEREST_EXP_CR") or 0)
+                pbt = _safe_float(pl.get("PROFIT_BEFORE_TAX"))
+                fin_cost = _safe_float(pl.get("FINANCE_COST_CR") or pl.get("INTEREST_EXP_CR"))
                 # EBIT = PBT + Finance Cost (add back interest since PBT is after interest)
                 # Use explicit EBIT field if provider supplies it, else compute
-                ebit = float(pl.get("EBIT")) if pl.get("EBIT") else (pbt + fin_cost)
+                ebit = _safe_float(pl.get("EBIT")) if pl.get("EBIT") is not None else (pbt + fin_cost)
                 years_data[year].update(
                     {
-                        "revenue": float(pl.get("TOTAL_REVENUE_CR") or pl.get("TOTAL_INCOME") or 0),
+                        "revenue": _safe_float(pl.get("TOTAL_REVENUE_CR") or pl.get("TOTAL_INCOME")),
                         "ebit": ebit,
-                        "pat": float(
+                        "pat": _safe_float(
                             pl.get("PROF_LOS_11_14_C")
-                            or (pbt - float(pl.get("TAX_EXPENSES_CR") or 0))
+                            if pl.get("PROF_LOS_11_14_C") is not None
+                            else (pbt - _safe_float(pl.get("TAX_EXPENSES_CR")))
                         ),
                         "finance_cost": fin_cost,
-                        "depreciation": float(pl.get("DEPRECTN_AMORT_C") or 0),
+                        "depreciation": _safe_float(pl.get("DEPRECTN_AMORT_C")),
                     }
                 )
 
@@ -95,24 +131,24 @@ class PPREService:
             year = bs.get("Year")
             if year:
                 years_data.setdefault(year, {})
-                lt_borrow = float(bs.get("LONG_TERM_BORR_C") or 0)
-                st_borrow = float(bs.get("SHORT_TERM_BOR_C") or 0)
+                lt_borrow = _safe_float(bs.get("LONG_TERM_BORR_C"))
+                st_borrow = _safe_float(bs.get("SHORT_TERM_BOR_C"))
                 total_debt = lt_borrow + st_borrow
-                networth = float(
-                    bs.get("EQUITY_AND_RESERVES") or bs.get("RESERVE_SURPLUS1", 0) + bs.get("SHARE_CAPITAL_CR", 0)
-                )
+                res_surplus = _safe_float(bs.get("RESERVE_SURPLUS1"))
+                share_cap = _safe_float(bs.get("SHARE_CAPITAL_CR"))
+                networth = _safe_float(bs.get("EQUITY_AND_RESERVES")) if bs.get("EQUITY_AND_RESERVES") is not None else (res_surplus + share_cap)
 
                 years_data[year].update(
                     {
-                        "current_assets": float(bs.get("CURR_ASSETS") or bs.get("TOTAL_CURR_REP") or 0),
-                        "current_liabilities": float(bs.get("CURR_LIABILITIES") or 0),
+                        "current_assets": _safe_float(bs.get("CURR_ASSETS") or bs.get("TOTAL_CURR_REP")),
+                        "current_liabilities": _safe_float(bs.get("CURR_LIABILITIES")),
                         "total_debt": total_debt,
                         "networth": networth,
-                        "receivables": float(bs.get("TRADE_RECEIV_CR") or 0),
-                        "inventory": float(bs.get("INVENTORIES_CR") or 0),
-                        "trade_payables": float(bs.get("TRADE_PAYABLES_C") or 0),
-                        "cash_and_bank": float(bs.get("CASH_AND_EQU_CR") or 0),
-                        "gross_fixed_assets": float(bs.get("FIXED_ASSETS") or 0),
+                        "receivables": _safe_float(bs.get("TRADE_RECEIV_CR")),
+                        "inventory": _safe_float(bs.get("INVENTORIES_CR")),
+                        "trade_payables": _safe_float(bs.get("TRADE_PAYABLES_C")),
+                        "cash_and_bank": _safe_float(bs.get("CASH_AND_EQU_CR")),
+                        "gross_fixed_assets": _safe_float(bs.get("FIXED_ASSETS")),
                     }
                 )
 
@@ -125,21 +161,19 @@ class PPREService:
 
         # Fallback if no profitLoss or balanceSheet lists are present in snapshot payload
         if not financials:
-            fallback_networth = float(
+            fallback_networth = _safe_float(
                 overview.get("NET_WORTH_COMP")
                 or overview.get("paidUpCapital")
                 or db_row.get("paid_up_capital")
                 or db_row.get("authorized_capital")
-                or 0.0
             )
-            fallback_revenue = float(
+            fallback_revenue = _safe_float(
                 overview.get("TOT_TURNOVER")
                 or overview.get("totalTurnover")
                 or db_row.get("latest_revenue")
-                or 0.0
             )
             fallback_debt = sum(
-                float(c.get("amount") or 0)
+                _safe_float(c.get("amount"))
                 for c in payload.get("charges", [])
                 if str(c.get("chargeStatus") or c.get("status") or "").lower() in ["open", "active"]
             )
@@ -470,7 +504,7 @@ class PPREService:
         suppliers = []
         for item in msme_list:
             if isinstance(item, dict):
-                amt = float(item.get("amount_due") or item.get("Amount due") or 0.0)
+                amt = _parse_safe_float(item.get("amount_due") or item.get("Amount due"))
                 total_amt += amt
                 sname = item.get("supplier_name") or item.get("Supplier Name")
                 if sname and len(suppliers) < 5:
@@ -1922,7 +1956,7 @@ class PPREService:
                     or ch.get("bankName")
                     or ch.get("LENDER_NAME")
                     or "Unknown",
-                    "amount": float(ch.get("amount") or ch.get("CHARGE_AMOUNT") or 0.0),
+                    "amount": _parse_safe_float(ch.get("amount") or ch.get("CHARGE_AMOUNT")),
                     "created": ch.get("dateOfCreation") or ch.get("creationDate") or ch.get("CREATION_DATE") or "N/A",
                     "status": str(ch.get("chargeStatus") or ch.get("status") or ch.get("STATUS") or "Active").lower(),
                 }
@@ -2135,9 +2169,9 @@ class PPREService:
                 },
                 "net_margin": {
                     "benchmark": "≥ 6%",
-                    "status": "Pass" if (((raw_feature_row.get("pat") or 0) / (raw_feature_row.get("revenue") or 1) * 100) if raw_feature_row.get("revenue") else 0) >= 6 else "Thin",
-                    "status_class": "pass" if (((raw_feature_row.get("pat") or 0) / (raw_feature_row.get("revenue") or 1) * 100) if raw_feature_row.get("revenue") else 0) >= 6 else "warn",
-                    "implication": "Solid operating profitability." if (((raw_feature_row.get("pat") or 0) / (raw_feature_row.get("revenue") or 1) * 100) if raw_feature_row.get("revenue") else 0) >= 6 else "Marginal profitability limits buffer."
+                    "status": "Pass" if (ratios.get("net_margin") or 0) >= 6 else "Thin",
+                    "status_class": "pass" if (ratios.get("net_margin") or 0) >= 6 else "warn",
+                    "implication": "Solid operating profitability." if (ratios.get("net_margin") or 0) >= 6 else "Marginal profitability limits buffer."
                 },
                 "dso": {
                     "benchmark": "≤ 90 days",
@@ -2145,12 +2179,6 @@ class PPREService:
                     "status_class": "warn" if (ratios.get("dso") or 0) > 90 else "pass",
                     "implication": "Slow receivables collection." if (ratios.get("dso") or 0) > 90 else "Efficient debtor collection."
                 },
-                "tangible_net_worth": {
-                    "benchmark": "Positive",
-                    "status": "Pass" if (raw_feature_row.get("networth") or 0) > 0 else "Fail",
-                    "status_class": "pass" if (raw_feature_row.get("networth") or 0) > 0 else "fail",
-                    "implication": "Sufficient solvency backing." if (raw_feature_row.get("networth") or 0) > 0 else "Severe capital erosion."
-                }
             }
         }
 

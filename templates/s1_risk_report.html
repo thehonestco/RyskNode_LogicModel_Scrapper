@@ -158,7 +158,7 @@ tr.hl td { background: rgba(245,166,35,.05); }
   <div class="pills">
     <div class="pill"><strong>Pralyon AI</strong><span>Predictive engine</span></div>
     <div class="pill"><strong>Tri-Core™</strong><span>3-track synthesis</span></div>
-    <div class="pill"><strong>RiskBand™ BB</strong><span>7-tier classification</span></div>
+    <div class="pill"><strong>RiskBand™ {{ risk_band }}</strong><span>7-tier classification</span></div>
     <div class="pill"><strong>35 Signals</strong><span>6 authoritative sources</span></div>
     <div class="pill"><strong>TraceLayer™</strong><span>Full explainability</span></div>
   </div>
@@ -232,13 +232,13 @@ tr.hl td { background: rgba(245,166,35,.05); }
     <tr><td colspan="7" style="text-align:center">No directors found</td></tr>
     {% endfor %}
   </table>
-  <p style="margin-top:14px">Both directors hold active DIN status. No disqualification under Section 164(2). No association with struck-off or wound-up entities. No director changes or resignations in the past 24 months — governance is stable.</p>
+  <p style="margin-top:14px">{% if metadata.director_profile and metadata.director_profile.summary_text %}{{ metadata.director_profile.summary_text }}{% else %}Director DIN assessment completed. No disqualification under Section 164(2) detected.{% endif %}</p>
 </div>
 
 <!-- ═══════════════════════ 3. ZEROPASS ═══════════════════════ -->
 <div class="sec">
   <div class="sec-label">ZeroPass™ Hard-Stop Gating</div>
-  <h2>All gates cleared — scoring proceeds</h2>
+  <h2>{% if declined %}Hard-stop gate triggered — scoring stopped{% else %}All gates cleared — scoring proceeds{% endif %}</h2>
   <p>ZeroPass™ evaluates 8 disqualifying conditions before any score is computed. If any gate triggers, the report stops and surfaces a hard-stop — no RiskBand™ is produced for an unsafe subject.</p>
   <table>
     <tr><th>Gate</th><th>Check</th><th>Result</th><th>Disposition</th></tr>
@@ -405,12 +405,12 @@ tr.hl td { background: rgba(245,166,35,.05); }
   <h2>eCourts · DRT · NCLT · Criminal — verified litigation signals</h2>
   <table>
     <tr><th>Forum</th><th>Matter type</th><th>Count</th><th>Status</th><th>Seller implication</th></tr>
-    <tr><td><strong>High Court</strong></td><td>Civil / Commercial</td><td>{{ metadata.legal.hc_cases }}</td><td><span class="chip pass">Clear</span></td><td>High Court references.</td></tr>
-    <tr><td><strong>NCLT</strong></td><td>Insolvency / Company matter</td><td>{{ metadata.legal.nclt_cases }}</td><td><span class="chip pass">Clear</span></td><td>No insolvency matters found.</td></tr>
-    <tr><td><strong>DRT / DRAT</strong></td><td>Debt recovery</td><td>{{ metadata.legal.drt_cases }}</td><td><span class="chip pass">Clear</span></td><td>No lender recovery proceedings.</td></tr>
+    <tr><td><strong>High Court</strong></td><td>Civil / Commercial</td><td>{{ metadata.legal.hc_cases }}</td><td><span class="chip {% if metadata.legal.hc_cases > 0 %}warn{% else %}pass{% endif %}">{% if metadata.legal.hc_cases > 0 %}{{ metadata.legal.hc_cases }} matters{% else %}Clear{% endif %}</span></td><td>High Court references.</td></tr>
+    <tr><td><strong>NCLT</strong></td><td>Insolvency / Company matter</td><td>{{ metadata.legal.nclt_cases }}</td><td><span class="chip {% if metadata.legal.nclt_cases > 0 %}warn{% else %}pass{% endif %}">{% if metadata.legal.nclt_cases > 0 %}{{ metadata.legal.nclt_cases }} matters{% else %}Clear{% endif %}</span></td><td>No insolvency matters found.</td></tr>
+    <tr><td><strong>DRT / DRAT</strong></td><td>Debt recovery</td><td>{{ metadata.legal.drt_cases }}</td><td><span class="chip {% if metadata.legal.drt_cases > 0 %}fail{% else %}pass{% endif %}">{% if metadata.legal.drt_cases > 0 %}{{ metadata.legal.drt_cases }} cases{% else %}Clear{% endif %}</span></td><td>No lender recovery proceedings.</td></tr>
     <tr><td><strong>Commercial Court</strong></td><td>B2B contract dispute</td><td>{{ metadata.legal.active_cases }}</td><td><span class="chip {% if metadata.legal.active_cases > 0 %}warn{% else %}pass{% endif %}">{% if metadata.legal.active_cases > 0 %}Active{% else %}Clear{% endif %}</span></td><td>Active litigation count.</td></tr>
   </table>
-  <p style="margin-top:14px">The one active commercial court matter appears to be a B2B contract dispute at a pre-decree stage with no injunction or execution visible on CNR search. This does not trigger ZeroPass™ at its current stage but contributes a modest upward pressure to the Blended PD via the Legal track. If this matter progresses to decree or execution, it must be treated as a material change requiring immediate re-evaluation.</p>
+  <p style="margin-top:14px">{% if metadata.legal_litigation and metadata.legal_litigation.summary_text %}{{ metadata.legal_litigation.summary_text }}{% else %}Litigation search completed across eCourts, NCLT, DRT and High Court registers.{% endif %}</p>
 </div>
 
 <!-- ═══════════════════════ 9. MCA CHARGES ═══════════════════════ -->
@@ -477,7 +477,7 @@ tr.hl td { background: rgba(245,166,35,.05); }
 
   <div class="upsell">
     <h3>Credit limit and tenor are not computed in this report — upgrade to Service 2</h3>
-    <p>The Buyer Risk Assessment is intentionally complete on buyer intelligence and intentionally silent on credit limit and tenor. To receive an AnchorEngine™-computed safe exposure limit, ShockFrame™ stress scenarios across six shock conditions, and a calibrated tenor recommendation for Honest Digital Private Limited, upgrade to the <strong>Operational Limit Assessment (Service 2)</strong>. For ongoing automated surveillance across your active buyer portfolio, activate the <strong>Portfolio &amp; Counterparty Monitor (Service 3)</strong>.</p>
+    <p>The Buyer Risk Assessment is intentionally complete on buyer intelligence and intentionally silent on credit limit and tenor. To receive an AnchorEngine™-computed safe exposure limit, ShockFrame™ stress scenarios across six shock conditions, and a calibrated tenor recommendation for {{ metadata.company_name }}, upgrade to the <strong>Operational Limit Assessment (Service 2)</strong>. For ongoing automated surveillance across your active buyer portfolio, activate the <strong>Portfolio &amp; Counterparty Monitor (Service 3)</strong>.</p>
   </div>
 </div>
 
@@ -494,7 +494,7 @@ tr.hl td { background: rgba(245,166,35,.05); }
 <!-- ═══════════════════════ FOOTER ═══════════════════════ -->
 <div class="footer">
   <span>RyskNode · Pralyon Intelligence Suite</span>
-  <span>Service 1 · Buyer Risk Assessment · Honest Digital Pvt Ltd · PRY-S1-2026-0519-0047</span>
+  <span>Service 1 · Buyer Risk Assessment · {{ metadata.company_name }} · {{ metadata.report_id }}</span>
   <span>Confidential · Internal use only · Not for redistribution</span>
 </div>
 
