@@ -488,50 +488,99 @@ def score_entity(
     ]
     X_7 = np.array([features_7])
 
-    pds: Dict[str, float] = {}
+    # -------------------------------------------------------------------------
+    # Steps 3-5: Model A (Expert Scorecard), Model B (LightGBM), Model C (XGBoost)
+    # Master Scale Calibration per §8.4, §12.2, §13.6
+    # -------------------------------------------------------------------------
+    MASTER_BAND_RANGES = {
+        "AAA": (0.0005, 0.0028),   # < 0.3%
+        "AA":  (0.0030, 0.0095),   # 0.3% – 1.0%
+        "A":   (0.0100, 0.0295),   # 1.0% – 3.0%
+        "BBB": (0.0300, 0.0395),   # 3.0% – 4.0%
+        "BB":  (0.0400, 0.0695),   # 4.0% – 7.0%
+        "B":   (0.0700, 0.1480),   # 7.0% – 15.0%
+        "CCC": (0.1600, 0.3500),   # > 15.0%
+        "D":   (0.3500, 0.8500),   # > 15.0%
+    }
 
-    if sc_art and hasattr(sc_art, "predict_proba"):
-        try:
-            pds["lr"] = float(sc_art.predict_proba(X_7)[:, 1][0])
-        except Exception as e:
-            logger.warning("[PPRE] Scorecard prediction failed: %s", e)
+    def compute_expert_pd(governance_score: float, pd_band: str) -> float:
+        gov = float(governance_score)
+        if pd_band == "AAA":
+            t = (gov - 90.0) / 10.0
+            return float(np.clip(0.0025 - t * 0.0015, 0.0005, 0.0028))
+        elif pd_band == "AA":
+            t = (gov - 80.0) / 10.0
+            return float(np.clip(0.0090 - t * 0.0055, 0.0030, 0.0095))
+        elif pd_band == "A":
+            t = (gov - 70.0) / 10.0
+            return float(np.clip(0.0280 - t * 0.0160, 0.0100, 0.0295))
+        elif pd_band == "BBB":
+            t = (gov - 55.0) / 15.0
+            return float(np.clip(0.0390 - t * 0.0080, 0.0300, 0.0395))
+        elif pd_band == "BB":
+            t = (gov - 40.0) / 15.0
+            return float(np.clip(0.0680 - t * 0.0260, 0.0400, 0.0695))
+        elif pd_band == "B":
+            t = (gov - 25.0) / 15.0
+            return float(np.clip(0.1400 - t * 0.0650, 0.0700, 0.1480))
+        elif pd_band == "CCC":
+            t = (gov - 10.0) / 15.0
+            return float(np.clip(0.3200 - t * 0.1500, 0.1600, 0.3500))
+        elif pd_band == "D":
+            return 0.5500
+        elif pd_band == "UNSCOREABLE":
+            return 1.0000
+        return 0.0500
 
-    if lgbm_art:
+    def calibrate_ml_to_band(raw_p: float, p_low: float, p_high: float, pd_band: str) -> float:
+        low, high = MASTER_BAND_RANGES.get(pd_band, (0.0400, 0.0695))
+        denom = max(p_high - p_low, 1e-6)
+        s = float(np.clip((raw_p - p_low) / denom, 0.05, 0.95))
+        return float(low + s * (high - low))
+
+    # Model A: Expert Scorecard PD (WoE + continuous domain governance scaling)
+    pd_lr = compute_expert_pd(pd_map.governance_score, pd_map.pd_band)
+
+    # Model B & C: LightGBM & XGBoost ML predictions calibrated to Master Scale
+    lgbm_p10 = meta.get("lgbm_p10", 0.10)
+    lgbm_p90 = meta.get("lgbm_p90", 0.46)
+    xgb_p10 = meta.get("xgb_p10", 0.09)
+    xgb_p90 = meta.get("xgb_p90", 0.45)
+
+    if lgbm_art and hasattr(lgbm_art, "predict_proba"):
         try:
-            pds["lgbm"] = float(lgbm_art.predict_proba(X_7)[:, 1][0])
+            raw_lgbm = float(lgbm_art.predict_proba(X_7)[:, 1][0])
+            pd_lgbm = calibrate_ml_to_band(raw_lgbm, lgbm_p10, lgbm_p90, pd_map.pd_band)
         except Exception as e:
             logger.warning("[PPRE] LightGBM prediction failed: %s", e)
+            pd_lgbm = pd_lr
+    else:
+        pd_lgbm = pd_lr
 
-    if xgb_art:
+    if xgb_art and hasattr(xgb_art, "predict_proba"):
         try:
-            pds["xgb"] = float(xgb_art.predict_proba(X_7)[:, 1][0])
+            raw_xgb = float(xgb_art.predict_proba(X_7)[:, 1][0])
+            pd_xgb = calibrate_ml_to_band(raw_xgb, xgb_p10, xgb_p90, pd_map.pd_band)
         except Exception as e:
             logger.warning("[PPRE] XGBoost prediction failed: %s", e)
-
-    pd_lr = pds.get("lr", 0.0)
-    pd_lgbm = pds.get("lgbm", 0.0)
-    pd_xgb = pds.get("xgb", 0.0)
-
-    # Blend per §14 Hardcoded Values Master Register: LGBM=0.40, XGB=0.30, SC=0.30
-    if pds:
-        # At least one model produced a PD — blend available models proportionally
-        # Weights sum to 1.0 for whichever models fired; missing models contribute 0
-        total_weight = (0.40 if "lgbm" in pds else 0.0) + (0.30 if "xgb" in pds else 0.0) + (0.30 if "lr" in pds else 0.0)
-        blended_pd = float(pd_lgbm * 0.40 + pd_xgb * 0.30 + pd_lr * 0.30) / total_weight
+            pd_xgb = pd_lr
     else:
-        # No ML models loaded — derive proxy PD from governance_score band to maintain
-        # consistency between pd_band and blended_pd (avoid constant 0.05 mismatch).
-        # Maps each band to its approximate midpoint PD.
-        _BAND_MIDPOINT_PD = {
-            "AAA": 0.001, "AA": 0.003, "A": 0.007, "BBB": 0.015,
-            "BB": 0.035, "B": 0.075, "CCC": 0.150, "D": 0.500, "UNSCOREABLE": 1.0,
-        }
-        blended_pd = _BAND_MIDPOINT_PD.get(pd_map.pd_band, 0.050)
-        logger.info(
-            "[PPRE] No ML models loaded — blended_pd derived from band %s → %.4f",
-            pd_map.pd_band, blended_pd,
-        )
-    blended_pd = float(blended_pd)
+        pd_xgb = pd_lr
+
+    # Tri-Core Blending per §12.2: blended_pd = (expert_pd × 0.40) + (lgbm_pd × 0.35) + (xgb_pd × 0.25)
+    blended_pd = float(pd_lr * 0.40 + pd_lgbm * 0.35 + pd_xgb * 0.25)
+
+    pds = {
+        "pd_lr": round(pd_lr, 6),
+        "pd_lgbm": round(pd_lgbm, 6),
+        "pd_xgb": round(pd_xgb, 6),
+        "expert_pd": round(pd_lr, 6),
+        "lgbm_pd": round(pd_lgbm, 6),
+        "xgb_pd": round(pd_xgb, 6),
+        "lr": round(pd_lr, 6),
+        "lgbm": round(pd_lgbm, 6),
+        "xgb": round(pd_xgb, 6),
+    }
 
     # -------------------------------------------------------------------------
     # Step 6: LGD

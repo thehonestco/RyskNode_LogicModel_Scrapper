@@ -265,6 +265,29 @@ tr.hl td { background: rgba(245,166,35,.05); }
     <tr><td><strong>Legal &amp; Compliance</strong></td><td>20%</td><td>{{ legal_score | int }} / 100</td><td>{{ metadata.readings.legal }}</td></tr>
     <tr><td><strong>Conduct &amp; Behaviour</strong></td><td>15%</td><td>{{ conduct_score | int }} / 100</td><td>{{ metadata.readings.conduct }}</td></tr>
   </table>
+
+  <!-- Tri-Core Model Breakdown per §12.2 -->
+  <div style="margin-top:16px; margin-bottom:16px; padding:12px 16px; background:rgba(65,200,255,.05); border:1px solid rgba(65,200,255,.15); border-radius:8px; font-size:12.5px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:8px;">
+      <strong style="color:var(--accent);">Tri-Core™ Ensemble Synthesis (§12.2)</strong>
+      <span style="color:var(--muted); font-size:11.5px;">Formula: <code>blended_pd = (expert_pd × 0.40) + (lgbm_pd × 0.35) + (xgb_pd × 0.25)</code></span>
+    </div>
+    <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; margin-top:8px;">
+      <div style="padding:8px 12px; background:rgba(255,255,255,.03); border-radius:6px; border:1px solid rgba(255,255,255,.05);">
+        <div style="color:var(--muted); font-size:11px; text-transform:uppercase;">Model A · Expert Scorecard (40%)</div>
+        <div style="font-size:15px; font-weight:700; color:#fff; margin-top:2px;">{{ ((model_pds.expert_pd if model_pds.expert_pd is defined else (model_pds.pd_lr if model_pds.pd_lr is defined else blended_pd_pct/100)) * 100) | round(2) }}%</div>
+      </div>
+      <div style="padding:8px 12px; background:rgba(255,255,255,.03); border-radius:6px; border:1px solid rgba(255,255,255,.05);">
+        <div style="color:var(--muted); font-size:11px; text-transform:uppercase;">Model B · LightGBM (35%)</div>
+        <div style="font-size:15px; font-weight:700; color:#fff; margin-top:2px;">{{ ((model_pds.lgbm_pd if model_pds.lgbm_pd is defined else (model_pds.pd_lgbm if model_pds.pd_lgbm is defined else blended_pd_pct/100)) * 100) | round(2) }}%</div>
+      </div>
+      <div style="padding:8px 12px; background:rgba(255,255,255,.03); border-radius:6px; border:1px solid rgba(255,255,255,.05);">
+        <div style="color:var(--muted); font-size:11px; text-transform:uppercase;">Model C · XGBoost (25%)</div>
+        <div style="font-size:15px; font-weight:700; color:#fff; margin-top:2px;">{{ ((model_pds.xgb_pd if model_pds.xgb_pd is defined else (model_pds.pd_xgb if model_pds.pd_xgb is defined else blended_pd_pct/100)) * 100) | round(2) }}%</div>
+      </div>
+    </div>
+  </div>
+
   <table style="margin-top:20px">
     <tr><th>Band</th><th>PD Range</th><th>Reading</th></tr>
     <tr {% if risk_band == 'AAA' %}class="hl"{% endif %}><td><strong>AAA {% if risk_band == 'AAA' %}◀ This entity{% endif %}</strong></td><td>&lt; 0.3%</td><td>Institutional-grade counterparty{% if risk_band == 'AAA' %} (Blended PD: {{ blended_pd_pct }}%){% endif %}</td></tr>
@@ -369,7 +392,7 @@ tr.hl td { background: rgba(245,166,35,.05); }
     <tr><td><strong>Return on Cap (ROCE)</strong></td><td>{{ (metadata.ratios.roce | round(1)) if metadata.ratios.roce is not none else 'N/A' }}%</td><td>{{ metadata.ratio_insights.roce.benchmark }}</td><td><span class="chip {{ metadata.ratio_insights.roce.status_class }}">{{ metadata.ratio_insights.roce.status }}</span></td><td>{{ metadata.ratio_insights.roce.implication }}</td></tr>
     <tr><td><strong>DSO (Debtor Days)</strong></td><td>{{ (metadata.ratios.dso | round(0)) if metadata.ratios.dso is not none else 'N/A' }} days</td><td>{{ metadata.ratio_insights.dso.benchmark }}</td><td><span class="chip {{ metadata.ratio_insights.dso.status_class }}">{{ metadata.ratio_insights.dso.status }}</span></td><td>{{ metadata.ratio_insights.dso.implication }}</td></tr>
     <tr><td><strong>DPO (Creditor Days)</strong></td><td>{{ (metadata.ratios.dpo | round(0)) if metadata.ratios.dpo is not none else 'N/A' }} days</td><td>{{ metadata.ratio_insights.dpo.benchmark }}</td><td><span class="chip {{ metadata.ratio_insights.dpo.status_class }}">{{ metadata.ratio_insights.dpo.status }}</span></td><td>{{ metadata.ratio_insights.dpo.implication }}</td></tr>
-    <tr><td><strong>Tangible Net Worth</strong></td><td>₹{{ (metadata.ratios.tangible_net_worth / 100000) | round(2) if metadata.ratios.tangible_net_worth is not none else '0' }} L</td><td>{{ metadata.ratio_insights.tangible_net_worth.benchmark }}</td><td><span class="chip {{ metadata.ratio_insights.tangible_net_worth.status_class }}">{{ metadata.ratio_insights.tangible_net_worth.status }}</span></td><td>{{ metadata.ratio_insights.tangible_net_worth.implication }}</td></tr>
+    <tr><td><strong>Tangible Net Worth</strong></td><td>₹{{ (metadata.ratios.tangible_net_worth / 10000000) | round(2) if metadata.ratios.tangible_net_worth is not none else '0' }} Cr</td><td>{{ metadata.ratio_insights.tangible_net_worth.benchmark }}</td><td><span class="chip {{ metadata.ratio_insights.tangible_net_worth.status_class }}">{{ metadata.ratio_insights.tangible_net_worth.status }}</span></td><td>{{ metadata.ratio_insights.tangible_net_worth.implication }}</td></tr>
   </table>
 </div>
 

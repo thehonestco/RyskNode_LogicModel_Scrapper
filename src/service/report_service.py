@@ -41,6 +41,7 @@ class ReportService:
             "identity_score": assess_data.get("identity_score", 0.0),
             "legal_score": assess_data.get("legal_score", 0.0),
             "conduct_score": assess_data.get("conduct_score", 0.0),
+            "model_pds": assess_data.get("model_pds") or (assess_data.get("_ppre_output") or {}).get("model_pds") or (assess_data.get("tri_core") or {}).get("model_pds") or {},
         }
         
         return template.render(**context)
@@ -91,6 +92,7 @@ class ReportService:
             "tenor_schedule": tenor_schedule,
             "requested_amount": requested_amount or ppre_out.get("requested_amount") or 0.0,
             "pralyon_score": credit_data.get("pralyon_score", 300),
+            "model_pds": credit_data.get("model_pds") or ppre_out.get("model_pds") or {},
         }
         
         return template.render(**context)

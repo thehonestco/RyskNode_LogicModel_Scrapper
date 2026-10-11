@@ -63,6 +63,7 @@ class KeyMetrics(BaseModel):
     zeropass_status: MetricTile = Field(default_factory=MetricTile)
     signals_count: MetricTile = Field(default_factory=MetricTile)
     credit_score: Optional[MetricTile] = None
+    model_pds: Optional[Dict[str, Any]] = None
 
 class Overview(BaseModel):
     company_name: Optional[str] = None
@@ -133,6 +134,7 @@ class TriCore(BaseModel):
     headline: str = ""
     description: str = ""
     credit_score: Optional[int] = None
+    model_pds: Optional[Dict[str, Any]] = None
     dimensions: List[DimensionScore] = Field(default_factory=list)
     band_ladder: List[BandLadderEntry] = Field(default_factory=list)
 
@@ -292,7 +294,11 @@ class CreditLimitResponse(BaseModel):
     assessed_at: datetime
     pralyon_score: int
     risk_band: str
+    credit_band: Optional[str] = None
     blended_pd: float
+    blended_pd_display: Optional[str] = None
+    model_pds: Optional[Dict[str, Any]] = None
+    governance_score: Optional[float] = None
     lgd_estimate: float
     conduct_score: float
     financial_score: float
