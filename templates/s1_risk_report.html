@@ -260,10 +260,10 @@ tr.hl td { background: rgba(245,166,35,.05); }
   <p>Three independent scoring tracks are run in parallel and synthesised into a single calibrated score, which maps to the RiskBand™. No single track can override the others — all three must converge.</p>
   <table>
     <tr><th>Dimension</th><th>Weight</th><th>Score</th><th>Reading</th></tr>
-    <tr><td><strong>Financial Health</strong></td><td>40%</td><td>{{ financial_score | int }} / 100</td><td>{{ metadata.readings.financial }}</td></tr>
-    <tr><td><strong>Identity &amp; Governance</strong></td><td>25%</td><td>{{ identity_score | int }} / 100</td><td>{{ metadata.readings.identity }}</td></tr>
-    <tr><td><strong>Legal &amp; Compliance</strong></td><td>20%</td><td>{{ legal_score | int }} / 100</td><td>{{ metadata.readings.legal }}</td></tr>
-    <tr><td><strong>Conduct &amp; Behaviour</strong></td><td>15%</td><td>{{ conduct_score | int }} / 100</td><td>{{ metadata.readings.conduct }}</td></tr>
+    <tr><td><strong>Financial Health</strong></td><td>40%</td><td>{{ financial_score | round | int }} / 100</td><td>{{ metadata.readings.financial }}</td></tr>
+    <tr><td><strong>Identity &amp; Governance</strong></td><td>25%</td><td>{{ identity_score | round | int }} / 100</td><td>{{ metadata.readings.identity }}</td></tr>
+    <tr><td><strong>Legal &amp; Compliance</strong></td><td>20%</td><td>{{ legal_score | round | int }} / 100</td><td>{{ metadata.readings.legal }}</td></tr>
+    <tr><td><strong>Conduct &amp; Behaviour</strong></td><td>15%</td><td>{{ conduct_score | round | int }} / 100</td><td>{{ metadata.readings.conduct }}</td></tr>
   </table>
 
   <!-- Tri-Core Model Breakdown per §12.2 -->

@@ -1350,10 +1350,10 @@ class PPREService:
         # ── 5. Tri-Core ──
         readings = metadata.get("readings") or dimension_readings or {}
         dimensions = [
-            {"name": "Financial Health", "weight": "40%", "score": int(financial_score), "max_score": 100, "reading": readings.get("financial", "")},
-            {"name": "Identity & Governance", "weight": "25%", "score": int(identity_score), "max_score": 100, "reading": readings.get("identity", "")},
-            {"name": "Legal & Compliance", "weight": "20%", "score": int(legal_score), "max_score": 100, "reading": readings.get("legal", "")},
-            {"name": "Conduct & Behaviour", "weight": "15%", "score": int(conduct_score), "max_score": 100, "reading": readings.get("conduct", "")},
+            {"name": "Financial Health", "weight": "40%", "score": int(round(financial_score)), "max_score": 100, "reading": readings.get("financial", "")},
+            {"name": "Identity & Governance", "weight": "25%", "score": int(round(identity_score)), "max_score": 100, "reading": readings.get("identity", "")},
+            {"name": "Legal & Compliance", "weight": "20%", "score": int(round(legal_score)), "max_score": 100, "reading": readings.get("legal", "")},
+            {"name": "Conduct & Behaviour", "weight": "15%", "score": int(round(conduct_score)), "max_score": 100, "reading": readings.get("conduct", "")},
         ]
         band_ladder_defs = [
             ("AAA", "< 0.3%", "Institutional-grade counterparty"),
@@ -1708,11 +1708,11 @@ class PPREService:
             "model_pds": ppre_output.get("model_pds"),
             "governance_score": ppre_output.get("governance_score"),
             "lgd_estimate": lgd_estimate,
-            "conduct_score": conduct_score,
-            "financial_score": financial_score,
-            "identity_score": identity_score,
-            "legal_score": legal_score,
-            "documentation_score": documentation_score,
+            "conduct_score": float(round(conduct_score)),
+            "financial_score": float(round(financial_score)),
+            "identity_score": float(round(identity_score)),
+            "legal_score": float(round(legal_score)),
+            "documentation_score": float(round(documentation_score)),
             "xai_summary": xai_summary,
             "xai_summary_text": xai_summary_text,
             "dimension_readings": dimension_readings,
@@ -1849,10 +1849,10 @@ class PPREService:
         enriched.update(ratios)
         enriched.update(
             {
-                "identity_score": identity_ds.weighted_score,
-                "financial_score": financial_ds.weighted_score,
-                "legal_score": legal_ds.weighted_score,
-                "documentation_score": doc_ds.weighted_score,
+                "identity_score": float(round(identity_ds.weighted_score)),
+                "financial_score": float(round(financial_ds.weighted_score)),
+                "legal_score": float(round(legal_ds.weighted_score)),
+                "documentation_score": float(round(doc_ds.weighted_score)),
                 "business_vintage_years": vintage,
                 "entity_id": entity_id,
             }
@@ -2115,14 +2115,14 @@ class PPREService:
                 "recent_cases_24m": raw_feature_row.get("recent_cases_24m", 0),
             },
             "readings": {
-                "financial": f"Score {int(financial_ds.weighted_score)}/100. Derived from FY25 financials: D/E {ratios.get('debt_to_equity') or 0:.2f}x, CR {ratios.get('current_ratio') or 0:.2f}x. Operating vintage of {vintage} years indicates established market presence.",
-                "identity": f"Score {int(identity_ds.weighted_score)}/100. MCA Profile and GSTIN cross-verified. Key managerial personnel ({len(directors_list)} active directors) validated with no Sec 164 disqualifications.",
+                "financial": f"Score {int(round(financial_ds.weighted_score))}/100. Derived from FY25 financials: D/E {ratios.get('debt_to_equity') or 0:.2f}x, CR {ratios.get('current_ratio') or 0:.2f}x. Operating vintage of {vintage} years indicates established market presence.",
+                "identity": f"Score {int(round(identity_ds.weighted_score))}/100. MCA Profile and GSTIN cross-verified. Key managerial personnel ({len(directors_list)} active directors) validated with no Sec 164 disqualifications.",
                 "legal": (
-                    f"Score {int(legal_ds.weighted_score)}/100. Legal track reflects {court_info.get('total_cases', raw_feature_row.get('case_count_total', 0))} matters ({raw_feature_row.get('case_count_active', 0)} active). Clear of adverse insolvency proceedings."
+                    f"Score {int(round(legal_ds.weighted_score))}/100. Legal track reflects {court_info.get('total_cases', raw_feature_row.get('case_count_total', 0))} matters ({raw_feature_row.get('case_count_active', 0)} active). Clear of adverse insolvency proceedings."
                     if not nclt_active_against
-                    else f"Score {int(legal_ds.weighted_score)}/100. Active NCLT / CIRP insolvency petition pending."
+                    else f"Score {int(round(legal_ds.weighted_score))}/100. Active NCLT / CIRP insolvency petition pending."
                 ),
-                "conduct": f"Score {int(raw_feature_row.get('conduct_score') or 70.0)}/100. BehaviourPrint™ incorporates GST filing discipline and EPFO workforce compliance history."
+                "conduct": f"Score {int(round(raw_feature_row.get('conduct_score') or 70.0))}/100. BehaviourPrint™ incorporates GST filing discipline and EPFO workforce compliance history."
             },
             "ratio_insights": {
                 "current_ratio": {
@@ -2271,10 +2271,10 @@ class PPREService:
             turnover_cagr_5y=turnover_cagr,
             revenue_cagr_5y=ratios.get("net_revenue_cagr_5y"),
             net_revenue_cagr_5y=ratios.get("net_revenue_cagr_5y"),
-            identity_score=float(identity_ds.weighted_score),
-            financial_score=float(financial_ds.weighted_score),
-            legal_score=float(legal_ds.weighted_score),
-            documentation_score=float(doc_ds.weighted_score),
+            identity_score=float(round(identity_ds.weighted_score)),
+            financial_score=float(round(financial_ds.weighted_score)),
+            legal_score=float(round(legal_ds.weighted_score)),
+            documentation_score=float(round(doc_ds.weighted_score)),
             data_completeness_score=100.0 if raw_feature_row.get("mca_data_available") else 50.0,
             snapshot_date=None,
             source_fetch_date=None,
@@ -2290,11 +2290,11 @@ class PPREService:
             risk_band=scored["pd_band"],
             blended_pd=scored["blended_pd"],
             lgd_estimate=scored.get("lgd_pred") or 0.45,
-            conduct_score=float(raw_feature_row.get("conduct_score") or 70.0),
-            financial_score=float(financial_ds.weighted_score),
-            identity_score=float(identity_ds.weighted_score),
-            legal_score=float(legal_ds.weighted_score),
-            documentation_score=float(doc_ds.weighted_score),
+            conduct_score=float(round(raw_feature_row.get("conduct_score") or 70.0)),
+            financial_score=float(round(financial_ds.weighted_score)),
+            identity_score=float(round(identity_ds.weighted_score)),
+            legal_score=float(round(legal_ds.weighted_score)),
+            documentation_score=float(round(doc_ds.weighted_score)),
             xai_summary=scored.get("xai_summary"),
             xai_summary_text=scored.get("xai_summary_text"),
             xai_narrative=scored.get("xai_narrative") or "",

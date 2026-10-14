@@ -176,10 +176,10 @@ tr:hover td{background:rgba(88,166,255,0.04)}
   <h2>Composite score: {{ pralyon_score }} / 850 · RiskBand™ {{ risk_band }} · Blended PD {{ blended_pd_pct }}%</h2>
   <table>
     <tr><th>Dimension</th><th>Weight</th><th>Score</th><th>Reading</th></tr>
-    <tr><td><strong>Financial Health</strong></td><td>40%</td><td><strong class="pass">{{ financial_score | int }} / 100</strong></td><td>{{ dimension_readings.financial or metadata.readings.financial }}</td></tr>
-    <tr><td><strong>Identity &amp; Governance</strong></td><td>25%</td><td><strong class="pass">{{ identity_score | int }} / 100</strong></td><td>{{ dimension_readings.identity or metadata.readings.identity }}</td></tr>
-    <tr><td><strong>Legal &amp; Compliance</strong></td><td>20%</td><td><strong class="pass">{{ legal_score | int }} / 100</strong></td><td>{{ dimension_readings.legal or metadata.readings.legal }}</td></tr>
-    <tr><td><strong>Conduct &amp; Behaviour</strong></td><td>15%</td><td><strong class="pass">{{ conduct_score | int }} / 100</strong></td><td>{{ dimension_readings.conduct or metadata.readings.conduct }}</td></tr>
+    <tr><td><strong>Financial Health</strong></td><td>40%</td><td><strong class="pass">{{ financial_score | round | int }} / 100</strong></td><td>{{ dimension_readings.financial or metadata.readings.financial }}</td></tr>
+    <tr><td><strong>Identity &amp; Governance</strong></td><td>25%</td><td><strong class="pass">{{ identity_score | round | int }} / 100</strong></td><td>{{ dimension_readings.identity or metadata.readings.identity }}</td></tr>
+    <tr><td><strong>Legal &amp; Compliance</strong></td><td>20%</td><td><strong class="pass">{{ legal_score | round | int }} / 100</strong></td><td>{{ dimension_readings.legal or metadata.readings.legal }}</td></tr>
+    <tr><td><strong>Conduct &amp; Behaviour</strong></td><td>15%</td><td><strong class="pass">{{ conduct_score | round | int }} / 100</strong></td><td>{{ dimension_readings.conduct or metadata.readings.conduct }}</td></tr>
   </table>
 
   <!-- Tri-Core Model Breakdown per §12.2 -->
