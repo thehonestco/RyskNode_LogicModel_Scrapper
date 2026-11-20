@@ -5,22 +5,40 @@ from datetime import datetime
 
 # Request Schemas
 class BuyerAssessRequest(BaseModel):
-    entity_id: str = Field(..., description="CIN (21 characters) or GSTIN (15 characters) of the buyer")
-    seller_id: str = Field(..., description="Unique identifier of the seller requesting assessment")
-    trade_name: Optional[str] = Field(None, description="Trade name or DBA of the buyer")
-    state_code: Optional[str] = Field(None, description="State code override")
-    include_xai: bool = Field(True, description="Whether to compute explainable AI attributions")
+    model_config = {"extra": "allow"}
+
+    entity_id: str = Field(
+        ..., description="[Required] CIN (21 characters) or GSTIN (15 characters) of the buyer"
+    )
+    seller_id: str = Field(
+        ..., description="[Required - Audit Log] Unique identifier of the seller requesting assessment"
+    )
+    include_xai: bool = Field(
+        True, description="[Optional, default: true] Whether to compute explainable AI attributions"
+    )
 
 
 class CreditLimitRequest(BaseModel):
-    entity_id: str = Field(..., description="CIN or GSTIN of the buyer")
-    seller_id: str = Field(..., description="Unique identifier of the seller")
-    requested_amount: float = Field(..., description="Seller's credit request in INR")
-    avg_monthly_purchase_volume: Optional[float] = Field(
-        None, description="Seller's monthly trade volume with buyer (INR)"
+    model_config = {"extra": "allow"}
+
+    entity_id: str = Field(
+        ..., description="[Required] CIN (21 characters) or GSTIN (15 characters) of the buyer"
     )
-    credit_period_days: int = Field(30, description="Preferred payment term/tenor in days")
-    ead: Optional[float] = Field(None, description="Exposure at default override")
+    seller_id: str = Field(
+        ..., description="[Required - Audit Log] Unique identifier of the seller"
+    )
+    requested_amount: float = Field(
+        ..., description="[Required] Seller's credit request in INR (for limit evaluation & stress testing)"
+    )
+    avg_monthly_purchase_volume: Optional[float] = Field(
+        None, description="[Optional] Seller's monthly purchase/trade volume with buyer in INR"
+    )
+    credit_period_days: int = Field(
+        30, description="[Optional, default: 30] Preferred payment term/tenor in days"
+    )
+    ead: Optional[float] = Field(
+        None, description="[Optional] Exposure at Default override in INR"
+    )
 
 
 from domain.schemas.final_feature_row import FinalFeatureRow

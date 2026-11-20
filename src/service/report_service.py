@@ -1,6 +1,7 @@
 import logging
 from pathlib import Path
 from typing import Any, Dict
+
 from jinja2 import Environment, FileSystemLoader
 
 logger = logging.getLogger(__name__)
@@ -13,14 +14,14 @@ class ReportService:
     def render_s1_report(self, assess_data: Dict[str, Any]) -> str:
         """Render S1 Buyer Risk Assessment report."""
         template = self.env.get_template("s1_risk_report.html")
-        
+
         # Extract variables
         metadata = assess_data.get("metadata", {})
         risk_band = assess_data.get("risk_band")
         blended_pd = assess_data.get("blended_pd", 0.05)
         blended_pd_pct = round(blended_pd * 100, 2)
         declined = risk_band in ("D", "UNSCOREABLE")
-        
+
         dim_readings = assess_data.get("dimension_readings") or metadata.get("readings") or {}
         tbl_enrichments = assess_data.get("table_enrichments") or {}
         lime_methodology = assess_data.get("lime_methodology_note") or ""
@@ -41,31 +42,45 @@ class ReportService:
             "identity_score": assess_data.get("identity_score", 0.0),
             "legal_score": assess_data.get("legal_score", 0.0),
             "conduct_score": assess_data.get("conduct_score", 0.0),
-            "model_pds": assess_data.get("model_pds") or (assess_data.get("_ppre_output") or {}).get("model_pds") or (assess_data.get("tri_core") or {}).get("model_pds") or {},
+            "model_pds": (
+                assess_data.get("model_pds")
+                or (assess_data.get("_ppre_output") or {}).get("model_pds")
+                or (assess_data.get("tri_core") or {}).get("model_pds")
+                or {}
+            ),
         }
-        
+
         return template.render(**context)
 
     def render_s2_report(self, credit_data: Dict[str, Any], requested_amount: float = 0.0) -> str:
         """Render S2 Credit Limit Assessment report."""
         template = self.env.get_template("s2_credit_report.html")
-        
+
         # Extract variables
         metadata = credit_data.get("metadata", {})
         risk_band = credit_data.get("risk_band")
         blended_pd = credit_data.get("blended_pd", 0.05)
         blended_pd_pct = round(blended_pd * 100, 2)
         declined = risk_band in ("D", "UNSCOREABLE")
-        
+
         # Limit advisor details from _ppre_output or root level
         ppre_out = credit_data.get("_ppre_output") or credit_data
         recommended_limit = ppre_out.get("evaluated_limit") or ppre_out.get("evaluated_clean_limit") or 0.0
         max_tenor_days = ppre_out.get("recommended_tenor") or ppre_out.get("recommended_tenor_days") or 30
-        decline_reason = credit_data.get("decline_reason") or ppre_out.get("decline_reason") or "ZeroPass trigger or high risk"
-        
+        decline_reason = (
+            credit_data.get("decline_reason")
+            or ppre_out.get("decline_reason")
+            or "ZeroPass trigger or high risk"
+        )
+
         stress_table = ppre_out.get("stress_table") or []
         tenor_schedule = ppre_out.get("tenor_schedule") or []
-        dim_readings = credit_data.get("dimension_readings") or ppre_out.get("dimension_readings") or metadata.get("readings") or {}
+        dim_readings = (
+            credit_data.get("dimension_readings")
+            or ppre_out.get("dimension_readings")
+            or metadata.get("readings")
+            or {}
+        )
         tbl_enrichments = credit_data.get("table_enrichments") or ppre_out.get("table_enrichments") or {}
         lime_methodology = credit_data.get("lime_methodology_note") or ppre_out.get("lime_methodology_note") or ""
 
@@ -94,7 +109,7 @@ class ReportService:
             "pralyon_score": credit_data.get("pralyon_score", 300),
             "model_pds": credit_data.get("model_pds") or ppre_out.get("model_pds") or {},
         }
-        
+
         return template.render(**context)
 
     async def render_s1_report_pdf(self, assess_data: Dict[str, Any]) -> bytes:
@@ -107,10 +122,78 @@ class ReportService:
         html_content = self.render_s2_report(credit_data, requested_amount)
         return await self._html_to_pdf(html_content)
 
+    def render_s4_report(self, vdd_data: Dict[str, Any]) -> str:
+        """Render S4 Vendor Due Diligence report."""
+        template = self.env.get_template("s4_vdd_report.html")
+
+        overview = vdd_data.get("overview") or {}
+        decision = dict(vdd_data.get("onboarding_decision") or {})
+        decision.setdefault("critical_flags_count", 0)
+        decision.setdefault("high_flags_count", 0)
+        decision.setdefault("docs_missing_count", 0)
+        decision.setdefault("legal_cases_count", 0)
+        decision.setdefault("api_cost_inr", 0.0)
+        decision.setdefault("status", "HOLD")
+        status = decision.get("status") or "HOLD"
+
+        # Banner color class
+        _STATUS_CLASS = {
+            "REJECTED": "",
+            "HOLD": "",
+            "CONDITIONAL": "amber",
+            "APPROVED": "green",
+        }
+        banner_class = _STATUS_CLASS.get(status, "")
+
+        # Banner icon
+        _STATUS_ICON = {
+            "REJECTED": "&#x26D4;",
+            "HOLD": "&#x26D4;",
+            "CONDITIONAL": "&#x26A0;&#xFE0F;",
+            "APPROVED": "&#x2705;",
+        }
+        banner_icon = _STATUS_ICON.get(status, "&#x26D4;")
+
+        # Tile value color
+        _TILE_COLOR = {
+            "REJECTED": "t-red",
+            "HOLD": "t-red",
+            "CONDITIONAL": "t-amber",
+            "APPROVED": "t-green",
+        }
+        status_tile_color = _TILE_COLOR.get(status, "t-red")
+
+        context = {
+            "overview": overview,
+            "decision": decision,
+            "entity_identity": vdd_data.get("entity_identity") or {},
+            "red_flag_register": vdd_data.get("red_flag_register") or [],
+            "aml_integrity": vdd_data.get("aml_integrity") or {},
+            "ownership_governance": vdd_data.get("ownership_governance") or {},
+            "litigation_legal": vdd_data.get("litigation_legal") or [],
+            "compliance_intelligence": vdd_data.get("compliance_intelligence") or [],
+            "financial_quality": vdd_data.get("financial_quality") or {},
+            "mca_charges": vdd_data.get("mca_charges") or {},
+            "operational_viability": vdd_data.get("operational_viability") or [],
+            "document_register": vdd_data.get("document_register") or [],
+            "metadata": vdd_data.get("metadata") or {},
+            "assessed_at": vdd_data.get("assessed_at") or "",
+            "banner_class": banner_class,
+            "banner_icon": banner_icon,
+            "status_tile_color": status_tile_color,
+        }
+
+        return template.render(**context)
+
+    async def render_s4_report_pdf(self, vdd_data: Dict[str, Any]) -> bytes:
+        """Render S4 Vendor Due Diligence report as PDF."""
+        html_content = self.render_s4_report(vdd_data)
+        return await self._html_to_pdf(html_content)
+
     def render_s5_report(self, sector_report: Dict[str, Any]) -> str:
         """Render S5 Sector Intelligence report."""
         template = self.env.get_template("s5_sector_report.html")
-        
+
         sec_risk = sector_report.get("sector_risk", "MODERATE")
         _RISK_COLORS = {
             "LOW":      ("#3fb950", "#0f2a1a", "#238636"),
@@ -131,7 +214,7 @@ class ReportService:
             "governance_score":   "Governance Score",
             "evaluated_limit_cr": "Evaluated Limit (Cr)",
         }
-        
+
         def _fmt_val(key: str, val: float) -> str:
             if key in ("blended_pd", "el_pct"):
                 return f"{val*100:.2f}%"
@@ -151,13 +234,21 @@ class ReportService:
             med_val    = _fmt_val(key, c.get("median", 0))
             delta      = c.get("delta", 0)
             better_if  = c.get("better_if", "HIGHER")
-            
+
             bar_color  = "#3fb950" if pct >= 60 else ("#e3b341" if pct >= 35 else "#f85149")
             delta_sign = "+" if delta > 0 else ""
-            delta_color = "#3fb950" if (better_if == "HIGHER" and delta >= 0) or (better_if == "LOWER" and delta <= 0) else "#f85149"
-            
-            delta_formatted = _fmt_val(key, abs(delta)) if key not in ('dso','current_ratio','debt_to_equity','governance_score','evaluated_limit_cr') else f'{delta_sign}{delta:.2f}'
-            
+            delta_color = (
+                "#3fb950"
+                if (better_if == "HIGHER" and delta >= 0) or (better_if == "LOWER" and delta <= 0)
+                else "#f85149"
+            )
+
+            delta_formatted = (
+                _fmt_val(key, abs(delta))
+                if key not in ("dso", "current_ratio", "debt_to_equity", "governance_score", "evaluated_limit_cr")
+                else f"{delta_sign}{delta:.2f}"
+            )
+
             comp_rows.append(
                 f"<tr>"
                 f"<td>{label}</td>"
@@ -169,14 +260,15 @@ class ReportService:
                 f"    <div style='flex:1;height:6px;background:#21262d;border-radius:3px;overflow:hidden'>"
                 f"      <div style='width:{pct}%;height:100%;background:{bar_color};border-radius:3px'></div>"
                 f"    </div>"
-                f"    <span style='font-size:11px;color:#e6edf3;width:32px;text-align:right;font-weight:600'>{pct:.0f}</span>"
+                f"    <span style='font-size:11px;color:#e6edf3;width:32px;text-align:right;"
+                f"font-weight:600'>{pct:.0f}</span>"
                 f"  </div>"
                 f"</td>"
                 f"</tr>"
             )
 
         from datetime import datetime, timezone
-        
+
         context = {
             "nic_code": sector_report.get("nic_code", ""),
             "sector_name": sector_report.get("sector_name", "Unknown Sector"),
@@ -191,7 +283,7 @@ class ReportService:
             "gen_utc": datetime.now(timezone.utc).isoformat()[:19].replace("T", " "),
             "comp_rows_html": "\\n".join(comp_rows),
         }
-        
+
         return template.render(**context)
 
     async def render_s5_report_pdf(self, sector_report: Dict[str, Any]) -> bytes:

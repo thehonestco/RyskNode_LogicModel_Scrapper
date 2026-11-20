@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Pralyon · Vendor Due Diligence · {{ overview.vendor_name }}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0d1117;color:#e6edf3;font-family:'Segoe UI',Arial,sans-serif;font-size:14px;line-height:1.6}
+.cover{background:linear-gradient(135deg,#0d1117 0%,#161b22 60%,#1c2333 100%);border-bottom:3px solid #238636;padding:52px 56px 44px;position:relative}
+.cover-corner{position:absolute;top:22px;right:56px;color:#58a6ff;font-size:11px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase}
+.series-tag{color:#8b949e;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px}
+.cover h1{font-size:38px;font-weight:800;color:#e6edf3;line-height:1.15;margin-bottom:12px}
+.cover h1 span{color:#58a6ff}
+.cover-sub{color:#8b949e;font-size:14px;margin-bottom:28px}
+.kpi-row{display:flex;gap:18px;flex-wrap:wrap}
+.kpi{background:rgba(88,166,255,0.08);border:1px solid rgba(88,166,255,0.22);border-radius:8px;padding:13px 18px;min-width:152px}
+.kpi strong{display:block;font-size:15px;color:#58a6ff;font-weight:700}
+.kpi span{font-size:11px;color:#8b949e;text-transform:uppercase;letter-spacing:.8px;margin-top:2px;display:block}
+.banner{display:flex;align-items:flex-start;gap:16px;padding:20px 56px;border-bottom:1.5px solid rgba(248,81,73,0.4);background:rgba(248,81,73,0.1)}
+.banner.amber{background:rgba(210,153,34,0.1);border-color:rgba(210,153,34,0.4)}
+.banner.green{background:rgba(35,134,54,0.1);border-color:rgba(35,134,54,0.4)}
+.b-icon{font-size:30px;line-height:1;padding-top:2px}
+.b-text strong{display:block;font-size:15px;color:#e6edf3;font-weight:700;margin-bottom:3px}
+.b-text span{color:#8b949e;font-size:13px;line-height:1.55}
+.tiles{display:flex;background:#161b22;border-bottom:1px solid #30363d;flex-wrap:wrap}
+.tile{flex:1;min-width:130px;padding:18px 20px;border-right:1px solid #30363d}
+.tile:last-child{border-right:none}
+.t-label{font-size:10px;color:#8b949e;text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px}
+.t-val{font-size:26px;font-weight:800;color:#34d399;line-height:1;margin-bottom:3px}
+.t-sub{font-size:12px;color:#8b949e}
+.t-red{color:#f85149}
+.t-amber{color:#e3b341}
+.t-green{color:#34d399}
+.sec{padding:28px 56px;border-bottom:1px solid #21262d}
+.sec-label{font-size:10px;color:#58a6ff;text-transform:uppercase;letter-spacing:1.2px;font-weight:700;margin-bottom:7px}
+.sec h2{font-size:17px;font-weight:700;color:#e6edf3;margin-bottom:14px}
+.sec h3{font-size:13px;font-weight:700;color:#c9d1d9;margin:16px 0 9px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:#161b22;color:#8b949e;text-align:left;padding:9px 13px;font-size:10px;text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid #30363d}
+td{padding:9px 13px;border-bottom:1px solid #21262d;color:#c9d1d9;vertical-align:top}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(88,166,255,0.04)}
+.tp{background:rgba(35,134,54,.18);color:#56d364;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:600;white-space:nowrap}
+.tw{background:rgba(210,153,34,.18);color:#e3b341;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:600;white-space:nowrap}
+.tf{background:rgba(248,81,73,.18);color:#f85149;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:600;white-space:nowrap}
+.tb{background:rgba(88,166,255,.15);color:#58a6ff;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:600;white-space:nowrap}
+.nbox{border-left:3px solid #e3b341;background:rgba(210,153,34,.07);border-radius:0 8px 8px 0;padding:12px 16px;margin-top:12px;color:#c9d1d9;font-size:13px;line-height:1.65}
+.nbox.g{border-color:#56d364;background:rgba(35,134,54,.07)}
+.nbox.r{border-color:#f85149;background:rgba(248,81,73,.07)}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-top:13px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:13px;margin-top:13px}
+.card{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:15px 17px}
+.card h4{font-size:12px;color:#58a6ff;font-weight:700;margin-bottom:6px}
+.card p{font-size:12px;color:#8b949e;line-height:1.6}
+.hl td{background:rgba(88,166,255,0.07)!important;font-weight:700}
+.hl-r td{background:rgba(248,81,73,0.07)!important;font-weight:700}
+.disclaimer{padding:26px 56px;background:#0d1117;border-top:1px solid #21262d}
+.disclaimer h3{font-size:11px;color:#8b949e;text-transform:uppercase;letter-spacing:1px;margin-bottom:9px}
+.disclaimer p{font-size:11px;color:#6e7681;line-height:1.7;margin-bottom:7px}
+.footer{display:flex;justify-content:space-between;padding:15px 56px;background:#010409;border-top:1px solid #21262d;font-size:11px;color:#6e7681}
+</style>
+</head>
+<body>
+
+{# ── COVER ── #}
+<div class="cover">
+  <div class="cover-corner">Pralyon™ Suite · 4 / 5 · {{ overview.report_id }}</div>
+  <div class="series-tag">{{ overview.suite_label }}</div>
+  <h1>Vendor Due Diligence<br><span>Report</span></h1>
+  <p class="cover-sub">Supplier viability, integrity, compliance and onboarding readiness before commercial engagement</p>
+  <div class="kpi-row">
+    <div class="kpi"><strong>{{ overview.vendor_name }}</strong><span>Vendor assessed</span></div>
+    <div class="kpi"><strong>{{ overview.vendor_profile }}</strong><span>Profile</span></div>
+    <div class="kpi"><strong>{{ overview.escalation_level }}</strong><span>Escalation level</span></div>
+    <div class="kpi"><strong>{{ overview.report_date }}</strong><span>Generated</span></div>
+    <div class="kpi"><strong>{{ overview.distribution }}</strong><span>Distribution</span></div>
+  </div>
+</div>
+
+{# ── VERDICT BANNER ── #}
+<div class="banner {{ banner_class }}">
+  <div class="b-icon">{{ banner_icon | safe }}</div>
+  <div class="b-text">
+    <strong>{{ decision.verdict_headline }}</strong>
+    <span>{{ decision.verdict_detail }}</span>
+  </div>
+</div>
+
+{# ── METRIC TILES ── #}
+<div class="tiles">
+  <div class="tile">
+    <div class="t-label">Onboarding Status</div>
+    <div class="t-val {{ status_tile_color }}">{{ decision.status }}</div>
+    <div class="t-sub">
+      {% if decision.status == "APPROVED" %}Ready to onboard{% elif decision.status == "CONDITIONAL" %}Conditional{% elif decision.status == "REJECTED" %}Rejected{% else %}Do not onboard{% endif %}
+    </div>
+  </div>
+  <div class="tile">
+    <div class="t-label">Critical Flags</div>
+    <div class="t-val {% if (decision.critical_flags_count|default(0)) > 0 %}t-red{% else %}t-green{% endif %}">{{ decision.critical_flags_count|default(0) }}</div>
+    <div class="t-sub">Immediate blockers</div>
+  </div>
+  <div class="tile">
+    <div class="t-label">High Flags</div>
+    <div class="t-val {% if (decision.high_flags_count|default(0)) > 0 %}t-amber{% else %}t-green{% endif %}">{{ decision.high_flags_count|default(0) }}</div>
+    <div class="t-sub">Material risks</div>
+  </div>
+  <div class="tile">
+    <div class="t-label">Docs Missing</div>
+    <div class="t-val {% if (decision.docs_missing_count|default(0)) > 0 %}t-red{% else %}t-green{% endif %}">{{ decision.docs_missing_count|default(0) }}</div>
+    <div class="t-sub">Mandatory gaps</div>
+  </div>
+  <div class="tile">
+    <div class="t-label">Legal Cases</div>
+    <div class="t-val {% if (decision.legal_cases_count|default(0)) > 0 %}t-red{% else %}t-green{% endif %}">{{ decision.legal_cases_count|default(0) }}{% if (decision.legal_cases_count|default(0)) > 5 %}+{% endif %}</div>
+    <div class="t-sub">Across all forums</div>
+  </div>
+  <div class="tile">
+    <div class="t-label">API Cost</div>
+    <div class="t-val" style="color:#58a6ff">&#x20B9;{{ "%.2f"|format(decision.api_cost_inr|default(0.0)) }}</div>
+    <div class="t-sub">Scraped from public sources</div>
+  </div>
+</div>
+
+{# ── ENTITY IDENTITY ── #}
+<div class="sec">
+  <div class="sec-label">Entity Identity</div>
+  <h2>Supplier identity and submission posture</h2>
+  <table>
+    <tr><th>Field</th><th>Value</th><th>Status</th><th>Comment</th></tr>
+    <tr>
+      <td><strong>Entity name</strong></td>
+      <td>{{ entity_identity.vendor_name or "—" }}</td>
+      <td><span class="tw">Verified</span></td>
+      <td>CIN-based entity resolution.</td>
+    </tr>
+    <tr>
+      <td><strong>Business type</strong></td>
+      <td>{{ entity_identity.business_type or "—" }}</td>
+      <td><span class="tp">Confirmed</span></td>
+      <td>Derived from MCA activity classification.</td>
+    </tr>
+    <tr>
+      <td><strong>GSTIN status</strong></td>
+      <td>{{ entity_identity.gstin_status }}</td>
+      <td><span class="{% if entity_identity.gstin_status == 'Active' %}tp{% else %}tf{% endif %}">{{ entity_identity.gstin_status }}</span></td>
+      <td>{% if entity_identity.gstin_status == 'Active' %}No suspension or cancellation notice found.{% else %}GST registration inactive — ITC risk.{% endif %}</td>
+    </tr>
+    {% if entity_identity.udyam_number %}
+    <tr>
+      <td><strong>Udyam</strong></td>
+      <td>{{ entity_identity.udyam_number }}</td>
+      <td><span class="tp">Valid</span></td>
+      <td>MSME status confirmed.</td>
+    </tr>
+    {% endif %}
+    <tr>
+      <td><strong>Authorised signatory</strong></td>
+      <td>{{ entity_identity.authorised_signatory or "Not provided" }}</td>
+      <td><span class="{% if entity_identity.authorised_signatory %}tp{% else %}tw{% endif %}">{% if entity_identity.authorised_signatory %}Submitted{% else %}Missing{% endif %}</span></td>
+      <td>{% if entity_identity.authorised_signatory %}Director identified from MCA records.{% else %}Board resolution required.{% endif %}</td>
+    </tr>
+    <tr>
+      <td><strong>Site address consistency</strong></td>
+      <td>{{ entity_identity.site_address_consistency }}</td>
+      <td><span class="{% if entity_identity.site_address_consistency == 'Match' %}tp{% elif entity_identity.site_address_consistency == 'Mismatch' %}tf{% else %}tw{% endif %}">{{ entity_identity.site_address_consistency }}</span></td>
+      <td>{% if entity_identity.site_address_consistency == 'Match' %}GST and MCA addresses consistent.{% elif entity_identity.site_address_consistency == 'Mismatch' %}Physical site visit mandatory before onboarding.{% else %}Address cross-verification not possible.{% endif %}</td>
+    </tr>
+    {% if entity_identity.cin %}
+    <tr>
+      <td><strong>CIN</strong></td>
+      <td>{{ entity_identity.cin }}</td>
+      <td><span class="tp">Verified</span></td>
+      <td>MCA registration confirmed.</td>
+    </tr>
+    {% endif %}
+    {% if entity_identity.pan %}
+    <tr>
+      <td><strong>PAN</strong></td>
+      <td>{{ entity_identity.pan }}</td>
+      <td><span class="tp">Verified</span></td>
+      <td>PAN &#x2194; CIN cross-verified.</td>
+    </tr>
+    {% endif %}
+    {% if entity_identity.incorporation_date %}
+    <tr>
+      <td><strong>Incorporation date</strong></td>
+      <td>{{ entity_identity.incorporation_date }}</td>
+      <td><span class="tp">On record</span></td>
+      <td>MCA registration date.</td>
+    </tr>
+    {% endif %}
+    {% if entity_identity.registered_state %}
+    <tr>
+      <td><strong>Registered state</strong></td>
+      <td>{{ entity_identity.registered_state }}</td>
+      <td><span class="tp">Confirmed</span></td>
+      <td>State of incorporation from MCA records.</td>
+    </tr>
+    {% endif %}
+  </table>
+</div>
+
+{# ── RED FLAG REGISTER ── #}
+{% if red_flag_register %}
+<div class="sec">
+  <div class="sec-label">Red-Flag Register</div>
+  <h2>Immediate blockers before procurement onboarding</h2>
+  <table>
+    <tr><th>Critical issue</th><th>Observed result</th><th>Status</th><th>Required action</th></tr>
+    {% for flag in red_flag_register %}
+    <tr class="{% if flag.severity == 'Critical' %}hl-r{% elif flag.severity == 'High' %}hl{% endif %}">
+      <td><strong>{{ flag.issue }}</strong></td>
+      <td>{{ flag.observed_result }}</td>
+      <td><span class="{% if flag.severity == 'Critical' %}tf{% elif flag.severity == 'High' %}tw{% else %}tb{% endif %}">{{ flag.severity }}</span></td>
+      <td>{{ flag.required_action }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% if decision.critical_flags_count > 0 %}
+  <div class="nbox r">These are onboarding controls, not soft observations. Procurement, finance, and compliance should all treat them as hard blockers until documentary closure is complete.</div>
+  {% endif %}
+</div>
+{% endif %}
+
+{# ── AML / SANCTIONS ── #}
+<div class="sec">
+  <div class="sec-label">AML · Sanctions · Integrity</div>
+  <h2>Integrity screening summary</h2>
+  <table>
+    <tr><th>Check</th><th>Result</th><th>Status</th><th>Risk</th><th>Action</th></tr>
+    {% set aml_rows = [
+      ("Entity AML screening", aml_integrity.entity_aml),
+      ("Sanctions / watchlist", aml_integrity.sanctions_watchlist),
+      ("PEP match — directors", aml_integrity.pep_match_directors),
+      ("Adverse media", aml_integrity.adverse_media),
+      ("Fraud / corruption mention", aml_integrity.fraud_corruption),
+      ("FATF high-risk jurisdiction link", aml_integrity.fatf_jurisdiction),
+    ] %}
+    {% for label, row in aml_rows %}
+    {% if row %}
+    <tr>
+      <td><strong>{{ label }}</strong></td>
+      <td>{{ row.result }}</td>
+      <td><span class="{% if row.status in ('Escalate', 'Critical') %}tf{% elif row.status in ('Incomplete', 'Unconfirmed', 'Partial') %}tw{% else %}tp{% endif %}">{{ row.status }}</span></td>
+      <td>{{ row.risk }}</td>
+      <td>{{ row.action }}</td>
+    </tr>
+    {% endif %}
+    {% endfor %}
+  </table>
+</div>
+
+{# ── OWNERSHIP & GOVERNANCE ── #}
+<div class="sec">
+  <div class="sec-label">Ownership &amp; Governance</div>
+  <h2>UBO, shareholding and director transparency</h2>
+  <table>
+    <tr><th>Check</th><th>Observed result</th><th>Status</th><th>Why it matters</th><th>Follow-up</th></tr>
+    {% set og = ownership_governance %}
+    {% if og.ubo %}
+    <tr>
+      <td><strong>Ultimate Beneficial Owner</strong></td>
+      <td>{{ og.ubo.observed }}</td>
+      <td><span class="{% if og.ubo.status in ('Critical gap', 'Incomplete') %}tf{% elif og.ubo.status in ('Partial', 'Layered', 'Flag') %}tw{% else %}tp{% endif %}">{{ og.ubo.status }}</span></td>
+      <td>{{ og.ubo.why_matters }}</td>
+      <td>{{ og.ubo.follow_up }}</td>
+    </tr>
+    {% endif %}
+    {% if og.shareholding_pattern %}
+    <tr>
+      <td><strong>Shareholding pattern</strong></td>
+      <td>{{ og.shareholding_pattern.observed }}</td>
+      <td><span class="{% if og.shareholding_pattern.status in ('Not provided', 'Layered') %}tw{% else %}tp{% endif %}">{{ og.shareholding_pattern.status }}</span></td>
+      <td>{{ og.shareholding_pattern.why_matters }}</td>
+      <td>{{ og.shareholding_pattern.follow_up }}</td>
+    </tr>
+    {% endif %}
+    {% for dir in og.directors %}
+    <tr>
+      <td><strong>Director — {{ dir.name }}</strong></td>
+      <td>DIN: {{ dir.din }}. {{ dir.disqualification_status }}. Linked to {{ dir.linked_entities_count }} entit{{ "y" if dir.linked_entities_count == 1 else "ies" }}{% if dir.struck_off_count %}, {{ dir.struck_off_count }} struck off{% endif %}.</td>
+      <td><span class="{% if dir.disqualification_status == 'Disqualified' %}tf{% elif dir.struck_off_count > 0 %}tw{% else %}tp{% endif %}">{{ dir.status }}</span></td>
+      <td>{% if dir.struck_off_count %}Struck-off history needs explanation.{% else %}Director profile appears clean.{% endif %}</td>
+      <td>{{ dir.follow_up }}</td>
+    </tr>
+    {% endfor %}
+    {% if og.related_party_exposure %}
+    <tr>
+      <td><strong>Related-party / group exposure</strong></td>
+      <td>{{ og.related_party_exposure.observed }}</td>
+      <td><span class="tw">{{ og.related_party_exposure.status }}</span></td>
+      <td>Cross-billing / invoice inflation risk.</td>
+      <td>{{ og.related_party_exposure.follow_up }}</td>
+    </tr>
+    {% endif %}
+  </table>
+</div>
+
+{# ── LITIGATION ── #}
+<div class="sec">
+  <div class="sec-label">Litigation &amp; Legal</div>
+  <h2>Legal case and dispute register</h2>
+  <table>
+    <tr><th>Check</th><th>Observed result</th><th>Status</th><th>Why it matters</th><th>Follow-up</th></tr>
+    {% for item in litigation_legal %}
+    <tr>
+      <td><strong>{{ item.check }}</strong></td>
+      <td>{{ item.observed_result }}</td>
+      <td><span class="{% if item.status in ('Critical', 'High', 'Material') %}tf{% elif item.status in ('Monitor', 'Review', 'Pending', 'Unverified') %}tw{% else %}tp{% endif %}">{{ item.status }}</span></td>
+      <td>{{ item.why_matters }}</td>
+      <td>{{ item.follow_up }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+
+{# ── COMPLIANCE INTELLIGENCE ── #}
+<div class="sec">
+  <div class="sec-label">Compliance Intelligence</div>
+  <h2>GST, labour and statutory compliance</h2>
+  <table>
+    <tr><th>Parameter</th><th>Result</th><th>Status</th><th>Risk</th></tr>
+    {% for item in compliance_intelligence %}
+    <tr>
+      <td><strong>{{ item.parameter }}</strong></td>
+      <td>{{ item.result }}</td>
+      <td><span class="{% if item.status in ('Critical', 'Missing', 'Mismatch', 'Cancelled') %}tf{% elif item.status in ('Gaps', 'Delayed', 'Pending', 'Under review') %}tw{% else %}tp{% endif %}">{{ item.status }}</span></td>
+      <td>{{ item.risk }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+
+{# ── FINANCIAL QUALITY ── #}
+{% set fq = financial_quality %}
+<div class="sec">
+  <div class="sec-label">Financial Quality</div>
+  <h2>Financial pressure signals derived from MCA + GST data</h2>
+  <div class="g3">
+    <div class="card">
+      <h4>Turnover mismatch</h4>
+      <p>{{ fq.turnover_mismatch.detail if fq.turnover_mismatch else "Turnover data not available." }}</p>
+    </div>
+    <div class="card">
+      <h4>Borrowing stack</h4>
+      <p>{{ fq.borrowing_stack.detail if fq.borrowing_stack else "Borrowing data not available." }}</p>
+    </div>
+    <div class="card">
+      <h4>Working-capital stress</h4>
+      <p>{{ fq.working_capital_stress.detail if fq.working_capital_stress else "Working capital data not available." }}</p>
+    </div>
+  </div>
+</div>
+
+{# ── MCA CHARGES ── #}
+{% set mc = mca_charges %}
+<div class="sec">
+  <div class="sec-label">MCA Charges</div>
+  <h2>Secured lender register</h2>
+  {% if mc.charges %}
+  <table>
+    <tr><th>Charge ID</th><th>Lender</th><th>Amount</th><th>Created</th><th>Status</th><th>Risk note</th></tr>
+    {% for c in mc.charges %}
+    <tr>
+      <td>{{ c.charge_id }}</td>
+      <td>{{ c.lender }}</td>
+      <td>{% if c.amount_inr >= 10000000 %}&#x20B9;{{ "%.2f"|format(c.amount_inr / 10000000) }} Cr{% elif c.amount_inr >= 100000 %}&#x20B9;{{ "%.2f"|format(c.amount_inr / 100000) }} L{% elif c.amount_inr > 0 %}&#x20B9;{{ "%.0f"|format(c.amount_inr) }}{% else %}—{% endif %}</td>
+      <td>{{ c.created }}</td>
+      <td><span class="{% if c.status == 'Active' %}tw{% else %}tp{% endif %}">{{ c.status }}</span></td>
+      <td>{{ c.risk_note }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p style="color:#8b949e;font-size:13px;margin-top:8px;">No charges found on MCA register.</p>
+  {% endif %}
+  <div class="nbox">{{ mc.summary_note }}</div>
+</div>
+
+{# ── OPERATIONAL VIABILITY ── #}
+<div class="sec">
+  <div class="sec-label">Operational Viability</div>
+  <h2>Site, quality and capacity readiness</h2>
+  <table>
+    <tr><th>Parameter</th><th>Current status</th><th>Required action</th></tr>
+    {% for item in operational_viability %}
+    <tr>
+      <td><strong>{{ item.parameter }}</strong></td>
+      <td>{{ item.current_status }}</td>
+      <td>{{ item.required_action }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+
+{# ── DOCUMENT REGISTER ── #}
+<div class="sec">
+  <div class="sec-label">Document Register</div>
+  <h2>Submitted vs missing onboarding pack</h2>
+  <table>
+    <tr><th>Document</th><th>Status</th><th>Adequacy</th><th>Comment</th></tr>
+    {% for doc in document_register %}
+    <tr>
+      <td><strong>{{ doc.document }}</strong></td>
+      <td>{{ doc.status }}</td>
+      <td><span class="{% if doc.adequacy in ('Adequate', 'Complete', 'Auto-parsed') %}tp{% elif doc.adequacy in ('Critical gap', 'Required', 'Mandatory', 'Incomplete') %}tf{% else %}tw{% endif %}">{{ doc.adequacy }}</span></td>
+      <td>{{ doc.comment }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+
+{# ── DECISION VIEW ── #}
+<div class="sec">
+  <div class="sec-label">Decision View</div>
+  <h2>Risk committee recommendation</h2>
+  <table>
+    <tr><th>Decision parameter</th><th>Recommendation</th><th>Reason</th></tr>
+    {% for d in decision.decisions %}
+    <tr>
+      <td><strong>{{ d.parameter }}</strong></td>
+      <td><span class="{% if 'No' in d.recommendation or 'Rejected' in d.recommendation %}tf{% elif 'Mandatory' in d.recommendation or 'Conditional' in d.recommendation or 'clearance' in d.recommendation %}tw{% else %}tp{% endif %}">{{ d.recommendation }}</span></td>
+      <td>{{ d.reason }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+
+<div class="disclaimer">
+  <h3>Legal Disclaimer &amp; Data Notices</h3>
+  <p><strong>1.</strong> This report is a supplier-onboarding intelligence output for internal procurement, compliance, and finance use only.</p>
+  <p><strong>2.</strong> It is not a criminal finding, sanctions declaration, or legal opinion. All flagged records require documented internal disposition before onboarding.</p>
+  <p><strong>3.</strong> Operational viability cannot be concluded from API sources alone; site visit and quality validation remain mandatory for manufacturing vendors.</p>
+</div>
+
+<div class="footer">
+  <span>Pralyon&#x2122; AI · RyskNode Intelligence Platform</span>
+  <span>Service 4 · Vendor Due Diligence · {{ overview.report_id }}</span>
+  <span>{{ overview.report_date }} · {{ overview.distribution }}</span>
+</div>
+
+</body>
+</html>

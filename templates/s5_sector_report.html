@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RyskNode — S5 Sector Intelligence — NIC {{ nic_code }}</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:Inter,sans-serif;background:#0d1117;color:#e6edf3;min-height:100vh}
+    .topbar{background:#161b22;border-bottom:1px solid #21262d;padding:14px 32px;display:flex;justify-content:space-between;align-items:center}
+    .logo{font-size:18px;font-weight:800}.logo span{color:#58a6ff}
+    .topbar-meta{font-size:12px;color:#8b949e}.topbar-meta strong{color:#e6edf3}
+    .container{max-width:1100px;margin:0 auto;padding:28px 24px}
+    .disclaimer{background:#1a1a0f;border:1px solid #9e6a03;border-radius:8px;padding:12px 18px;margin-bottom:20px;font-size:11px;color:#8b949e;line-height:1.7}
+    .disclaimer strong{color:#e3b341}
+    .hero{background:linear-gradient(135deg,#1a2332,#161b22,#0f1923);border:1px solid #21262d;border-radius:16px;padding:28px 32px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:20px}
+    .hero h1{font-size:22px;font-weight:700;margin-bottom:4px}
+    .hero .sub{font-size:13px;color:#8b949e}
+    .risk-badge{padding:8px 24px;border-radius:8px;font-size:14px;font-weight:700;border:2px solid {{ risk_border }};color:{{ risk_color }};background:{{ risk_bg }}}
+    .kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px;margin-bottom:24px}
+    .kpi{background:#161b22;border:1px solid #21262d;border-radius:10px;padding:14px 16px}
+    .kpi .label{font-size:11px;color:#8b949e;margin-bottom:6px}
+    .kpi .value{font-size:20px;font-weight:700;color:#e6edf3}
+    .card{background:#161b22;border:1px solid #21262d;border-radius:12px;padding:20px;margin-bottom:20px}
+    .section-title{font-size:12px;font-weight:600;color:#58a6ff;letter-spacing:1px;text-transform:uppercase;margin-bottom:14px}
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    thead th{padding:10px 12px;text-align:left;font-size:11px;color:#8b949e;border-bottom:1px solid #21262d;text-transform:uppercase}
+    tbody tr{border-bottom:1px solid #21262d}
+    tbody td{padding:10px 12px;color:#e6edf3}
+    tbody tr:hover{background:#1c2128}
+    .pct-hero{text-align:center;padding:12px 0}
+    .pct-num{font-size:52px;font-weight:800;color:#58a6ff}
+    .pct-label{font-size:12px;color:#8b949e;margin-top:4px}
+    .narrative{background:#1a2332;border:1px solid #21262d;border-radius:10px;padding:16px 20px;font-size:13px;color:#8b949e;line-height:1.8;margin-bottom:20px}
+    .footer-bar{margin-top:28px;padding:14px 20px;background:#161b22;border:1px solid #21262d;border-radius:8px;font-size:11px;color:#484f58;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+  </style>
+</head>
+<body>
+<div class="topbar">
+  <div class="logo">Rysk<span>Node</span></div>
+  <div class="topbar-meta">
+    Service <strong>S5</strong> &nbsp;&nbsp;
+    Sector Intelligence &nbsp;&nbsp;
+    NIC <strong>{{ nic_code }}</strong> &nbsp;&nbsp;
+    Generated <strong>{{ gen_utc }}</strong>
+  </div>
+</div>
+<div class="container">
+  <div class="disclaimer">
+    <strong>Advisory Notice</strong> &mdash; Sector benchmarks are synthetic proxies derived from publicly available RBI MSME statistics and CIBIL MSME Pulse data ranges. They do not constitute certified statistical data. RyskNode accepts no liability for decisions made on the basis of this report.
+  </div>
+
+  <div class="hero">
+    <div>
+      <h1>NIC {{ nic_code }} — {{ sector_name }}</h1>
+      <div class="sub">RyskNode S5 Sector Intelligence &nbsp;&bull;&nbsp; {{ peer_count }} reference peers &nbsp;&bull;&nbsp; {{ gen_utc }}</div>
+    </div>
+    <div class="risk-badge">{{ sector_risk }} RISK SECTOR</div>
+  </div>
+
+  <!-- SECTOR KPI STRIP -->
+  <div class="kpi-grid">
+    <div class="kpi"><div class="label">Median PD</div><div class="value">{{ "%.2f"|format(benchmark.get('median_pd',0)*100) }}%</div></div>
+    <div class="kpi"><div class="label">Median EL%</div><div class="value">{{ "%.2f"|format(benchmark.get('median_el_pct',0)*100) }}%</div></div>
+    <div class="kpi"><div class="label">Median Current Ratio</div><div class="value">{{ "%.2f"|format(benchmark.get('median_cr',0)) }}</div></div>
+    <div class="kpi"><div class="label">Median D/E</div><div class="value">{{ "%.2f"|format(benchmark.get('median_de',0)) }}</div></div>
+    <div class="kpi"><div class="label">Median DSO</div><div class="value">{{ "%.0f"|format(benchmark.get('median_dso',0)) }}d</div></div>
+    <div class="kpi"><div class="label">Median Gov. Score</div><div class="value">{{ "%.1f"|format(benchmark.get('median_gov_score',0)) }}</div></div>
+    <div class="kpi"><div class="label">Median Limit</div><div class="value" style="font-size:15px">₹&nbsp;{{ "%.2f"|format(benchmark.get('median_limit_cr',0)) }}&nbsp;Cr</div></div>
+    <div class="kpi"><div class="label">Peer Count</div><div class="value">{{ peer_count }}</div></div>
+  </div>
+
+  <!-- BUYER VS SECTOR -->
+  <div style="display:grid;grid-template-columns:1fr 3fr;gap:18px;margin-bottom:24px">
+    <div class="card" style="text-align:center">
+      <div class="section-title">Overall Percentile</div>
+      <div class="pct-hero">
+        <div class="pct-num">{{ "%.0f"|format(overall_percentile) }}</div>
+        <div class="pct-label">vs {{ peer_count }} sector peers</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="section-title">Buyer vs Sector Benchmarks</div>
+      <table>
+        <thead><tr><th>Metric</th><th>Buyer</th><th>Sector Median</th><th>Delta</th><th>Percentile</th></tr></thead>
+        <tbody>{{ comp_rows_html | safe }}</tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- NARRATIVE -->
+  <div class="narrative">{{ narrative }}</div>
+
+  <div class="footer-bar">
+    <span>Pralyon AI Predictive Risk Engine v1.0 &nbsp;&nbsp; S5 Sector Intelligence</span>
+    <span>NIC {{ nic_code }} &nbsp;&bull;&nbsp; Generated: {{ gen_utc }}</span>
+  </div>
+</div>
+</body>
+</html>

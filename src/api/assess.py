@@ -27,8 +27,8 @@ async def assess_buyer_json(
     result = await ppre_service.assess_buyer(
         entity_id=request.entity_id,
         seller_id=request.seller_id,
-        trade_name=request.trade_name,
-        state_code=request.state_code,
+        trade_name=getattr(request, "trade_name", None),
+        state_code=getattr(request, "state_code", None),
         include_xai=request.include_xai,
     )
     response_obj = BuyerAssessResponse.model_validate(result)
@@ -45,8 +45,8 @@ async def assess_buyer_report(
     result = await ppre_service.assess_buyer(
         entity_id=request.entity_id,
         seller_id=request.seller_id,
-        trade_name=request.trade_name,
-        state_code=request.state_code,
+        trade_name=getattr(request, "trade_name", None),
+        state_code=getattr(request, "state_code", None),
         include_xai=request.include_xai,
     )
     html_content = report_service.render_s1_report(result)

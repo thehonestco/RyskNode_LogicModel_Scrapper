@@ -116,6 +116,16 @@ def configure_dependency(binder: inject.Binder):
 
     binder.bind_to_constructor(ReportService, get_report_service)
 
+    # Bind VDDService
+    from service.vdd_service import VDDService
+    def get_vdd_service():
+        return VDDService(
+            uow=inject.instance(AbstractUnitOfWork),
+            artifact_service=inject.instance(ArtifactService),
+        )
+
+    binder.bind_to_constructor(VDDService, get_vdd_service)
+
 
 
 
