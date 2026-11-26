@@ -88,16 +88,92 @@ app.config_from_envvar("CELERY_CONFIG_MODULE")
 # Auto-discover task definitions in asyncworker/tasks.py
 app.autodiscover_tasks(["asyncworker.tasks"])
 
+# Suppress dumping full JSON task return payloads into worker terminal logs;
+# keep only task name, ID, and runtime in the terminal.
+try:
+    import celery.app.trace as _celery_trace
+
+    _celery_trace.LOG_SUCCESS = "Task %(name)s[%(id)s] succeeded in %(runtime)ss"
+except Exception:
+    pass
+
 # ═══════════════════════════════════════════════════════════════════════
-# Kombu Resilience: Publish Failure Event to Pub/Sub on Bad Message
+# Kombu Resilience: Normalize External Task Envelopes & Guard Bad Messages
 # ═══════════════════════════════════════════════════════════════════════
 try:
-    from queue import Empty
+    import base64 as _b64
+    import json as _json
+    import uuid as _uuid
     from datetime import datetime, timezone as tz
+    from queue import Empty
+
     from kombu.transport.redis import Channel as RedisChannel
     from kombu.utils.encoding import bytes_to_str
     from kombu.utils.json import loads
+
     from asyncworker.events import publish_event
+
+    _DEFAULT_EMBED = {"callbacks": None, "errbacks": None, "chain": None, "chord": None}
+
+    def _is_v2_tuple(val: object) -> bool:
+        return (
+            isinstance(val, list)
+            and len(val) == 3
+            and isinstance(val[0], list)
+            and isinstance(val[1], dict)
+            and isinstance(val[2], dict)
+        )
+
+    def _normalize_task_envelope(payload: dict, dest: str) -> dict:
+        """Normalize a simplified or partial JSON task envelope into Celery v2 format."""
+        headers = payload.setdefault("headers", {})
+        if "task" not in headers and "task" in payload:
+            headers["task"] = payload.pop("task")
+
+        task_id = headers.setdefault("id", str(_uuid.uuid4()))
+        headers.setdefault("root_id", task_id)
+        headers.setdefault("lang", "py")
+        headers.setdefault("retries", 0)
+
+        props = payload.setdefault("properties", {})
+        props.setdefault("delivery_tag", task_id)
+        props.setdefault("correlation_id", task_id)
+        d_info = props.setdefault("delivery_info", {})
+        d_info.setdefault("exchange", "")
+        d_info.setdefault("routing_key", dest)
+
+        body = payload.get("body")
+        body_encoding = props.get("body_encoding")
+        if isinstance(body, str) and body_encoding == "base64":
+            try:
+                body = _json.loads(_b64.b64decode(body).decode("utf-8"))
+            except Exception:
+                pass
+        elif isinstance(body, str) and not body_encoding:
+            stripped = body.strip()
+            if (stripped.startswith("[") and stripped.endswith("]")) or (
+                stripped.startswith("{") and stripped.endswith("}")
+            ):
+                try:
+                    body = _json.loads(stripped)
+                except Exception:
+                    pass
+
+        if isinstance(body, dict):
+            tuple_body = [[], body, dict(_DEFAULT_EMBED)]
+        elif isinstance(body, list):
+            tuple_body = body if _is_v2_tuple(body) else [body, {}, dict(_DEFAULT_EMBED)]
+        else:
+            return payload
+
+        args_part, kwargs_part, _ = tuple_body
+        headers.setdefault("argsrepr", repr(tuple(args_part)) if args_part else "()")
+        headers.setdefault("kwargsrepr", repr(kwargs_part) if kwargs_part else "{}")
+        payload["body"] = _b64.b64encode(_json.dumps(tuple_body).encode("utf-8")).decode("utf-8")
+        props["body_encoding"] = "base64"
+        payload["content-type"] = "application/json"
+        payload["content-encoding"] = "utf-8"
+        return payload
 
     def _safe_brpop_read(self, **options):
         try:
@@ -106,79 +182,41 @@ try:
             except self.connection_errors:
                 self.client.connection.disconnect()
                 raise
-            if dest__item:
-                dest, item = dest__item
-                dest = bytes_to_str(dest).rsplit(self.sep, 1)[0]
-                self._queue_cycle.rotate(dest)
-                try:
-                    payload = loads(bytes_to_str(item))
-                    if isinstance(payload, dict):
-                        import base64 as b64_lib
-                        import json as json_lib
-                        import uuid as uuid_lib
-
-                        headers = payload.setdefault("headers", {})
-                        task_id = headers.setdefault("id", str(uuid_lib.uuid4()))
-                        headers.setdefault("root_id", task_id)
-                        headers.setdefault("lang", "py")
-                        headers.setdefault("retries", 0)
-
-                        props = payload.setdefault("properties", {})
-                        props.setdefault("delivery_tag", task_id)
-                        props.setdefault("correlation_id", task_id)
-                        d_info = props.setdefault("delivery_info", {})
-                        d_info.setdefault("exchange", "")
-                        d_info.setdefault("routing_key", dest)
-
-                        body = payload.get("body")
-                        if isinstance(body, dict):
-                            headers.setdefault("argsrepr", "()")
-                            headers.setdefault("kwargsrepr", repr(body))
-                            tuple_body = [[], body, {"callbacks": None, "errbacks": None, "chain": None, "chord": None}]
-                            payload["body"] = b64_lib.b64encode(json_lib.dumps(tuple_body).encode("utf-8")).decode("utf-8")
-                            props["body_encoding"] = "base64"
-                            payload["content-type"] = "application/json"
-                            payload["content-encoding"] = "utf-8"
-                        elif isinstance(body, list):
-                            headers.setdefault("argsrepr", "()")
-                            headers.setdefault("kwargsrepr", "{}")
-                            payload["body"] = b64_lib.b64encode(json_lib.dumps(body).encode("utf-8")).decode("utf-8")
-                            props["body_encoding"] = "base64"
-                            payload["content-type"] = "application/json"
-                            payload["content-encoding"] = "utf-8"
-                        elif isinstance(body, str) and not props.get("body_encoding"):
-                            stripped = body.strip()
-                            if (stripped.startswith("[") and stripped.endswith("]")) or (stripped.startswith("{") and stripped.endswith("}")):
-                                try:
-                                    parsed_body = json_lib.loads(stripped)
-                                    if isinstance(parsed_body, dict):
-                                        parsed_body = [[], parsed_body, {"callbacks": None, "errbacks": None, "chain": None, "chord": None}]
-                                    payload["body"] = b64_lib.b64encode(json_lib.dumps(parsed_body).encode("utf-8")).decode("utf-8")
-                                    props["body_encoding"] = "base64"
-                                    payload["content-type"] = "application/json"
-                                    payload["content-encoding"] = "utf-8"
-                                except Exception:
-                                    pass
-
-                    self.connection._deliver(payload, dest)
-                except Exception as exc:
-                    logger.error("Message error on queue '%s': %s", dest, exc)
-                    try:
-                        publish_event(
-                            f"{dest}.failed",
-                            {
-                                "task_id": None,
-                                "queue": dest,
-                                "status": "FAILURE",
-                                "error": f"Invalid message envelope/payload: {exc}",
-                                "timestamp": datetime.now(tz.utc).isoformat(),
-                            },
-                        )
-                    except Exception as pub_exc:
-                        logger.warning("Could not publish error to pub/sub: %s", pub_exc)
-                return True
-            else:
+            if not dest__item:
                 raise Empty()
+
+            dest, item = dest__item
+            dest = bytes_to_str(dest).rsplit(self.sep, 1)[0]
+            self._queue_cycle.rotate(dest)
+
+            payload = loads(bytes_to_str(item))
+            is_control = "pidbox" in dest or dest.startswith("reply.")
+            if is_control:
+                self.connection._deliver(payload, dest)
+                return True
+
+            try:
+                if isinstance(payload, dict) and (
+                    "task" in payload or "task" in payload.get("headers", {})
+                ):
+                    payload = _normalize_task_envelope(payload, dest)
+                self.connection._deliver(payload, dest)
+            except Exception as exc:
+                logger.error("Message error on queue '%s': %s", dest, exc)
+                try:
+                    publish_event(
+                        f"{dest}.failed",
+                        {
+                            "task_id": None,
+                            "queue": dest,
+                            "status": "FAILURE",
+                            "error": f"Invalid message envelope/payload: {exc}",
+                            "timestamp": datetime.now(tz.utc).isoformat(),
+                        },
+                    )
+                except Exception as pub_exc:
+                    logger.warning("Could not publish error to pub/sub: %s", pub_exc)
+            return True
         finally:
             self._in_poll = None
 

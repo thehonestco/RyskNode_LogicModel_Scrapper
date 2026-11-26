@@ -2,7 +2,7 @@
 Quick testing script to dispatch tasks to the Celery worker and listen to Redis Pub/Sub events.
 
 Usage:
-    uv run python test_dispatch.py [buyer_risk|credit_limit|sync]
+    uv run python test_dispatch.py [buyer_risk|credit_limit|vdd]
 """
 
 import sys
@@ -62,8 +62,6 @@ def dispatch_task(task_type: str = "buyer_risk"):
             kwargs={
                 "entity_id": "U63010MH1959PTC011380",
                 "seller_id": "SELLER_001",
-                "trade_name": "Umargo",
-                "state_code": "MH",
                 "include_xai": False,
             },
             queue="buyer_risk",
@@ -84,12 +82,16 @@ def dispatch_task(task_type: str = "buyer_risk"):
         )
         print(f"✓ Task sent! Task ID: {res.id}")
 
-    elif task_type == "sync":
-        print("🚀 Dispatching MCA / Data.gov.in Sync (Queue: sync)...")
+    elif task_type == "vdd":
+        queue = os.getenv("CELERY_QUEUE_VDD", "vendor_due_diligence")
+        print(f"🚀 Dispatching Vendor Due Diligence (Queue: {queue})...")
         res = client.send_task(
-            "asyncworker.tasks.sync_data_gov_state",
-            kwargs={"statecode": "MP"},
-            queue="sync",
+            "asyncworker.tasks.vendor_due_diligence_task",
+            kwargs={
+                "entity_id": "U63010MH1959PTC011380",
+                "seller_id": "SELLER_001",
+            },
+            queue=queue,
         )
         print(f"✓ Task sent! Task ID: {res.id}")
 

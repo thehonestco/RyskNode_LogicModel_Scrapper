@@ -7,9 +7,10 @@ automatically published to a Redis pub/sub channel following the convention:
     <app_name>-events:<event_name>
 
 Channel naming examples:
-    rysknode-events:scrape_single_company.completed
+    rysknode-events:assess_buyer_task.completed
+    rysknode-events:assess_credit_limit_task.completed
+    rysknode-events:vendor_due_diligence_task.completed
     rysknode-events:sync_data_gov_state.failed
-    rysknode-events:batch_scrape_companies.retrying
 
 Subscribing (from any service):
     PSUBSCRIBE rysknode-events:*
@@ -39,6 +40,7 @@ logger = logging.getLogger(__name__)
 
 # Default app name prefix for event channels
 APP_NAME: str = os.getenv("CELERY_EVENT_APP_NAME", "rysknode")
+EVENTS_ENABLED: bool = os.getenv("ENABLE_CELERY_EVENTS", "true").lower() in ("true", "1", "yes")
 
 
 class EventPublisher:
@@ -66,11 +68,15 @@ class EventPublisher:
 
     @property
     def client(self) -> redis_lib.Redis:  # type: ignore[type-arg]
-        """Lazy-initialize the Redis client on first use."""
+        """Lazy-initialize the Redis client on first use with health checks."""
         if self._client is None:
             self._client = redis_lib.Redis.from_url(
                 self._redis_url,
                 decode_responses=True,
+                socket_connect_timeout=5,
+                socket_timeout=5,
+                retry_on_timeout=True,
+                health_check_interval=30,
             )
         return self._client
 
@@ -86,6 +92,8 @@ class EventPublisher:
         Returns:
             Number of subscribers that received the message.
         """
+        if not EVENTS_ENABLED:
+            return 0
         channel = f"{self._app_name}-events:{event_name}"
         message = json.dumps(payload, default=str)
         try:

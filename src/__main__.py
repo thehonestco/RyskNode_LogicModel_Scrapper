@@ -4,6 +4,7 @@ import os
 import signal
 import subprocess
 import sys
+import time
 from os.path import abspath, dirname, join
 
 import inject
@@ -53,27 +54,49 @@ signal.signal(signal.SIGINT, _signal_handler)
 signal.signal(signal.SIGTERM, _signal_handler)
 
 
-def start_celery_worker(settings: Settings) -> subprocess.Popen | None:
-    """Start Celery worker background process with configured queues and concurrency."""
-    queues = settings.celery_worker_queues
-    concurrency = str(settings.celery_worker_concurrency)
-    cmd = [
-        sys.executable,
-        "-m",
-        "celery",
-        "-A",
-        "asyncworker",
-        "worker",
-        "--loglevel=info",
-        "-Q",
-        queues,
-        "-c",
-        concurrency,
+def start_celery_workers(settings: Settings) -> list[subprocess.Popen]:
+    """Start one Celery worker process per enabled queue with its own concurrency."""
+    queue_specs = [
+        (settings.enable_queue_default, settings.celery_queue_default, settings.celery_concurrency_default),
+        (settings.enable_queue_buyer_risk, settings.celery_queue_buyer_risk, settings.celery_concurrency_buyer_risk),
+        (settings.enable_queue_credit_limit, settings.celery_queue_credit_limit, settings.celery_concurrency_credit_limit),
+        (settings.enable_queue_vdd, settings.celery_queue_vdd, settings.celery_concurrency_vdd),
     ]
-    logger.info(f"Starting Celery Worker with queues=[{queues}] concurrency={concurrency}...")
-    proc = subprocess.Popen(cmd, cwd=src_dir)
-    _subprocesses.append(proc)
-    return proc
+    enabled_workers = [
+        (q.strip(), c)
+        for flag, q, c in queue_specs
+        if flag and q and q.strip()
+    ]
+    if not enabled_workers:
+        logger.warning("No Celery queues enabled (all ENABLE_QUEUE_* are false); skipping Celery Workers.")
+        return []
+
+    procs: list[subprocess.Popen] = []
+    seen: set[str] = set()
+    for queue, concurrency in enabled_workers:
+        if queue in seen:
+            continue
+        seen.add(queue)
+        cmd = [
+            sys.executable,
+            "-m",
+            "celery",
+            "-A",
+            "asyncworker",
+            "worker",
+            "--loglevel=info",
+            "-Q",
+            queue,
+            "-c",
+            str(concurrency),
+            "-n",
+            f"{queue}@%h",
+        ]
+        logger.info(f"Starting Celery Worker [{queue}@%h] queue={queue} concurrency={concurrency}...")
+        proc = subprocess.Popen(cmd, cwd=src_dir)
+        _subprocesses.append(proc)
+        procs.append(proc)
+    return procs
 
 
 def start_celery_flower(settings: Settings) -> subprocess.Popen | None:
@@ -89,25 +112,10 @@ def start_celery_flower(settings: Settings) -> subprocess.Popen | None:
         "flower",
         f"--port={port}",
         f"--basic_auth={auth}",
+        "--inspect_timeout=5000",
+        "--purge_offline_workers=60",
     ]
     logger.info(f"Starting Flower UI on http://127.0.0.1:{port} (user: {settings.celery_flower_user})...")
-    proc = subprocess.Popen(cmd, cwd=src_dir)
-    _subprocesses.append(proc)
-    return proc
-
-
-def start_celery_beat(settings: Settings) -> subprocess.Popen | None:
-    """Start Celery Beat periodic scheduler background process."""
-    cmd = [
-        sys.executable,
-        "-m",
-        "celery",
-        "-A",
-        "asyncworker",
-        "beat",
-        "--loglevel=info",
-    ]
-    logger.info("Starting Celery Beat periodic task scheduler...")
     proc = subprocess.Popen(cmd, cwd=src_dir)
     _subprocesses.append(proc)
     return proc
@@ -118,33 +126,38 @@ if __name__ == "__main__":
     logger.info("  RyskNode LogicModel Scrapper - Service Orchestrator")
     logger.info("=" * 65)
 
-    # 1. Start Celery Worker (if enabled via ENABLE_CELERY_WORKER)
+    # 1. Start Celery Workers (one per enabled queue, if ENABLE_CELERY_WORKER=true)
+    worker_procs: list[subprocess.Popen] = []
     if settings.enable_celery_worker:
-        start_celery_worker(settings)
+        worker_procs = start_celery_workers(settings)
     else:
         logger.info("Celery Worker is DISABLED (ENABLE_CELERY_WORKER=false)")
 
     # 2. Start Flower UI (if enabled via ENABLE_CELERY_FLOWER)
     if settings.enable_celery_flower:
+        if worker_procs:
+            # Give workers a moment to finish booting so Flower's initial inspect() finds them
+            time.sleep(3)
         start_celery_flower(settings)
     else:
         logger.info("Flower UI is DISABLED (ENABLE_CELERY_FLOWER=false)")
 
-    # 3. Start Celery Beat (if enabled via ENABLE_CELERY_BEAT)
-    if settings.enable_celery_beat:
-        start_celery_beat(settings)
-    else:
-        logger.info("Celery Beat Scheduler is DISABLED (ENABLE_CELERY_BEAT=false)")
-
-    # 4. Start FastAPI Application Server (main blocking process)
-    logger.info(f"Starting FastAPI Application on http://{settings.app_host}:{settings.app_port}...")
+    # 3. Start FastAPI Application Server (or wait on worker subprocesses)
     try:
-        uvicorn.run(
-            "app.bootstrap:api",
-            host=settings.app_host,
-            port=settings.app_port,
-            reload=settings.can_reload,
-        )
+        if settings.enable_api_server:
+            logger.info(f"Starting FastAPI Application on http://{settings.app_host}:{settings.app_port}...")
+            uvicorn.run(
+                "app.bootstrap:api",
+                host=settings.app_host,
+                port=settings.app_port,
+                reload=settings.can_reload,
+            )
+        elif _subprocesses:
+            logger.info("FastAPI Server is DISABLED (ENABLE_API_SERVER=false); running background workers...")
+            for proc in _subprocesses:
+                proc.wait()
+        else:
+            logger.warning("Both FastAPI Server and all Celery processes are disabled; exiting.")
     finally:
         _cleanup_subprocesses()
 

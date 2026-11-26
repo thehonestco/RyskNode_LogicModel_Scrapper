@@ -2,11 +2,12 @@ import inject
 from fastapi import Depends
 from fastapi.responses import HTMLResponse
 
-from api.schema.ppre import CreditLimitRequest, CreditLimitResponse
+from api.schema.ppre import CreditLimitRequest
 from common.base import constants
 from common.base.router import APIRouter
 from common.base.utils import respond
 from common.schema.base import ResponseSchema
+from service.assessment_runner import run_assess_credit_limit
 from service.ppre_service import PPREService
 from service.report_service import ReportService
 
@@ -23,7 +24,8 @@ async def credit_limit_json(
 
     Directly executes the assessment in-process and returns the full JSON result.
     """
-    result = await ppre_service.assess_buyer(
+    payload = await run_assess_credit_limit(
+        ppre_service=ppre_service,
         entity_id=request.entity_id,
         seller_id=request.seller_id,
         requested_amount=request.requested_amount,
@@ -31,9 +33,7 @@ async def credit_limit_json(
         credit_period_days=request.credit_period_days,
         ead=request.ead,
     )
-
-    response_obj = CreditLimitResponse.model_validate(result)
-    return respond(code=constants.HTTP_200_OK, data=response_obj.model_dump())
+    return respond(code=constants.HTTP_200_OK, data=payload)
 
 
 

@@ -2,11 +2,12 @@ import inject
 from fastapi import Depends
 from fastapi.responses import HTMLResponse
 
-from api.schema.ppre import BuyerAssessRequest, BuyerAssessResponse
+from api.schema.ppre import BuyerAssessRequest
 from common.base import constants
 from common.base.router import APIRouter
 from common.base.utils import respond
 from common.schema.base import ResponseSchema
+from service.assessment_runner import run_assess_buyer
 from service.ppre_service import PPREService
 from service.report_service import ReportService
 
@@ -24,15 +25,13 @@ async def assess_buyer_json(
     Directly executes the assessment and returns the granular, UI-ready payload
     organized by sections (overview, entity_identity, director_profile, etc.).
     """
-    result = await ppre_service.assess_buyer(
+    payload = await run_assess_buyer(
+        ppre_service=ppre_service,
         entity_id=request.entity_id,
         seller_id=request.seller_id,
-        trade_name=getattr(request, "trade_name", None),
-        state_code=getattr(request, "state_code", None),
         include_xai=request.include_xai,
     )
-    response_obj = BuyerAssessResponse.model_validate(result)
-    return respond(code=constants.HTTP_200_OK, data=response_obj.model_dump())
+    return respond(code=constants.HTTP_200_OK, data=payload)
 
 
 @router.post("/assess/report", response_class=HTMLResponse)
