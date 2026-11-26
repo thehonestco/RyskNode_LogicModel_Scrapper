@@ -103,6 +103,7 @@ def start_celery_flower(settings: Settings) -> subprocess.Popen | None:
     """Start Flower UI monitoring dashboard background process."""
     port = str(settings.celery_flower_port)
     auth = f"{settings.celery_flower_user}:{settings.celery_flower_password}"
+    prefix = (settings.celery_flower_url_prefix or "").strip("/")
     cmd = [
         sys.executable,
         "-m",
@@ -115,7 +116,10 @@ def start_celery_flower(settings: Settings) -> subprocess.Popen | None:
         "--inspect_timeout=5000",
         "--purge_offline_workers=60",
     ]
-    logger.info(f"Starting Flower UI on http://127.0.0.1:{port} (user: {settings.celery_flower_user})...")
+    if prefix:
+        cmd.append(f"--url_prefix={prefix}")
+    url = f"http://127.0.0.1:{port}/{prefix}" if prefix else f"http://127.0.0.1:{port}"
+    logger.info(f"Starting Flower UI on {url} (user: {settings.celery_flower_user})...")
     proc = subprocess.Popen(cmd, cwd=src_dir)
     _subprocesses.append(proc)
     return proc

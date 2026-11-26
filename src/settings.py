@@ -43,6 +43,7 @@ class Settings(CoreSettings):
     # ── Flower UI ────────────────────────────────────────────────────
     enable_celery_flower: bool = True
     celery_flower_port: int = 5555
+    celery_flower_url_prefix: str | None = None
     celery_flower_user: str = "admin"
     celery_flower_password: str = "flowerpass"
 
