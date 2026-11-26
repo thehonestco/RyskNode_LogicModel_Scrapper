@@ -23,7 +23,6 @@ class Settings(CoreSettings):
     redis_host: str = "localhost"
     redis_port: int = 6379
     celery_broker_url: str = "redis://:default@localhost:6379/0"
-    celery_result_backend: str | None = None  # defaults to broker_url
     celery_app_conf: str = "asyncworker.settings.celeryconfig"
     celery_queue_default: str = "default"
     celery_queue_buyer_risk: str = "buyer_risk"

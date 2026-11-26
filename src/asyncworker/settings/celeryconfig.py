@@ -25,7 +25,7 @@ else:
 # Broker & Result Backend
 # ═══════════════════════════════════════════════════════════════════════
 broker_url: str = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
-result_backend: str = os.getenv("CELERY_RESULT_BACKEND", broker_url)
+result_backend: str = broker_url
 
 # Redis transport & connection health optimizations (adapted from laibel ai-services)
 broker_connection_retry_on_startup: bool = True

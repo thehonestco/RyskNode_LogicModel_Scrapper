@@ -58,18 +58,46 @@ jobs:
             --exclude "reports" \
             --exclude "*.pyc" \
             ./ "$APP_DIR/"
-      - name: Create production .env from GitHub Secrets
+      - name: Create production .env from GitHub Secrets and Variables
         working-directory: ${{ env.APP_DIR }}
         run: |
           cat > .env <<EOF
           APP_ENV=${{ secrets.APP_ENV }}
           APP_PORT=${{ secrets.APP_PORT }}
+          ENABLE_API_SERVER=${{ vars.ENABLE_API_SERVER }}
           SQLALCHEMY_URI=${{ secrets.SQLALCHEMY_URI }}
           DATA_GOV_API_KEY=${{ secrets.DATA_GOV_API_KEY }}
           DATA_GOV_RESOURCE_ID=4dbe5667-7b6b-41d7-82af-211562424d9a
           DATA_GOV_BASE_URL=https://api.data.gov.in/resource
           DATA_GOV_RATE_LIMIT_COOLDOWN=120
           DATA_GOV_API_LIMIT=1000
+          CELERY_BROKER_URL=${{ secrets.CELERY_BROKER_URL }}
+          CELERY_APP_CONF=${{ vars.CELERY_APP_CONF }}
+          ENABLE_CELERY_WORKER=${{ vars.ENABLE_CELERY_WORKER }}
+          ENABLE_QUEUE_DEFAULT=${{ vars.ENABLE_QUEUE_DEFAULT }}
+          CELERY_QUEUE_DEFAULT=${{ vars.CELERY_QUEUE_DEFAULT }}
+          CELERY_CONCURRENCY_DEFAULT=${{ vars.CELERY_CONCURRENCY_DEFAULT }}
+          ENABLE_QUEUE_BUYER_RISK=${{ vars.ENABLE_QUEUE_BUYER_RISK }}
+          CELERY_QUEUE_BUYER_RISK=${{ vars.CELERY_QUEUE_BUYER_RISK }}
+          CELERY_CONCURRENCY_BUYER_RISK=${{ vars.CELERY_CONCURRENCY_BUYER_RISK }}
+          ENABLE_QUEUE_CREDIT_LIMIT=${{ vars.ENABLE_QUEUE_CREDIT_LIMIT }}
+          CELERY_QUEUE_CREDIT_LIMIT=${{ vars.CELERY_QUEUE_CREDIT_LIMIT }}
+          CELERY_CONCURRENCY_CREDIT_LIMIT=${{ vars.CELERY_CONCURRENCY_CREDIT_LIMIT }}
+          ENABLE_QUEUE_VDD=${{ vars.ENABLE_QUEUE_VDD }}
+          CELERY_QUEUE_VDD=${{ vars.CELERY_QUEUE_VDD }}
+          CELERY_CONCURRENCY_VDD=${{ vars.CELERY_CONCURRENCY_VDD }}
+          CELERY_TASK_TIME_LIMIT=${{ vars.CELERY_TASK_TIME_LIMIT }}
+          CELERY_TASK_SOFT_TIME_LIMIT=${{ vars.CELERY_TASK_SOFT_TIME_LIMIT }}
+          CELERY_VISIBILITY_TIMEOUT=${{ vars.CELERY_VISIBILITY_TIMEOUT }}
+          CELERY_RESULT_EXPIRES=${{ vars.CELERY_RESULT_EXPIRES }}
+          CELERY_WORKER_MAX_TASKS_PER_CHILD=${{ vars.CELERY_WORKER_MAX_TASKS_PER_CHILD }}
+          CELERY_TIMEZONE=${{ vars.CELERY_TIMEZONE }}
+          ENABLE_CELERY_FLOWER=${{ vars.ENABLE_CELERY_FLOWER }}
+          CELERY_FLOWER_PORT=${{ vars.CELERY_FLOWER_PORT }}
+          CELERY_FLOWER_USER=${{ secrets.CELERY_FLOWER_USER }}
+          CELERY_FLOWER_PASSWORD=${{ secrets.CELERY_FLOWER_PASSWORD }}
+          ENABLE_CELERY_EVENTS=${{ vars.ENABLE_CELERY_EVENTS }}
+          CELERY_EVENT_APP_NAME=${{ vars.CELERY_EVENT_APP_NAME }}
           EOF
 
           chmod 600 .env
@@ -85,6 +113,9 @@ jobs:
           grep -q "^DATA_GOV_RESOURCE_ID=." .env
           grep -q "^DATA_GOV_BASE_URL=." .env
           grep -q "^DATA_GOV_RATE_LIMIT_COOLDOWN=." .env
+          grep -q "^CELERY_BROKER_URL=." .env
+          grep -q "^CELERY_FLOWER_USER=." .env
+          grep -q "^CELERY_FLOWER_PASSWORD=." .env
           echo ".env generated successfully"
       - name: Install or update dependencies
         working-directory: ${{ env.APP_DIR }}
